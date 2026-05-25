@@ -1,0 +1,322 @@
+@model CoursVia.ViewModels.Egitmen.SoruDuzenleViewModel
+
+@{
+    ViewData["Title"] = "Soru Düzenle";
+    bool dersVarMi = Model.Dersler.Any();
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_EgitmenSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+            <div class="mx-auto max-w-5xl space-y-5">
+
+                <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                            Soru Düzenle
+                        </p>
+
+                        <h1 class="mt-1 text-2xl font-black text-slate-900">
+                            @Model.KursAdi
+                        </h1>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 sm:justify-end">
+                        <a asp-controller="EgitmenKurs"
+                           asp-action="OnIzle"
+                           asp-route-id="@Model.KursId"
+                           class="btn btn-sm rounded-xl bg-slate-900 px-4 text-white hover:bg-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 class="h-4 w-4"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke="currentColor">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+
+                            Ön İzle
+                        </a>
+
+                        <a asp-controller="EgitmenSinav"
+                           asp-action="SoruHavuzu"
+                           asp-route-kursId="@Model.KursId"
+                           class="btn btn-sm btn-outline rounded-xl">
+                            Havuza Dön
+                        </a>
+                    </div>
+                </div>
+
+                <form asp-controller="EgitmenSinav"
+                      asp-action="SoruDuzenle"
+                      method="post"
+                      class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" asp-for="SoruId" />
+                    <input type="hidden" asp-for="KursId" />
+                    <input type="hidden" asp-for="SinavId" />
+                    <input type="hidden" asp-for="KursAdi" />
+                    <input type="hidden" asp-for="SinavAdi" />
+
+                    <div asp-validation-summary="All"
+                         class="mb-5 text-sm font-semibold text-red-600">
+                    </div>
+
+                    <div class="space-y-6">
+
+                        <div>
+                            <label asp-for="SoruMetni"
+                                   class="mb-2 block text-sm font-bold text-slate-700">
+                                Soru Metni
+                            </label>
+
+                            <textarea asp-for="SoruMetni"
+                                      rows="5"
+                                      class="textarea textarea-bordered w-full rounded-xl border-slate-300 bg-white"
+                                      placeholder="Soruyu yazın"></textarea>
+
+                            <span asp-validation-for="SoruMetni"
+                                  class="mt-1 block text-sm text-red-500">
+                            </span>
+                        </div>
+
+                        <div>
+                            <h2 class="mb-3 text-base font-black text-slate-900">
+                                Dersler
+                            </h2>
+
+                            @if (dersVarMi)
+                            {
+                                <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                    @foreach (var ders in Model.Dersler)
+                                    {
+                                        <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition hover:border-blue-200">
+                                            <input type="checkbox"
+                                                   name="SeciliDersIdleri"
+                                                   value="@ders.DersId"
+                                                   class="checkbox checkbox-primary checkbox-sm mt-0.5"
+                                                   checked="@(Model.SeciliDersIdleri.Contains(ders.DersId) ? "checked" : null)" />
+
+                                            <span class="min-w-0">
+                                                <span class="block text-sm font-bold text-slate-800">
+                                                    @ders.DersAdi
+                                                </span>
+
+                                                <span class="mt-0.5 block text-xs font-semibold text-slate-500">
+                                                    @ders.BolumAdi
+                                                </span>
+                                            </span>
+                                        </label>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                                    Önce bu kursa ders ekleyin.
+                                </div>
+                            }
+
+                            <span asp-validation-for="SeciliDersIdleri"
+                                  class="mt-2 block text-sm text-red-500">
+                            </span>
+                        </div>
+
+                        <div>
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <h2 class="text-base font-black text-slate-900">
+                                    Seçenekler
+                                </h2>
+
+                                <button type="button"
+                                        id="secenekEkleBtn"
+                                        class="btn btn-sm btn-outline btn-primary rounded-xl">
+                                    Seçenek Ekle
+                                </button>
+                            </div>
+
+                            <div id="secenekListesi" class="space-y-3">
+                                @for (int i = 0; i < Model.SecenekMetinleri.Count; i++)
+                                {
+                                    <div class="secenek-row grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[auto_auto_1fr_auto] sm:items-center">
+                                        <label class="flex items-center gap-2 text-sm font-bold text-slate-700" title="Seçenek aktif mi?">
+                                            <input type="checkbox"
+                                                   class="checkbox checkbox-success checkbox-sm aktif-checkbox"
+                                                   @(Model.SecenekAktifDurumlari != null && Model.SecenekAktifDurumlari.Count > i && Model.SecenekAktifDurumlari[i] ? "checked" : "") />
+                                            <input type="hidden" name="SecenekAktifDurumlari" value="@(Model.SecenekAktifDurumlari != null && Model.SecenekAktifDurumlari.Count > i && Model.SecenekAktifDurumlari[i] ? "true" : "false")" class="aktif-hidden" />
+                                            Aktif
+                                        </label>
+
+                                        <label class="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                            <input type="radio"
+                                                   name="DogruSecenekIndex"
+                                                   value="@i"
+                                                   class="radio radio-primary radio-sm dogru-radio"
+                                                   checked="@(Model.DogruSecenekIndex == i ? "checked" : null)" />
+
+                                            Doğru
+                                        </label>
+
+                                        <input type="hidden"
+                                               name="SecenekIdleri"
+                                               value="@(Model.SecenekIdleri.Count > i ? Model.SecenekIdleri[i] : 0)"
+                                               class="secenek-id-input" />
+
+                                        <input type="text"
+                                               name="SecenekMetinleri"
+                                               value="@Model.SecenekMetinleri[i]"
+                                               class="input input-bordered secenek-input w-full rounded-xl border-slate-300 bg-white"
+                                               placeholder="Seçenek metni" />
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-ghost btn-square rounded-lg text-red-500 secenek-sil-btn">
+                                            ×
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                            <div id="secenekBosMesaj"
+                                 class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-400">
+                                Henüz seçenek eklenmedi.
+                            </div>
+
+                            <span asp-validation-for="SecenekMetinleri"
+                                  class="mt-2 block text-sm text-red-500">
+                            </span>
+
+                            <span asp-validation-for="DogruSecenekIndex"
+                                  class="mt-1 block text-sm text-red-500">
+                            </span>
+                        </div>
+
+                        <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                            <a asp-controller="EgitmenSinav"
+                               asp-action="SoruHavuzu"
+                               asp-route-kursId="@Model.KursId"
+                               class="btn btn-ghost rounded-xl">
+                                İptal
+                            </a>
+
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl"
+                                    disabled="@(!dersVarMi)">
+                                Güncelle
+                            </button>
+                        </div>
+
+                    </div>
+                </form>
+
+            </div>
+        </main>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const liste = document.getElementById("secenekListesi");
+            const ekleBtn = document.getElementById("secenekEkleBtn");
+            const bosMesaj = document.getElementById("secenekBosMesaj");
+
+            function satirlariGuncelle() {
+                const rows = liste.querySelectorAll(".secenek-row");
+
+                rows.forEach(function (row, index) {
+                    const radio = row.querySelector(".dogru-radio");
+                    const input = row.querySelector(".secenek-input");
+
+                    if (radio) {
+                        radio.value = index;
+                    }
+
+                    if (input) {
+                        input.placeholder = (index + 1) + ". seçenek";
+                    }
+                });
+
+                bosMesaj.classList.toggle("hidden", rows.length > 0);
+                ekleBtn.disabled = false;
+            }
+
+            function secenekSatiriOlustur() {
+                const row = document.createElement("div");
+
+                row.className = "secenek-row grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[auto_auto_1fr_auto] sm:items-center";
+                row.innerHTML = `
+                    <label class="flex items-center gap-2 text-sm font-bold text-slate-700" title="Seçenek aktif mi?">
+                        <input type="checkbox"
+                               class="checkbox checkbox-success checkbox-sm aktif-checkbox"
+                               checked />
+                        <input type="hidden" name="SecenekAktifDurumlari" value="true" class="aktif-hidden" />
+                        Aktif
+                    </label>
+
+                    <label class="flex items-center gap-2 text-sm font-bold text-slate-700">
+                        <input type="radio"
+                               name="DogruSecenekIndex"
+                               class="radio radio-primary radio-sm dogru-radio" />
+                        Doğru
+                    </label>
+
+                    <input type="hidden"
+                           name="SecenekIdleri"
+                           value="0"
+                           class="secenek-id-input" />
+
+                    <input type="text"
+                           name="SecenekMetinleri"
+                           class="input input-bordered secenek-input w-full rounded-xl border-slate-300 bg-white"
+                           placeholder="Seçenek metni" />
+
+                    <button type="button"
+                            class="btn btn-sm btn-ghost btn-square rounded-lg text-red-500 secenek-sil-btn">
+                        ×
+                    </button>
+                `;
+
+                liste.appendChild(row);
+                satirlariGuncelle();
+            }
+
+            ekleBtn.addEventListener("click", function () {
+                secenekSatiriOlustur();
+            });
+
+            liste.addEventListener("click", function (event) {
+                const silBtn = event.target.closest(".secenek-sil-btn");
+
+                if (!silBtn) {
+                    return;
+                }
+
+                silBtn.closest(".secenek-row").remove();
+                satirlariGuncelle();
+            });
+
+            liste.addEventListener("change", function(e) {
+                if(e.target.classList.contains("aktif-checkbox")) {
+                    const hidden = e.target.closest("label").querySelector(".aktif-hidden");
+                    hidden.value = e.target.checked ? "true" : "false";
+                }
+            });
+
+            satirlariGuncelle();
+        });
+    </script>
+}

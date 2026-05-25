@@ -1,0 +1,804 @@
+@model CoursVia.ViewModels.Admin.EgitmenOnaylariViewModel
+
+@{
+    ViewData["Title"] = "Eğitmen Başvuruları";
+
+    int bulunanBasvuruSayisi = Model.ToplamKayit > 0
+        ? Model.ToplamKayit
+        : Model.Basvurular.Count;
+
+    string DurumBadgeClass(int durumId)
+    {
+        return durumId switch
+        {
+            4 => "border-amber-100 bg-amber-50 text-amber-700",
+            8 => "border-emerald-100 bg-emerald-50 text-emerald-700",
+            6 => "border-red-100 bg-red-50 text-red-700",
+            _ => "border-slate-200 bg-slate-50 text-slate-600"
+        };
+    }
+
+    string FiltreKartClass(string durum)
+    {
+        return Model.Durum == durum
+            ? "border-blue-200 bg-blue-50 text-blue-700"
+            : "border-slate-200 bg-white text-slate-700 hover:border-blue-100 hover:bg-blue-50 hover:text-blue-700";
+    }
+
+    string ProfilBasHarfleri(string adSoyad)
+    {
+        if (string.IsNullOrWhiteSpace(adSoyad))
+        {
+            return "CV";
+        }
+
+        var parcalar = adSoyad
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(x => x[0].ToString().ToUpper());
+
+        return string.Join("", parcalar);
+    }
+
+    string WebsiteLink(string? websiteUrl)
+    {
+        if (string.IsNullOrWhiteSpace(websiteUrl))
+        {
+            return string.Empty;
+        }
+
+        websiteUrl = websiteUrl.Trim();
+
+        if (websiteUrl.StartsWith("http://") || websiteUrl.StartsWith("https://"))
+        {
+            return websiteUrl;
+        }
+
+        return "https://" + websiteUrl;
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_AdminSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-6">
+
+                @if (TempData["AdminHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["AdminBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminBasari"]</span>
+                    </div>
+                }
+
+                <!-- Üst Başlık -->
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                        <div>
+                            <p class="text-sm font-semibold text-blue-600">
+                                Admin Paneli
+                            </p>
+
+                            <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900">
+                                Eğitmen Başvuruları
+                            </h1>
+
+                            <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                                Eğitmen başvurularını inceleyin, uygun başvuruları onaylayın veya gerekçeli olarak reddedin.
+                            </p>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- Durum Kartları -->
+                <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
+
+                    <a asp-controller="AdminEgitmenBasvuru"
+                       asp-action="Basvurular"
+                       asp-route-durum="bekleyen"
+                       class="group rounded-2xl border p-5 shadow-sm transition @FiltreKartClass("bekleyen")">
+
+                        <div class="flex items-center justify-between gap-4">
+
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                    Onay Bekleyen
+                                </p>
+
+                                <p class="mt-2 text-3xl font-black">
+                                    @Model.BekleyenSayisi
+                                </p>
+                            </div>
+
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 transition group-hover:bg-amber-100">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="2"
+                                     stroke="currentColor"
+                                     class="h-5 w-5">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M12 6v6l4 2M12 3.75a8.25 8.25 0 1 0 0 16.5 8.25 8.25 0 0 0 0-16.5Z" />
+                                </svg>
+                            </div>
+
+                        </div>
+
+                    </a>
+
+                    <a asp-controller="AdminEgitmenBasvuru"
+                       asp-action="Basvurular"
+                       asp-route-durum="onaylanan"
+                       class="group rounded-2xl border p-5 shadow-sm transition @FiltreKartClass("onaylanan")">
+
+                        <div class="flex items-center justify-between gap-4">
+
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                    Onaylanan
+                                </p>
+
+                                <p class="mt-2 text-3xl font-black">
+                                    @Model.OnaylananSayisi
+                                </p>
+                            </div>
+
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-100">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="2"
+                                     stroke="currentColor"
+                                     class="h-5 w-5">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M4.5 12.75 10.5 18.75 19.5 5.25" />
+                                </svg>
+                            </div>
+
+                        </div>
+
+                    </a>
+
+                    <a asp-controller="AdminEgitmenBasvuru"
+                       asp-action="Basvurular"
+                       asp-route-durum="reddedilen"
+                       class="group rounded-2xl border p-5 shadow-sm transition @FiltreKartClass("reddedilen")">
+
+                        <div class="flex items-center justify-between gap-4">
+
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                    Reddedilen
+                                </p>
+
+                                <p class="mt-2 text-3xl font-black">
+                                    @Model.ReddedilenSayisi
+                                </p>
+                            </div>
+
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-700 transition group-hover:bg-red-100">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="2"
+                                     stroke="currentColor"
+                                     class="h-5 w-5">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            </div>
+
+                        </div>
+
+                    </a>
+
+                </section>
+
+                <!-- Filtre -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+
+                    <form asp-controller="AdminEgitmenBasvuru"
+                          asp-action="Basvurular"
+                          method="get"
+                          class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_240px_auto]">
+
+                        <input type="hidden" name="sayfa" value="1" />
+
+                        <input type="text"
+                               name="arama"
+                               value="@Model.Arama"
+                               placeholder="Ad, soyad, e-posta, telefon veya uzmanlık ara"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                        <select name="durum"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+
+                            @if (Model.Durum == "bekleyen")
+                            {
+                                <option value="bekleyen" selected>Onay Bekleyen</option>
+                            }
+                            else
+                            {
+                                <option value="bekleyen">Onay Bekleyen</option>
+                            }
+
+                            @if (Model.Durum == "onaylanan")
+                            {
+                                <option value="onaylanan" selected>Onaylanan</option>
+                            }
+                            else
+                            {
+                                <option value="onaylanan">Onaylanan</option>
+                            }
+
+                            @if (Model.Durum == "reddedilen")
+                            {
+                                <option value="reddedilen" selected>Reddedilen</option>
+                            }
+                            else
+                            {
+                                <option value="reddedilen">Reddedilen</option>
+                            }
+
+                            @if (Model.Durum == "tum")
+                            {
+                                <option value="tum" selected>Tüm Başvurular</option>
+                            }
+                            else
+                            {
+                                <option value="tum">Tüm Başvurular</option>
+                            }
+
+                        </select>
+
+                        <div class="flex gap-2 lg:justify-end">
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl px-6">
+                                Filtrele
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) || Model.Durum != "bekleyen")
+                            {
+                                <a asp-controller="AdminEgitmenBasvuru"
+                                   asp-action="Basvurular"
+                                   class="btn btn-outline rounded-xl">
+                                    Temizle
+                                </a>
+                            }
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- Liste -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                        <div>
+                            <h2 class="text-base font-black text-slate-900">
+                                Başvuru Listesi
+                            </h2>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                @bulunanBasvuruSayisi başvuru bulundu
+                            </p>
+                        </div>
+
+                    </div>
+
+                    @if (Model.Basvurular.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+
+                            @foreach (var basvuru in Model.Basvurular)
+                            {
+                                string modalId = $"egitmenBasvuruModal_{basvuru.EgitmenProfilId}";
+                                string website = WebsiteLink(basvuru.WebsiteUrl);
+                                bool kararVerilebilir = basvuru.DurumId == 4;
+
+                                <article class="p-5 transition hover:bg-slate-50">
+
+                                    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+
+                                        <div class="flex min-w-0 flex-1 gap-4">
+
+                                            <div class="shrink-0">
+                                                @if (!string.IsNullOrWhiteSpace(basvuru.ProfilFotoUrl))
+                                                {
+                                                    <img src="@basvuru.ProfilFotoUrl"
+                                                         alt="@basvuru.AdSoyad"
+                                                         class="h-14 w-14 rounded-2xl object-cover" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-sm font-black text-blue-700">
+                                                        @ProfilBasHarfleri(basvuru.AdSoyad)
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            <div class="min-w-0 flex-1">
+
+                                                <div class="flex flex-wrap items-center gap-2">
+
+                                                    <h3 class="text-base font-black text-slate-900">
+                                                        @basvuru.AdSoyad
+                                                    </h3>
+
+                                                    <span class="rounded-full border px-2.5 py-0.5 text-xs font-bold @DurumBadgeClass(basvuru.DurumId)">
+                                                        @basvuru.DurumAdi
+                                                    </span>
+
+                                                </div>
+
+                                                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+
+                                                    <span>@basvuru.Eposta</span>
+
+                                                    @if (!string.IsNullOrWhiteSpace(basvuru.Telefon))
+                                                    {
+                                                        <span class="text-slate-300">•</span>
+                                                        <span>@basvuru.Telefon</span>
+                                                    }
+
+                                                    @if (basvuru.DeneyimYili.HasValue)
+                                                    {
+                                                        <span class="text-slate-300">•</span>
+                                                        <span>@basvuru.DeneyimYili yıl deneyim</span>
+                                                    }
+
+                                                </div>
+
+                                                @if (!string.IsNullOrWhiteSpace(basvuru.UzmanlikAlani))
+                                                {
+                                                    <p class="mt-2 text-sm font-bold text-slate-700">
+                                                        @basvuru.UzmanlikAlani
+                                                    </p>
+                                                }
+
+                                                @if (basvuru.Branslar.Any())
+                                                {
+                                                    <div class="mt-3 flex flex-wrap gap-1.5">
+                                                        @foreach (var brans in basvuru.Branslar.Take(4))
+                                                        {
+                                                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                                                                @brans
+                                                            </span>
+                                                        }
+
+                                                        @if (basvuru.Branslar.Count > 4)
+                                                        {
+                                                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
+                                                                +@(basvuru.Branslar.Count - 4)
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                }
+
+                                            </div>
+
+                                        </div>
+
+                                        <div class="flex shrink-0 sm:w-36">
+                                            <button type="button"
+                                                    onclick="document.getElementById('@modalId').showModal()"
+                                                    class="btn btn-primary btn-sm w-full rounded-xl">
+                                                İncele
+                                            </button>
+                                        </div>
+
+                                    </div>
+
+                                    <dialog id="@modalId" class="modal">
+
+                                        <div class="modal-box max-w-4xl rounded-2xl bg-white">
+
+                                            <form method="dialog">
+                                                <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                                                    ✕
+                                                </button>
+                                            </form>
+
+                                            <div class="border-b border-slate-100 pb-4">
+
+                                                <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+
+                                                    <div class="shrink-0">
+                                                        @if (!string.IsNullOrWhiteSpace(basvuru.ProfilFotoUrl))
+                                                        {
+                                                            <img src="@basvuru.ProfilFotoUrl"
+                                                                 alt="@basvuru.AdSoyad"
+                                                                 class="h-16 w-16 rounded-2xl object-cover" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-lg font-black text-blue-700">
+                                                                @ProfilBasHarfleri(basvuru.AdSoyad)
+                                                            </div>
+                                                        }
+                                                    </div>
+
+                                                    <div class="min-w-0">
+
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            <h3 class="text-xl font-black text-slate-900">
+                                                                @basvuru.AdSoyad
+                                                            </h3>
+
+                                                            <span class="rounded-full border px-2.5 py-0.5 text-xs font-bold @DurumBadgeClass(basvuru.DurumId)">
+                                                                @basvuru.DurumAdi
+                                                            </span>
+                                                        </div>
+
+                                                        <p class="mt-1 text-sm font-semibold text-slate-500">
+                                                            @basvuru.Eposta
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+
+                                            </div>
+
+                                            <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+                                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                                        Uzmanlık Alanı
+                                                    </p>
+
+                                                    <p class="mt-1 text-sm font-bold text-slate-800">
+                                                        @(string.IsNullOrWhiteSpace(basvuru.UzmanlikAlani) ? "Belirtilmemiş" : basvuru.UzmanlikAlani)
+                                                    </p>
+                                                </div>
+
+                                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                                        Deneyim
+                                                    </p>
+
+                                                    <p class="mt-1 text-sm font-bold text-slate-800">
+                                                        @(basvuru.DeneyimYili.HasValue ? $"{basvuru.DeneyimYili} yıl" : "Belirtilmemiş")
+                                                    </p>
+                                                </div>
+
+                                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                                        Telefon
+                                                    </p>
+
+                                                    <p class="mt-1 text-sm font-bold text-slate-800">
+                                                        @(string.IsNullOrWhiteSpace(basvuru.Telefon) ? "Belirtilmemiş" : basvuru.Telefon)
+                                                    </p>
+                                                </div>
+
+                                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                    <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                                        Website
+                                                    </p>
+
+                                                    @if (!string.IsNullOrWhiteSpace(website))
+                                                    {
+                                                        <a href="@website"
+                                                           target="_blank"
+                                                           class="mt-1 inline-block text-sm font-bold text-blue-600 hover:text-blue-700">
+                                                            @basvuru.WebsiteUrl
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <p class="mt-1 text-sm font-bold text-slate-800">
+                                                            Belirtilmemiş
+                                                        </p>
+                                                    }
+                                                </div>
+
+                                            </div>
+
+                                            <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+
+                                                <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                                    Branşlar
+                                                </p>
+
+                                                @if (basvuru.Branslar.Any())
+                                                {
+                                                    <div class="mt-3 flex flex-wrap gap-2">
+                                                        @foreach (var brans in basvuru.Branslar)
+                                                        {
+                                                            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                                                                @brans
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <p class="mt-2 text-sm font-semibold text-slate-500">
+                                                        Branş bilgisi bulunmuyor.
+                                                    </p>
+                                                }
+
+                                            </div>
+
+                                            <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+
+                                                <p class="text-xs font-black uppercase tracking-wide text-slate-400">
+                                                    Biyografi
+                                                </p>
+
+                                                <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">
+                                                    @(string.IsNullOrWhiteSpace(basvuru.Biyografi) ? "Biyografi bilgisi bulunmuyor." : basvuru.Biyografi)
+                                                </p>
+
+                                            </div>
+
+                                            @if (kararVerilebilir)
+                                            {
+                                                <div class="mt-5 border-t border-slate-100 pt-5">
+
+                                                    <div class="mb-3">
+                                                        <h4 class="text-sm font-black text-slate-900">
+                                                            Başvuru Kararı
+                                                        </h4>
+
+                                                        <p class="mt-1 text-xs font-medium text-slate-500">
+                                                            Başvuruyu onaylayabilir veya red sebebi belirterek reddedebilirsiniz.
+                                                        </p>
+                                                    </div>
+
+                                                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+
+                                                        <!-- Onayla -->
+                                                        <form asp-controller="AdminEgitmenBasvuru"
+                                                              asp-action="Karar"
+                                                              method="post"
+                                                              class="flex flex-col rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+
+                                                            @Html.AntiForgeryToken()
+
+                                                            <input type="hidden" name="egitmenProfilId" value="@basvuru.EgitmenProfilId" />
+                                                            <input type="hidden" name="karar" value="onayla" />
+
+                                                            <div>
+                                                                <div class="flex items-center gap-3">
+
+                                                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                                             fill="none"
+                                                                             viewBox="0 0 24 24"
+                                                                             stroke-width="2"
+                                                                             stroke="currentColor"
+                                                                             class="h-5 w-5">
+                                                                            <path stroke-linecap="round"
+                                                                                  stroke-linejoin="round"
+                                                                                  d="M4.5 12.75 10.5 18.75 19.5 5.25" />
+                                                                        </svg>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <p class="text-sm font-black text-slate-900">
+                                                                            Başvuruyu Onayla
+                                                                        </p>
+
+                                                                        <p class="mt-0.5 text-xs font-medium text-slate-500">
+                                                                            Kullanıcı eğitmen olarak aktif edilir.
+                                                                        </p>
+                                                                    </div>
+
+                                                                </div>
+                                                            </div>
+
+                                                            <button type="submit"
+                                                                    class="btn btn-success mt-5 w-full rounded-xl text-white">
+                                                                Onayla
+                                                            </button>
+
+                                                        </form>
+
+                                                        <!-- Reddet -->
+                                                        <form asp-controller="AdminEgitmenBasvuru"
+                                                              asp-action="Karar"
+                                                              method="post"
+                                                              class="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
+
+                                                            @Html.AntiForgeryToken()
+
+                                                            <input type="hidden" name="egitmenProfilId" value="@basvuru.EgitmenProfilId" />
+                                                            <input type="hidden" name="karar" value="reddet" />
+
+                                                            <div class="flex items-center gap-3">
+
+                                                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                                         fill="none"
+                                                                         viewBox="0 0 24 24"
+                                                                         stroke-width="2"
+                                                                         stroke="currentColor"
+                                                                         class="h-5 w-5">
+                                                                        <path stroke-linecap="round"
+                                                                              stroke-linejoin="round"
+                                                                              d="M6 18 18 6M6 6l12 12" />
+                                                                    </svg>
+                                                                </div>
+
+                                                                <div>
+                                                                    <p class="text-sm font-black text-slate-900">
+                                                                        Başvuruyu Reddet
+                                                                    </p>
+
+                                                                    <p class="mt-0.5 text-xs font-medium text-slate-500">
+                                                                        Red sebebi kullanıcıya mail ile gönderilir.
+                                                                    </p>
+                                                                </div>
+
+                                                            </div>
+
+                                                            <label class="mt-4 block text-xs font-black uppercase tracking-wide text-slate-500">
+                                                                Red Sebebi
+                                                            </label>
+
+                                                            <textarea name="aciklama"
+                                                          rows="3"
+                                                          maxlength="500"
+                                                          minlength="5"
+                                                          required
+                                                          placeholder="Başvurunun neden reddedildiğini yazın"
+                                                          class="textarea textarea-bordered mt-2 w-full resize-none rounded-xl border-slate-200 bg-white text-sm focus:border-red-300"></textarea>
+
+                                                            <button type="submit"
+                                                                    class="btn btn-error mt-3 w-full rounded-xl text-white">
+                                                                Reddet
+                                                            </button>
+
+                                                        </form>
+
+                                                    </div>
+                                                </div>
+                                            }
+
+                                        </div>
+
+                                        <form method="dialog" class="modal-backdrop">
+                                            <button>Kapat</button>
+                                        </form>
+
+                                    </dialog>
+
+                                </article>
+                            }
+
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Sayfa
+                                    <span class="font-bold text-slate-900">@Model.Sayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.ToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.OncekiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminEgitmenBasvuru"
+                                           asp-action="Basvurular"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @for (int i = 1; i <= Model.ToplamSayfa; i++)
+                                    {
+                                        if (i == Model.Sayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="AdminEgitmenBasvuru"
+                                               asp-action="Basvurular"
+                                               asp-route-arama="@Model.Arama"
+                                               asp-route-durum="@Model.Durum"
+                                               asp-route-sayfa="@i"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (Model.SonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminEgitmenBasvuru"
+                                           asp-action="Basvurular"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <h3 class="text-base font-black text-slate-900">
+                                Başvuru bulunamadı
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Arama veya filtreye uygun eğitmen başvurusu bulunmuyor.
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) || Model.Durum != "bekleyen")
+                            {
+                                <div class="mt-5 flex justify-center">
+                                    <a asp-controller="AdminEgitmenBasvuru"
+                                       asp-action="Basvurular"
+                                       class="btn btn-outline rounded-xl px-6">
+                                        Filtreleri Temizle
+                                    </a>
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>

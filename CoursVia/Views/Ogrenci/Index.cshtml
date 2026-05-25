@@ -1,0 +1,419 @@
+@model CoursVia.ViewModels.Ogrenci.OgrenciPanelViewModel
+
+@{
+    ViewData["Title"] = "Öğrenci Paneli";
+
+    int ortalamaIlerleme = Math.Clamp(Model.OrtalamaIlerlemeYuzdesi, 0, 100);
+
+    var sonBakilanKurslar = Model.Kurslar
+        .Take(3)
+        .ToList();
+
+    string IlerlemeBarClass(int yuzde)
+    {
+        if (yuzde >= 80)
+            return "bg-emerald-500";
+
+        if (yuzde >= 40)
+            return "bg-blue-500";
+
+        return "bg-amber-500";
+    }
+
+    string IlerlemeTextClass(int yuzde)
+    {
+        if (yuzde >= 80)
+            return "text-emerald-700";
+
+        if (yuzde >= 40)
+            return "text-blue-700";
+
+        return "text-amber-700";
+    }
+
+    string SinavDurumClass(string? durum, bool? gectiMi)
+    {
+        if (gectiMi == true)
+            return "border-emerald-100 bg-emerald-50 text-emerald-700";
+
+        if (gectiMi == false)
+            return "border-red-100 bg-red-50 text-red-700";
+
+        if (durum == "Devam ediyor")
+            return "border-blue-100 bg-blue-50 text-blue-700";
+
+        return "border-slate-200 bg-slate-50 text-slate-600";
+    }
+
+    string KursButonMetni(bool kursTamamlandiMi, int ilerlemeYuzdesi)
+    {
+        if (kursTamamlandiMi)
+            return "Tekrar Aç";
+
+        if (ilerlemeYuzdesi <= 0)
+            return "Başla";
+
+        return "Devam Et";
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_OgrenciSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-6xl space-y-5">
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                            Öğrenci Paneli
+                        </p>
+
+                        <h1 class="mt-1 text-2xl font-black text-slate-900">
+                            Hoş geldin, @Model.OgrenciAdSoyad
+                        </h1>
+
+                        <p id="panelTarihSaat"
+                           class="mt-2 text-sm font-semibold text-slate-500">
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Kompakt Özet Kartları -->
+                <section class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-4">
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25A8.967 8.967 0 0 1 18 3.75c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Devam Edilebilir Kurslar</p>
+                                <p class="mt-0.5 text-2xl font-black text-slate-900">@Model.DevamEdenKursSayisi</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-4">
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12A2.25 2.25 0 0 1 17.25 20.25H6.75A2.25 2.25 0 0 1 4.5 18V6A2.25 2.25 0 0 1 6.75 3.75Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Tamamlanan Kurslar</p>
+                                <p class="mt-0.5 text-2xl font-black text-slate-900">@Model.TamamlananKursSayisi</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-4">
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Ortalama İlerleme</p>
+                                <p class="mt-0.5 text-2xl font-black text-slate-900">%@ortalamaIlerleme</p>
+                                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                    <div class="h-full rounded-full bg-amber-500 transition-all duration-500" style="width:@ortalamaIlerleme%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Öğrenmeye Devam Et -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                        <div>
+                            <h2 class="text-base font-black text-slate-900">
+                                Öğrenmeye Devam Et
+                            </h2>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Son baktığın 3 kurs burada listelenir.
+                            </p>
+                        </div>
+
+                        <a asp-controller="OgrenciKurs"
+                           asp-action="Kurslarim"
+                           class="btn btn-sm btn-outline rounded-xl">
+                            Tüm Kurslarımı Gör
+                        </a>
+
+                    </div>
+
+                    @if (sonBakilanKurslar.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+
+                            @foreach (var kurs in sonBakilanKurslar)
+                            {
+                                int ilerleme = Math.Clamp(kurs.IlerlemeYuzdesi, 0, 100);
+
+                                string sinavDurumu = string.IsNullOrWhiteSpace(kurs.SinavDurumu)
+                                ? "Henüz sınava girmedi"
+                                : kurs.SinavDurumu;
+
+                                string butonMetni = KursButonMetni(kurs.KursTamamlandiMi, ilerleme);
+                                string kapakClass = kurs.GuncelleniyorMu
+                                    ? "h-24 w-full rounded-2xl object-cover opacity-55 grayscale shadow-sm md:w-36"
+                                    : "h-24 w-full rounded-2xl object-cover shadow-sm md:w-36";
+
+                                <article class="@(kurs.GuncelleniyorMu ? "p-5 bg-amber-50/50 ring-1 ring-inset ring-amber-100" : "p-5 transition hover:bg-slate-50")">
+
+                                    <div class="flex flex-col gap-4 md:flex-row md:items-center">
+
+                                        <div class="relative shrink-0">
+                                            @if (!string.IsNullOrWhiteSpace(kurs.KapakGorselUrl))
+                                            {
+                                                <img src="@kurs.KapakGorselUrl"
+                                                     alt="@kurs.KursAdi"
+                                                     class="@kapakClass" />
+                                            }
+                                            else
+                                            {
+                                                <div class="flex h-24 w-full items-center justify-center rounded-2xl @(kurs.GuncelleniyorMu ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-700") text-sm font-black md:w-36">
+                                                    CoursVia
+                                                </div>
+                                            }
+
+                                            @if (kurs.GuncelleniyorMu)
+                                            {
+                                                <div class="absolute inset-0 flex items-center justify-center rounded-2xl bg-slate-950/35">
+                                                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-amber-700 shadow-sm">
+                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                             fill="none"
+                                                             viewBox="0 0 24 24"
+                                                             stroke-width="2"
+                                                             stroke="currentColor"
+                                                             class="h-4 w-4">
+                                                            <path stroke-linecap="round"
+                                                                  stroke-linejoin="round"
+                                                                  d="M16.5 10.5V7.5a4.5 4.5 0 0 0-9 0v3m-.75 0h10.5A1.5 1.5 0 0 1 18.75 12v6A1.5 1.5 0 0 1 17.25 19.5H6.75A1.5 1.5 0 0 1 5.25 18v-6a1.5 1.5 0 0 1 1.5-1.5Z" />
+                                                        </svg>
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <div class="min-w-0 flex-1">
+
+                                            <div class="flex flex-wrap items-center gap-2">
+
+                                                <h3 class="line-clamp-1 text-base font-black text-slate-900">
+                                                    @kurs.KursAdi
+                                                </h3>
+
+                                                @if (kurs.GuncelleniyorMu)
+                                                {
+                                                    <span class="rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-xs font-black text-amber-800">
+                                                        Erişime Geçici Kapalı
+                                                    </span>
+                                                }
+                                                else if (kurs.KursTamamlandiMi)
+                                                {
+                                                    <span class="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+                                                        Kurs Tamamlandı
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                                                        Kurs Devam Ediyor
+                                                    </span>
+                                                }
+
+                                                @if (kurs.FavorideMi)
+                                                {
+                                                    <span title="Favorilerimde"
+                                                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-100 bg-amber-50 text-amber-500">
+                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                             viewBox="0 0 24 24"
+                                                             fill="currentColor"
+                                                             class="h-4 w-4">
+                                                            <path fill-rule="evenodd"
+                                                                  d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354l-4.627 2.825c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006Z"
+                                                                  clip-rule="evenodd" />
+                                                        </svg>
+                                                    </span>
+                                                }
+
+                                            </div>
+
+                                            <p class="mt-1 text-sm font-semibold text-slate-500">
+                                                Eğitmen: @kurs.EgitmenAdSoyad
+                                            </p>
+
+                                            @if (kurs.GuncelleniyorMu)
+                                            {
+                                                <div class="mt-3 max-w-xl rounded-xl border border-amber-200 bg-white/80 px-4 py-3">
+                                                    <div class="flex gap-3">
+                                                        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                 fill="none"
+                                                                 viewBox="0 0 24 24"
+                                                                 stroke-width="2"
+                                                                 stroke="currentColor"
+                                                                 class="h-4 w-4">
+                                                                <path stroke-linecap="round"
+                                                                      stroke-linejoin="round"
+                                                                      d="M12 6v6l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                            </svg>
+                                                        </div>
+
+                                                        <div class="min-w-0">
+                                                            <p class="text-sm font-black text-amber-900">
+                                                                Kurs güncelleme modunda
+                                                            </p>
+
+                                                            <p class="mt-1 text-xs font-semibold leading-5 text-amber-800">
+                                                                İçerik düzenlenirken kurs erişime kapalıdır. Yayına alındığında kaldığınız yerden devam edebilirsiniz.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="mt-3 max-w-xl">
+
+                                                    <div class="mb-1.5 flex items-center justify-between gap-3">
+                                                        <span class="text-xs font-semibold text-slate-500">
+                                                            @kurs.TamamlananDersSayisi / @kurs.ToplamDersSayisi ders tamamlandı
+                                                        </span>
+
+                                                        <span class="text-xs font-black @IlerlemeTextClass(ilerleme)">
+                                                            %@ilerleme
+                                                        </span>
+                                                    </div>
+
+                                                    <div class="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                                                        <div class="h-full rounded-full @IlerlemeBarClass(ilerleme) transition-all duration-500"
+                                                             style="width:@ilerleme%">
+                                                        </div>
+                                                    </div>
+
+                                                </div>
+                                            }
+
+                                            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                                                @if (kurs.GuncelleniyorMu)
+                                                {
+                                                    <span class="font-bold text-amber-700">
+                                                        Kurs erişime geçici olarak kapalı
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="rounded-full border px-2.5 py-0.5 font-bold @SinavDurumClass(sinavDurumu, kurs.SinavdanGectiMi)">
+                                                        @sinavDurumu
+                                                    </span>
+
+                                                    @if (kurs.SonSinavPuani.HasValue)
+                                                    {
+                                                        <span>
+                                                            Son sınav puanı: @kurs.SonSinavPuani
+                                                        </span>
+                                                    }
+                                                }
+                                            </div>
+
+                                        </div>
+
+                                        <div class="flex shrink-0 flex-row gap-2 md:w-44 md:flex-col">
+
+                                            @if (kurs.GuncelleniyorMu)
+                                            {
+                                                <button type="button"
+                                                        class="btn btn-disabled btn-sm flex-1 rounded-xl border-amber-200 bg-amber-100 text-amber-800 md:flex-none"
+                                                        disabled>
+                                                    Erişime Kapalı
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <a asp-controller="OgrenciDers"
+                                                   asp-action="Izle"
+                                                   asp-route-kursId="@kurs.KursId"
+                                                   class="btn btn-primary btn-sm flex-1 rounded-xl md:flex-none">
+                                                    @butonMetni
+                                                </a>
+                                            }
+
+                                        </div>
+
+                                    </div>
+
+                                </article>
+                            }
+
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <h3 class="text-base font-black text-slate-900">
+                                Henüz görüntülenen kurs yok
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Kayıtlı kursların olduğunda son baktığın kurslar burada görünecek.
+                            </p>
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const tarihSaatAlani = document.getElementById("panelTarihSaat");
+
+            function tarihSaatGuncelle() {
+                if (!tarihSaatAlani) {
+                    return;
+                }
+
+                const simdi = new Date();
+
+                tarihSaatAlani.textContent = simdi.toLocaleString("tr-TR", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                });
+            }
+
+            tarihSaatGuncelle();
+            setInterval(tarihSaatGuncelle, 1000);
+        });
+    </script>
+}

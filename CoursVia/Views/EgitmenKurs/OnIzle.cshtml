@@ -1,0 +1,928 @@
+@using System.Text.Json
+@model CoursVia.ViewModels.Egitmen.KursOnIzleViewModel
+
+@{
+    ViewData["Title"] = "Kurs Ön İzle";
+
+    int toplamDers = Model.Bolumler.Sum(x => x.Dersler.Count);
+    int toplamMateryal = Model.Bolumler.Sum(x => x.Dersler.Sum(d => d.Materyaller.Count));
+    int toplamSoru = Model.Sinav?.HavuzdakiSoruSayisi ?? 0;
+
+    int soruIlkSayfa = Model.Sinav == null ? 1 : Math.Max(1, Model.Sinav.SoruSayfa - 2);
+    int soruSonSayfa = Model.Sinav == null ? 1 : Math.Min(Model.Sinav.ToplamSoruSayfa, Model.Sinav.SoruSayfa + 2);
+
+    int yorumIlkSayfa = Math.Max(1, Model.YorumSayfa - 2);
+    int yorumSonSayfa = Math.Min(Model.YorumToplamSayfa, Model.YorumSayfa + 2);
+
+    string? kursHata = TempData["KursHata"] as string;
+    bool kursHataGoster = !string.IsNullOrWhiteSpace(kursHata) &&
+                           !(Model.DurumId == 4 && kursHata.Contains("onay bekliyor", StringComparison.OrdinalIgnoreCase));
+
+    string Yildizlar(int puan)
+    {
+        int temizPuan = Math.Clamp(puan, 0, 5);
+
+        return new string('★', temizPuan) + new string('☆', 5 - temizPuan);
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_EgitmenSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                @if (kursHataGoster)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@kursHata</span>
+                    </div>
+                }
+
+                @if (TempData["KursBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["KursBasari"]</span>
+                    </div>
+                }
+
+                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div class="grid gap-5 p-5 lg:grid-cols-[260px_minmax(0,1fr)_auto] lg:items-center">
+                        <img src="@Model.KapakGorselUrl"
+                             alt="@Model.KursAdi"
+                             class="h-40 w-full rounded-xl object-cover lg:h-36" />
+
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                                    @Model.DurumAdi
+                                </span>
+
+                                @foreach (var kategori in Model.Kategoriler)
+                                {
+                                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                                        @kategori
+                                    </span>
+                                }
+                            </div>
+
+                            <h1 class="mt-3 text-2xl font-black text-slate-900">
+                                @Model.KursAdi
+                            </h1>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Aciklama))
+                            {
+                                <p class="mt-2 text-sm leading-6 text-slate-500">
+                                    @Model.Aciklama
+                                </p>
+                            }
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 lg:justify-end">
+                            @if (Model.KursDuzenlenebilirMi)
+                            {
+                                <a asp-controller="EgitmenSinav"
+                                   asp-action="SoruHavuzu"
+                                   asp-route-kursId="@Model.KursId"
+                                   class="btn btn-sm btn-outline rounded-xl">
+                                    Soru Havuzu
+                                </a>
+
+                                <a asp-controller="EgitmenKurs"
+                                   asp-action="KursIcerik"
+                                   asp-route-id="@Model.KursId"
+                                   class="btn btn-sm btn-outline rounded-xl">
+                                    İçeriğe Dön
+                                </a>
+                            }
+                            else
+                            {
+                                <a asp-controller="EgitmenKurs"
+                                   asp-action="Kurslarim"
+                                   class="btn btn-sm btn-outline rounded-xl">
+                                    Kurslarıma Dön
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+                    <div class="flex flex-col justify-center rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Bölüm</p>
+                                <p class="mt-0.5 text-xl font-black text-slate-900">@Model.Bolumler.Count</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Ders</p>
+                                <p class="mt-0.5 text-xl font-black text-slate-900">@toplamDers</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Materyal</p>
+                                <p class="mt-0.5 text-xl font-black text-slate-900">@toplamMateryal</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Soru</p>
+                                <p class="mt-0.5 text-xl font-black text-slate-900">@toplamSoru</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-amber-100 bg-white p-4 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Puan</p>
+                                <p class="mt-0.5 flex items-baseline gap-1 text-xl font-black text-slate-900">
+                                    @Model.OrtalamaPuan.ToString("0.0")
+                                    <span class="text-[10px] font-semibold text-slate-400">(@Model.DegerlendirmeSayisi)</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center rounded-3xl border border-blue-100 bg-white p-4 shadow-sm transition hover:shadow-md">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Öğrenci</p>
+                                <p class="mt-0.5 text-xl font-black text-slate-900">@Model.OgrenciSayisi</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.Eksikler.Any())
+                {
+                    <div class="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-800 shadow-sm">
+                        <ul class="space-y-1">
+                            @foreach (var eksik in Model.Eksikler)
+                            {
+                                <li>@eksik</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 class="text-base font-black text-slate-900">
+                                Öğrenci Yorumları
+                            </h2>
+
+                            <p class="mt-0.5 text-xs text-slate-500">
+                                Kursa yapılan değerlendirmeler ve ortalama puan.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 text-xs font-bold">
+                            <span class="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+                                ★ @Model.OrtalamaPuan.ToString("0.0")
+                            </span>
+
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                                @Model.DegerlendirmeSayisi yorum
+                            </span>
+                        </div>
+                    </div>
+
+                    @if (Model.Degerlendirmeler.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+                            @foreach (var yorum in Model.Degerlendirmeler)
+                            {
+                                <article class="px-5 py-4 transition hover:bg-slate-50">
+                                    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <p class="text-sm font-black text-slate-900">
+                                                    @yorum.OgrenciAdSoyad
+                                                </p>
+
+                                                <span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700">
+                                                    @yorum.Puan / 5
+                                                </span>
+
+                                                <span class="text-xs font-black tracking-wide text-amber-500">
+                                                    @Yildizlar(yorum.Puan)
+                                                </span>
+                                            </div>
+
+                                            <p class="mt-2 line-clamp-3 break-words text-sm font-medium leading-6 text-slate-600">
+                                                @(string.IsNullOrWhiteSpace(yorum.YorumMetni) ? "Yorum metni yok." : yorum.YorumMetni)
+                                            </p>
+                                        </div>
+
+                                        <div class="shrink-0 text-left md:text-right">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                @yorum.DegerlendirmeTarihi.ToString("dd.MM.yyyy")
+                                            </p>
+
+                                            <p class="mt-0.5 text-xs font-semibold text-slate-400">
+                                                @yorum.DegerlendirmeTarihi.ToString("HH:mm")
+                                            </p>
+                                        </div>
+
+                                    </div>
+                                </article>
+                            }
+                        </div>
+
+                        @if (Model.YorumToplamSayfa > 1)
+                        {
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Yorum sayfası
+                                    <span class="font-bold text-slate-900">@Model.YorumSayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.YorumToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.YorumOncekiSayfaVar)
+                                    {
+                                        <a asp-controller="EgitmenKurs"
+                                           asp-action="OnIzle"
+                                           asp-route-id="@Model.KursId"
+                                           asp-route-soruSayfa="@(Model.Sinav?.SoruSayfa ?? 1)"
+                                           asp-route-yorumSayfa="@(Model.YorumSayfa - 1)"
+                                           class="btn btn-sm btn-outline rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @for (int sayfaNo = yorumIlkSayfa; sayfaNo <= yorumSonSayfa; sayfaNo++)
+                                    {
+                                        <a asp-controller="EgitmenKurs"
+                                           asp-action="OnIzle"
+                                           asp-route-id="@Model.KursId"
+                                           asp-route-soruSayfa="@(Model.Sinav?.SoruSayfa ?? 1)"
+                                           asp-route-yorumSayfa="@sayfaNo"
+                                           class="btn btn-sm rounded-xl @(sayfaNo == Model.YorumSayfa ? "btn-primary" : "btn-outline")">
+                                            @sayfaNo
+                                        </a>
+                                    }
+
+                                    @if (Model.YorumSonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="EgitmenKurs"
+                                           asp-action="OnIzle"
+                                           asp-route-id="@Model.KursId"
+                                           asp-route-soruSayfa="@(Model.Sinav?.SoruSayfa ?? 1)"
+                                           asp-route-yorumSayfa="@(Model.YorumSayfa + 1)"
+                                           class="btn btn-sm btn-outline rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                            Bu kurs için henüz yorum yapılmamış.
+                        </div>
+                    }
+                </section>
+
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div class="border-b border-slate-100 px-5 py-4">
+                        <h2 class="text-base font-black text-slate-900">
+                            Ders İçeriği
+                        </h2>
+                    </div>
+
+                    @if (Model.Bolumler.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+                            @foreach (var bolum in Model.Bolumler)
+                            {
+                                <div>
+                                    <button type="button"
+                                            class="btn-onizle-bolum-toggle flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+                                            data-target="onizle-bolum-@bolum.BolumId"
+                                            aria-controls="onizle-bolum-@bolum.BolumId"
+                                            aria-expanded="false">
+                                        <span class="flex min-w-0 flex-wrap items-center gap-2">
+                                            <span class="text-sm font-black text-slate-400">
+                                                Bölüm @bolum.SiraNo
+                                            </span>
+
+                                            <span class="text-base font-black text-slate-900">
+                                                @bolum.BolumAdi
+                                            </span>
+
+                                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
+                                                @bolum.Dersler.Count ders
+                                            </span>
+                                        </span>
+
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             class="onizle-bolum-chevron h-4 w-4 shrink-0 text-slate-400 transition-transform"
+                                             fill="none"
+                                             viewBox="0 0 24 24"
+                                             stroke="currentColor">
+                                            <path stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                                  stroke-width="2"
+                                                  d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    @if (bolum.Dersler.Any())
+                                    {
+                                        <div id="onizle-bolum-@bolum.BolumId"
+                                             class="hidden px-5 pb-4">
+                                            <div class="divide-y divide-slate-100 rounded-xl border border-slate-100">
+                                                @foreach (var ders in bolum.Dersler)
+                                                {
+                                                    <div class="px-4 py-3">
+                                                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                                            <div class="min-w-0">
+                                                                <p class="font-semibold text-slate-800">
+                                                                    @ders.SiraNo. @ders.DersAdi
+                                                                </p>
+
+                                                                @if (!string.IsNullOrWhiteSpace(ders.Aciklama))
+                                                                {
+                                                                    <p class="mt-1 text-sm leading-6 text-slate-500">
+                                                                        @ders.Aciklama
+                                                                    </p>
+                                                                }
+                                                            </div>
+
+                                                            <div class="flex shrink-0 flex-wrap gap-2">
+                                                                <button type="button"
+                                                                        class="btn-video-izle btn btn-xs rounded-lg border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+                                                                        data-video-url="@ders.VideoUrl"
+                                                                        data-ders-adi="@ders.DersAdi"
+                                                                        data-aciklama="@ders.Aciklama"
+                                                                        data-materyaller="@JsonSerializer.Serialize(ders.Materyaller.Select(m => new { baslik = m.Baslik, materyalUrl = m.MateryalUrl }))">
+                                                                    Önizle
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                            Bölüm yok.
+                        </div>
+                    }
+                </section>
+
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div class="border-b border-slate-100 px-5 py-4">
+                        <h2 class="text-base font-black text-slate-900">
+                            Sınav ve Sorular
+                        </h2>
+                    </div>
+
+                    @if (Model.Sinav == null)
+                    {
+                        <div class="px-6 py-10 text-center">
+                            <a asp-controller="EgitmenSinav"
+                               asp-action="SinavHazirla"
+                               asp-route-kursId="@Model.KursId"
+                               class="btn btn-primary rounded-xl px-6">
+                                Sınav Hazırla
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="grid grid-cols-2 gap-3 border-b border-slate-100 p-5 lg:grid-cols-5">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Sınav
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.SinavAdi
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Geçme Notu
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.GecmeNotu
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Süre
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.SureDakika dk
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Çıkacak Soru
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.SoruSayisi
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Geçerli Soru
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.GecerliSoruSayisi
+                                </p>
+                            </div>
+                        </div>
+
+                        @if (Model.Sinav.Sorular.Any())
+                        {
+                            <div class="divide-y divide-slate-100">
+                                @foreach (var soru in Model.Sinav.Sorular)
+                                {
+                                    <article>
+                                        <button type="button"
+                                                class="btn-onizle-soru-toggle flex w-full items-start justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+                                                data-target="onizle-soru-@soru.SoruId"
+                                                aria-controls="onizle-soru-@soru.SoruId"
+                                                aria-expanded="false">
+                                            <span class="min-w-0 flex-1">
+                                                <span class="flex flex-wrap items-center gap-2">
+                                                    <span class="rounded-full border px-2.5 py-0.5 text-xs font-bold @(soru.GecerliMi ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-amber-100 bg-amber-50 text-amber-700")">
+                                                        @(soru.GecerliMi ? "Hazır" : "Eksik")
+                                                    </span>
+
+                                                    <span class="text-xs font-semibold text-slate-400">
+                                                        #@soru.SoruId
+                                                    </span>
+
+                                                    <span class="text-xs font-semibold text-slate-500">
+                                                        @soru.Secenekler.Count seçenek
+                                                    </span>
+                                                </span>
+
+                                                <span class="mt-2 block text-sm font-semibold leading-6 text-slate-800">
+                                                    @soru.SoruMetni
+                                                </span>
+                                            </span>
+
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="onizle-soru-chevron mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform"
+                                                 fill="none"
+                                                 viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                      stroke-width="2"
+                                                      d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+
+                                        <div id="onizle-soru-@soru.SoruId"
+                                             class="hidden border-t border-slate-100 px-5 py-4">
+                                            <div class="flex flex-col gap-4">
+                                                @if (soru.DersAdlari.Any())
+                                                {
+                                                    <div class="flex flex-wrap gap-2">
+                                                        @foreach (var dersAdi in soru.DersAdlari)
+                                                        {
+                                                            <span class="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                                                                @dersAdi
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                }
+
+                                                <div class="grid w-full gap-2 lg:grid-cols-2">
+                                                    @foreach (var secenek in soru.Secenekler)
+                                                    {
+                                                        <div class="flex items-center rounded-xl border px-3 py-2 text-sm font-semibold @(secenek.DogruMu ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600")">
+                                                            <div class="flex items-center gap-2.5">
+                                                                @if (secenek.DogruMu)
+                                                                {
+                                                                    <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3 w-3">
+                                                                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                                                        </svg>
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="h-4 w-4 shrink-0 rounded-full border border-slate-300"></div>
+                                                                }
+                                                                <span>@secenek.SecenekMetni</span>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </article>
+                                }
+                            </div>
+
+                            @if (Model.Sinav.ToplamSoruSayfa > 1)
+                            {
+                                <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <span class="text-sm font-semibold text-slate-500">
+                                        Sayfa @Model.Sinav.SoruSayfa / @Model.Sinav.ToplamSoruSayfa
+                                    </span>
+
+                                    <div class="join">
+                                        @if (Model.Sinav.SoruSayfa > 1)
+                                        {
+                                            <a asp-controller="EgitmenKurs"
+                                               asp-action="OnIzle"
+                                               asp-route-id="@Model.KursId"
+                                               asp-route-soruSayfa="@(Model.Sinav.SoruSayfa - 1)"
+                                               asp-route-yorumSayfa="@Model.YorumSayfa"
+                                               class="btn btn-sm btn-outline join-item">
+                                                Önceki
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline join-item"
+                                                    disabled>
+                                                Önceki
+                                            </button>
+                                        }
+
+                                        @for (int sayfaNo = soruIlkSayfa; sayfaNo <= soruSonSayfa; sayfaNo++)
+                                        {
+                                            <a asp-controller="EgitmenKurs"
+                                               asp-action="OnIzle"
+                                               asp-route-id="@Model.KursId"
+                                               asp-route-soruSayfa="@sayfaNo"
+                                               asp-route-yorumSayfa="@Model.YorumSayfa"
+                                               class="btn btn-sm join-item @(sayfaNo == Model.Sinav.SoruSayfa ? "btn-primary" : "btn-outline")">
+                                                @sayfaNo
+                                            </a>
+                                        }
+
+                                        @if (Model.Sinav.SoruSayfa < Model.Sinav.ToplamSoruSayfa)
+                                        {
+                                            <a asp-controller="EgitmenKurs"
+                                               asp-action="OnIzle"
+                                               asp-route-id="@Model.KursId"
+                                               asp-route-soruSayfa="@(Model.Sinav.SoruSayfa + 1)"
+                                               asp-route-yorumSayfa="@Model.YorumSayfa"
+                                               class="btn btn-sm btn-outline join-item">
+                                                Sonraki
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline join-item"
+                                                    disabled>
+                                                Sonraki
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                                Soru yok.
+                            </div>
+                        }
+                    }
+                </section>
+
+                @if (Model.KursDuzenlenebilirMi)
+                {
+                    <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                        <a asp-controller="EgitmenSinav"
+                           asp-action="SoruHavuzu"
+                           asp-route-kursId="@Model.KursId"
+                           class="btn btn-outline rounded-xl border-slate-900 px-6 text-slate-900 hover:bg-slate-900 hover:text-white">
+                            Geri Dön
+                        </a>
+
+                        @if (Model.KursYayinaGonderilebilirMi)
+                        {
+                            <form asp-controller="EgitmenKurs"
+                                  asp-action="YayinaGonder"
+                                  asp-route-id="@Model.KursId"
+                                  method="post">
+                                @Html.AntiForgeryToken()
+
+                                <button type="submit"
+                                        class="btn btn-primary rounded-xl px-8">
+                                    Yayına Gönder
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <button type="button"
+                                    class="btn rounded-xl px-8"
+                                    disabled>
+                                Yayına Gönder
+                            </button>
+                        }
+                    </div>
+                }
+
+                <partial name="~/Views/EgitmenDers/_VideoIzleModal.cshtml" />
+
+            </div>
+        </main>
+
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let plyrInstance = null;
+
+            function materyalleriOku(value) {
+                if (!value) {
+                    return [];
+                }
+
+                try {
+                    return JSON.parse(value);
+                }
+                catch {
+                    return [];
+                }
+            }
+
+            function materyalLinkiOlustur(materyal) {
+                const link = document.createElement('a');
+                link.href = materyal.materyalUrl || '#';
+                link.target = '_blank';
+                link.className = 'flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-blue-400 hover:text-white';
+                
+                let extension = 'DOSYA';
+                if (materyal.materyalUrl) {
+                    const parts = materyal.materyalUrl.split('.');
+                    if (parts.length > 1) {
+                        extension = parts[parts.length - 1].split('?')[0].toUpperCase();
+                    }
+                }
+
+                link.innerHTML = `
+                    <div class="flex items-center gap-2 min-w-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4 shrink-0 text-slate-400">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                        <span class="truncate">${materyal.baslik || 'Materyal'}</span>
+                    </div>
+                    <span class="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 shrink-0">
+                        ${extension}
+                    </span>
+                `;
+
+                return link;
+            }
+
+            document.querySelectorAll('.btn-video-izle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const url = this.dataset.videoUrl;
+                    const title = this.dataset.dersAdi;
+                    const aciklama = this.dataset.aciklama || '';
+                    const materyaller = materyalleriOku(this.dataset.materyaller);
+
+                    const videoModalTitle = document.getElementById('videoModalTitle');
+                    const videoContainer = document.getElementById('videoContainer');
+                    const videoIzleModal = document.getElementById('videoIzleModal');
+                    const videoModalBilgiPanel = document.getElementById('videoModalBilgiPanel');
+                    const videoModalAciklamaWrapper = document.getElementById('videoModalAciklamaWrapper');
+                    const videoModalAciklama = document.getElementById('videoModalAciklama');
+                    const videoModalMateryalWrapper = document.getElementById('videoModalMateryalWrapper');
+                    const videoModalMateryaller = document.getElementById('videoModalMateryaller');
+
+                    if (!url || !videoModalTitle || !videoContainer || !videoIzleModal) {
+                        return;
+                    }
+
+                    videoModalTitle.textContent = title || 'Video Önizleme';
+
+                    if (plyrInstance) {
+                        plyrInstance.destroy();
+                        plyrInstance = null;
+                    }
+
+                    videoContainer.innerHTML = '';
+
+                    if (videoModalAciklamaWrapper && videoModalAciklama) {
+                        const aciklamaVarMi = aciklama.trim().length > 0;
+                        videoModalAciklamaWrapper.classList.toggle('hidden', !aciklamaVarMi);
+                        videoModalAciklama.textContent = aciklama;
+                    }
+
+                    if (videoModalMateryalWrapper && videoModalMateryaller) {
+                        videoModalMateryaller.innerHTML = '';
+                        videoModalMateryalWrapper.classList.toggle('hidden', materyaller.length === 0);
+
+                        materyaller.forEach(function (materyal) {
+                            videoModalMateryaller.appendChild(materyalLinkiOlustur(materyal));
+                        });
+                    }
+
+                    if (videoModalBilgiPanel) {
+                        videoModalBilgiPanel.classList.toggle('hidden', aciklama.trim().length === 0 && materyaller.length === 0);
+                    }
+
+                    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                        let videoId = '';
+
+                        if (url.includes('v=')) {
+                            videoId = url.split('v=')[1].split('&')[0];
+                        }
+                        else if (url.includes('youtu.be/')) {
+                            videoId = url.split('youtu.be/')[1].split('?')[0];
+                        }
+                        else if (url.includes('embed/')) {
+                            videoId = url.split('embed/')[1].split('?')[0];
+                        }
+
+                        videoContainer.innerHTML = `
+                            <div id="plyr-player"
+                                 data-plyr-provider="youtube"
+                                 data-plyr-embed-id="${videoId}">
+                            </div>
+                        `;
+                    }
+                    else if (url.includes('vimeo.com')) {
+                        const videoId = url.split('vimeo.com/')[1].split('?')[0];
+
+                        videoContainer.innerHTML = `
+                            <div id="plyr-player"
+                                 data-plyr-provider="vimeo"
+                                 data-plyr-embed-id="${videoId}">
+                            </div>
+                        `;
+                    }
+                    else {
+                        const videoType = url.toLowerCase().endsWith('.webm')
+                            ? 'video/webm'
+                            : 'video/mp4';
+
+                        videoContainer.innerHTML = `
+                            <video id="plyr-player" playsinline controls>
+                                <source src="${url}" type="${videoType}">
+                            </video>
+                        `;
+                    }
+
+                    videoIzleModal.showModal();
+
+                    plyrInstance = new Plyr('#plyr-player', {
+                        autoplay: true,
+                        ratio: '16:9'
+                    });
+                });
+            });
+
+            window.stopVideo = function () {
+                const videoContainer = document.getElementById('videoContainer');
+
+                if (plyrInstance) {
+                    plyrInstance.destroy();
+                    plyrInstance = null;
+                }
+
+                if (videoContainer) {
+                    videoContainer.innerHTML = '';
+                }
+            };
+
+            document.querySelectorAll('.btn-onizle-bolum-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const target = document.getElementById(this.dataset.target);
+
+                    if (!target) {
+                        return;
+                    }
+
+                    const acikMi = !target.classList.contains('hidden');
+                    target.classList.toggle('hidden', acikMi);
+                    this.setAttribute('aria-expanded', (!acikMi).toString());
+
+                    const chevron = this.querySelector('.onizle-bolum-chevron');
+
+                    if (chevron) {
+                        chevron.classList.toggle('rotate-180', !acikMi);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-onizle-soru-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const target = document.getElementById(this.dataset.target);
+
+                    if (!target) {
+                        return;
+                    }
+
+                    const acikMi = !target.classList.contains('hidden');
+                    target.classList.toggle('hidden', acikMi);
+                    this.setAttribute('aria-expanded', (!acikMi).toString());
+
+                    const chevron = this.querySelector('.onizle-soru-chevron');
+
+                    if (chevron) {
+                        chevron.classList.toggle('rotate-180', !acikMi);
+                    }
+                });
+            });
+        });
+    </script>
+}

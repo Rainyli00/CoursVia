@@ -1,0 +1,606 @@
+@model CoursVia.ViewModels.Admin.KategoriYonetimiViewModel
+
+@{
+    ViewData["Title"] = "Kategoriler";
+
+    string? AramaDegeri = Model.Arama;
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_AdminSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                @if (TempData["AdminHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["AdminBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminBasari"]</span>
+                    </div>
+                }
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+                        <div>
+                            <h1 class="text-2xl font-black tracking-tight text-slate-900">
+                                Kategoriler
+                            </h1>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Kurs ve eğitmen branşlarında kullanılan kategorileri yönetin.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                                Toplam: @Model.ToplamKategoriSayisi
+                            </span>
+
+                            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                                Kullanılan: @Model.KullanilanKategoriSayisi
+                            </span>
+
+                            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                                Boş: @Model.BosKategoriSayisi
+                            </span>
+
+                            <button type="button"
+                                    onclick="document.getElementById('kategoriEkleModal').showModal()"
+                                    class="btn btn-primary btn-sm rounded-xl px-4">
+                                Yeni Kategori
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- Filtre -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+
+                    <form asp-controller="AdminKategori"
+                          asp-action="Kategoriler"
+                          method="get"
+                          class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_200px_auto]">
+
+                        <input type="hidden" name="sayfa" value="1" />
+
+                        <input type="text"
+                               name="arama"
+                               value="@Model.Arama"
+                               placeholder="Kategori adı ara"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                        <select name="durumFiltresi"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+                            <option value="">Tüm Durumlar</option>
+                            @if (Model.DurumFiltresi == "kullanilan")
+                            {
+                                <option value="kullanilan" selected>Kullanılanlar</option>
+                            }
+                            else
+                            {
+                                <option value="kullanilan">Kullanılanlar</option>
+                            }
+
+                            @if (Model.DurumFiltresi == "bos")
+                            {
+                                <option value="bos" selected>Boş Kategoriler</option>
+                            }
+                            else
+                            {
+                                <option value="bos">Boş Kategoriler</option>
+                            }
+                        </select>
+
+                        <div class="flex gap-2 lg:justify-end">
+
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl px-6">
+                                Filtrele
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) || !string.IsNullOrWhiteSpace(Model.DurumFiltresi))
+                            {
+                                <a asp-controller="AdminKategori"
+                                   asp-action="Kategoriler"
+                                   class="btn btn-outline rounded-xl">
+                                    Temizle
+                                </a>
+                            }
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- Liste -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    @if (Model.Kategoriler.Any())
+                    {
+                        <div class="overflow-x-auto">
+
+                            <table class="table">
+
+                                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                    <tr>
+                                        <th class="px-5 py-3">
+                                            Kategori
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Kullanım
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Durum
+                                        </th>
+
+                                        <th class="px-5 py-3 text-right">
+                                            İşlem
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-100">
+
+                                    @foreach (var kategori in Model.Kategoriler)
+                                    {
+                                        <tr class="hover:bg-slate-50">
+
+                                            <td class="min-w-[300px] px-5 py-4">
+
+                                                <div class="flex items-center gap-3">
+
+                                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-black text-slate-600 ring-1 ring-slate-200">
+                                                        @kategori.KategoriAdi.Substring(0, 1).ToUpper()
+                                                    </div>
+
+                                                    <div class="min-w-0">
+                                                        <p class="truncate text-sm font-black text-slate-900">
+                                                            @kategori.KategoriAdi
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+
+                                            </td>
+
+                                            <td class="min-w-[230px] px-5 py-4">
+
+                                                <div class="flex flex-wrap gap-2">
+
+                                                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                                                        Kurs: @kategori.KursSayisi
+                                                    </span>
+
+                                                    <span class="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">
+                                                        Eğitmen: @kategori.EgitmenSayisi
+                                                    </span>
+
+                                                </div>
+
+                                            </td>
+
+                                            <td class="min-w-[160px] px-5 py-4">
+
+                                                @if (kategori.SistemKategorisiMi)
+                                                {
+                                                    <span class="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-bold text-white">
+                                                        Sistem
+                                                    </span>
+                                                }
+                                                else if (kategori.KullaniliyorMu)
+                                                {
+                                                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                                                        Kullanılıyor
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                                                        Boş
+                                                    </span>
+                                                }
+
+                                            </td>
+
+                                            <td class="px-5 py-4">
+
+                                                <div class="flex justify-end gap-2">
+
+                                                    @if (!kategori.SistemKategorisiMi)
+                                                    {
+                                                        <button type="button"
+                                                                onclick="document.getElementById('kategoriDuzenleModal-@kategori.KategoriId').showModal()"
+                                                                class="btn btn-outline btn-xs rounded-lg">
+                                                            Düzenle
+                                                        </button>
+
+                                                        <button type="button"
+                                                                onclick="document.getElementById('kategoriSilModal-@kategori.KategoriId').showModal()"
+                                                                class="btn btn-error btn-xs rounded-lg text-white">
+                                                            Sil
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-xs font-semibold text-slate-400">
+                                                            İşlem yok
+                                                        </span>
+                                                    }
+
+                                                </div>
+
+                                            </td>
+
+                                        </tr>
+                                    }
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            int baslangicSayfa = Math.Max(1, Model.Sayfa - 2);
+                            int bitisSayfa = Math.Min(Model.ToplamSayfa, Model.Sayfa + 2);
+
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Sayfa
+                                    <span class="font-bold text-slate-900">@Model.Sayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.ToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.OncekiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminKategori"
+                                           asp-action="Kategoriler"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-durumFiltresi="@Model.DurumFiltresi"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @if (baslangicSayfa > 1)
+                                    {
+                                        <a asp-controller="AdminKategori"
+                                           asp-action="Kategoriler"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-durumFiltresi="@Model.DurumFiltresi"
+                                           asp-route-sayfa="1"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            1
+                                        </a>
+
+                                        @if (baslangicSayfa > 2)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+                                    }
+
+                                    @for (int i = baslangicSayfa; i <= bitisSayfa; i++)
+                                    {
+                                        if (i == Model.Sayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="AdminKategori"
+                                               asp-action="Kategoriler"
+                                               asp-route-arama="@AramaDegeri"
+                                               asp-route-durumFiltresi="@Model.DurumFiltresi"
+                                               asp-route-sayfa="@i"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (bitisSayfa < Model.ToplamSayfa)
+                                    {
+                                        @if (bitisSayfa < Model.ToplamSayfa - 1)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+
+                                        <a asp-controller="AdminKategori"
+                                           asp-action="Kategoriler"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-durumFiltresi="@Model.DurumFiltresi"
+                                           asp-route-sayfa="@Model.ToplamSayfa"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            @Model.ToplamSayfa
+                                        </a>
+                                    }
+
+                                    @if (Model.SonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminKategori"
+                                           asp-action="Kategoriler"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-durumFiltresi="@Model.DurumFiltresi"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <h3 class="text-base font-black text-slate-900">
+                                Kategori bulunamadı
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Arama kriterine uygun kategori bulunmuyor.
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama))
+                            {
+                                <div class="mt-5 flex justify-center">
+                                    <a asp-controller="AdminKategori"
+                                       asp-action="Kategoriler"
+                                       class="btn btn-outline rounded-xl px-6">
+                                        Aramayı Temizle
+                                    </a>
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+<!-- Ekle Modal -->
+<dialog id="kategoriEkleModal" class="modal">
+
+    <div class="modal-box max-w-md rounded-2xl bg-white">
+
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                ✕
+            </button>
+        </form>
+
+        <h3 class="text-lg font-black text-slate-900">
+            Yeni Kategori
+        </h3>
+
+        <form asp-controller="AdminKategori"
+              asp-action="Ekle"
+              method="post"
+              class="mt-5 space-y-4">
+
+            @Html.AntiForgeryToken()
+
+            <div>
+                <label class="mb-1 block text-sm font-bold text-slate-600">
+                    Kategori Adı
+                </label>
+
+                <input type="text"
+                       name="KategoriAdi"
+                       maxlength="100"
+                       required
+                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white"
+                       placeholder="Örn: Backend Geliştirme" />
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+
+                <button type="button"
+                        onclick="document.getElementById('kategoriEkleModal').close()"
+                        class="btn btn-outline rounded-xl">
+                    Vazgeç
+                </button>
+
+                <button type="submit"
+                        class="btn btn-primary rounded-xl px-6">
+                    Ekle
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>Kapat</button>
+    </form>
+
+</dialog>
+
+@foreach (var kategori in Model.Kategoriler.Where(x => !x.SistemKategorisiMi))
+{
+    <!-- Düzenle Modal -->
+    <dialog id="kategoriDuzenleModal-@kategori.KategoriId" class="modal">
+
+        <div class="modal-box max-w-md rounded-2xl bg-white">
+
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                    ✕
+                </button>
+            </form>
+
+            <h3 class="text-lg font-black text-slate-900">
+                Kategori Düzenle
+            </h3>
+
+            <p class="mt-1 text-sm text-slate-500">
+                Kategori adını güncelleyin.
+            </p>
+
+            <form asp-controller="AdminKategori"
+                  asp-action="Duzenle"
+                  method="post"
+                  class="mt-5 space-y-4">
+
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" name="KategoriId" value="@kategori.KategoriId" />
+
+                <div>
+                    <label class="mb-1 block text-sm font-bold text-slate-600">
+                        Kategori Adı
+                    </label>
+
+                    <input type="text"
+                           name="KategoriAdi"
+                           value="@kategori.KategoriAdi"
+                           maxlength="100"
+                           required
+                           class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+
+                    <button type="button"
+                            onclick="document.getElementById('kategoriDuzenleModal-@kategori.KategoriId').close()"
+                            class="btn btn-outline rounded-xl">
+                        Vazgeç
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary rounded-xl px-6">
+                        Kaydet
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+        <form method="dialog" class="modal-backdrop">
+            <button>Kapat</button>
+        </form>
+
+    </dialog>
+
+    <!-- Sil Modal -->
+    <dialog id="kategoriSilModal-@kategori.KategoriId" class="modal">
+
+        <div class="modal-box max-w-lg rounded-2xl bg-white">
+
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                    ✕
+                </button>
+            </form>
+
+            <h3 class="text-lg font-black text-slate-900">
+                Kategori silinsin mi?
+            </h3>
+
+            <p class="mt-2 text-[15px] font-medium leading-6 text-slate-700">
+                <span class="font-black text-slate-900">@kategori.KategoriAdi</span> kategorisi kalıcı olarak silinecek.
+            </p>
+
+            @if (kategori.KullaniliyorMu)
+            {
+                <div class="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+                    <p class="text-sm font-semibold leading-6 text-amber-700">
+                        Bu kategori kullanımda olduğu için bağlı kurs ve eğitmen branşları otomatik olarak
+                        <strong>Diğer</strong> kategorisine taşınacaktır.
+                    </p>
+                </div>
+            }
+
+            <form asp-controller="AdminKategori"
+                  asp-action="Sil"
+                  asp-route-id="@kategori.KategoriId"
+                  method="post"
+                  class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+                @Html.AntiForgeryToken()
+
+                <button type="button"
+                        onclick="document.getElementById('kategoriSilModal-@kategori.KategoriId').close()"
+                        class="btn btn-outline rounded-xl">
+                    Vazgeç
+                </button>
+
+                <button type="submit"
+                        class="btn btn-error rounded-xl px-6 text-white">
+                    Sil
+                </button>
+
+            </form>
+
+        </div>
+
+        <form method="dialog" class="modal-backdrop">
+            <button>Kapat</button>
+        </form>
+
+    </dialog>
+}

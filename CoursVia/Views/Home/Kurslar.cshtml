@@ -1,0 +1,472 @@
+@using CoursVia.ViewModels.Home
+@model HomeKurslarViewModel
+
+@{
+    ViewData["Title"] = "Tüm Kurslar";
+
+    const string varsayilanKapak = "/uploads/kurs-kapaklari/86f361ce-fa77-4e19-b072-fe28b7a8128e.jpg";
+
+    string KapakUrl(HomeKursListeItemViewModel kurs)
+    {
+        return !string.IsNullOrWhiteSpace(kurs.KapakGorselUrl)
+            ? kurs.KapakGorselUrl
+            : varsayilanKapak;
+    }
+
+    string PuanYaz(double puan, int degerlendirmeSayisi)
+    {
+        return degerlendirmeSayisi > 0
+            ? puan.ToString("0.0")
+            : "Puan yok";
+    }
+
+    bool YeniKursMu(HomeKursListeItemViewModel kurs)
+    {
+        return kurs.OlusturmaTarihi >= DateTime.Now.AddDays(-14);
+    }
+
+    string? aktifKategoriAdi = Model.KategoriId.HasValue
+        ? Model.Kategoriler.FirstOrDefault(x => x.KategoriId == Model.KategoriId.Value)?.KategoriAdi
+        : null;
+
+    int ilkSayfa = Math.Max(1, Model.Sayfa - 2);
+    int sonSayfa = Math.Min(Model.ToplamSayfa, Model.Sayfa + 2);
+
+    string kurslarReturnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+
+    string aktifRol = User.FindFirst("AktifRol")?.Value ?? "";
+    bool girisliMi = User.Identity?.IsAuthenticated == true;
+    bool aktifOgrenciMi = aktifRol == "Öğrenci";
+    bool ogrenciRoluVarMi = User.IsInRole("Öğrenci");
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <!-- Üst Bilgi -->
+    <section class="border-b border-slate-200 bg-white">
+        <div class="mx-auto max-w-[1500px] px-5 py-10 sm:px-7 lg:px-8">
+
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+
+                <div>
+                    <div class="flex flex-wrap items-center gap-2 text-sm font-bold">
+                        <a asp-controller="Home"
+                           asp-action="Index"
+                           class="text-blue-600 transition hover:text-blue-700">
+                            CoursVia
+                        </a>
+
+                        <span class="text-slate-300">/</span>
+
+                        <span class="text-slate-500">
+                            Tüm Kurslar
+                        </span>
+                    </div>
+
+                    <h1 class="mt-4 text-4xl font-black text-slate-950 sm:text-5xl">
+                        Tüm Kurslar
+                    </h1>
+
+                    <p class="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-500">
+                        Yayındaki eğitimleri arayın, kategoriye göre süzün ve size uygun öğrenme yolunu seçin.
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <main class="mx-auto max-w-[1500px] px-5 py-8 sm:px-7 lg:px-8">
+
+        <!-- Filtreler -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <form asp-controller="Home"
+                  asp-action="Kurslar"
+                  method="get"
+                  class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_220px_210px_auto]">
+
+                <div class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2"
+                         stroke-linecap="round"
+                         stroke-linejoin="round"
+                         class="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.3-4.3" />
+                    </svg>
+
+                    <input type="text"
+                           name="arama"
+                           value="@Model.Arama"
+                           placeholder="Kurs, eğitmen veya kategori ara"
+                           class="input input-bordered min-h-12 w-full rounded-xl border-slate-300 bg-slate-50 pl-10 text-sm font-bold text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                </div>
+
+                <select name="kategoriId"
+                        class="select select-bordered min-h-12 w-full rounded-xl border-slate-300 bg-slate-50 text-sm font-bold text-slate-800 shadow-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    <option value="">Tüm kategoriler</option>
+
+                    @foreach (var kategori in Model.Kategoriler)
+                    {
+                        if (Model.KategoriId == kategori.KategoriId)
+                        {
+                            <option value="@kategori.KategoriId" selected>
+                                @kategori.KategoriAdi
+                            </option>
+                        }
+                        else
+                        {
+                            <option value="@kategori.KategoriId">
+                                @kategori.KategoriAdi
+                            </option>
+                        }
+                    }
+                </select>
+
+                <select name="siralama"
+                        class="select select-bordered min-h-12 w-full rounded-xl border-slate-300 bg-slate-50 text-sm font-bold text-slate-800 shadow-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100">
+                    @if (Model.Siralama == "oneCikan")
+                    {
+                        <option value="oneCikan" selected>Öne çıkan</option>
+                    }
+                    else
+                    {
+                        <option value="oneCikan">Öne çıkan</option>
+                    }
+
+                    @if (Model.Siralama == "puan")
+                    {
+                        <option value="puan" selected>Puana göre</option>
+                    }
+                    else
+                    {
+                        <option value="puan">Puana göre</option>
+                    }
+
+                    @if (Model.Siralama == "populer")
+                    {
+                        <option value="populer" selected>Popüler</option>
+                    }
+                    else
+                    {
+                        <option value="populer">Popüler</option>
+                    }
+
+                    @if (Model.Siralama == "enYeni")
+                    {
+                        <option value="enYeni" selected>En yeni</option>
+                    }
+                    else
+                    {
+                        <option value="enYeni">En yeni</option>
+                    }
+
+                    @if (Model.Siralama == "ad")
+                    {
+                        <option value="ad" selected>Ada göre</option>
+                    }
+                    else
+                    {
+                        <option value="ad">Ada göre</option>
+                    }
+                </select>
+
+                <div class="flex gap-2">
+                    <button type="submit"
+                            class="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700 lg:flex-none">
+                        Ara
+                    </button>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Arama) || Model.KategoriId.HasValue || Model.Siralama != "oneCikan")
+                    {
+                        <a asp-controller="Home"
+                           asp-action="Kurslar"
+                           class="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition hover:border-blue-200 hover:text-blue-700">
+                            Temizle
+                        </a>
+                    }
+                </div>
+
+            </form>
+
+        </section>
+
+        <!-- Sonuçlar -->
+        <section class="mt-7">
+            <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-950">
+                        Kurs Kataloğu
+                    </h2>
+
+                    <p class="mt-1 text-sm font-semibold text-slate-500">
+                        @Model.ToplamKayit sonuç
+                        @if (!string.IsNullOrWhiteSpace(aktifKategoriAdi))
+                        {
+                            <span>· @aktifKategoriAdi</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Arama))
+                        {
+                            <span>· “@Model.Arama”</span>
+                        }
+                    </p>
+                </div>
+            </div>
+
+            @if (Model.Kurslar.Any())
+            {
+                <div class="flex flex-wrap gap-4">
+                    @foreach (var kurs in Model.Kurslar)
+                    {
+                        <article class="group w-full flex-none overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md sm:w-[250px] lg:w-[265px]">
+                            <div class="aspect-[16/9] overflow-hidden bg-slate-200">
+                                <img src="@KapakUrl(kurs)"
+                                     alt="@kurs.KursAdi"
+                                     loading="lazy"
+                                     class="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                            </div>
+
+                            <div class="p-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h3 class="line-clamp-2 text-sm font-black leading-5 text-slate-950">
+                                            @kurs.KursAdi
+                                        </h3>
+
+                                        <p class="mt-1 truncate text-xs font-semibold text-slate-500">
+                                            @kurs.EgitmenAdSoyad
+                                        </p>
+                                    </div>
+
+                                    @if (YeniKursMu(kurs))
+                                    {
+                                        <span class="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-500">
+                                            Yeni
+                                        </span>
+                                    }
+                                </div>
+
+                                <div class="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-slate-500">
+                                    <span class="inline-flex items-center gap-1">
+                                        <span class="text-amber-500">★</span>
+                                        @PuanYaz(kurs.OrtalamaPuan, kurs.DegerlendirmeSayisi)
+                                    </span>
+
+                                    <span class="inline-flex items-center gap-1">
+                                        @kurs.DegerlendirmeSayisi değerlendirme
+                                    </span>
+
+                                    <span class="inline-flex items-center gap-1"
+                                          title="Topluluk">
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             viewBox="0 0 24 24"
+                                             fill="none"
+                                             stroke="currentColor"
+                                             stroke-width="2"
+                                             stroke-linecap="round"
+                                             stroke-linejoin="round"
+                                             class="h-3.5 w-3.5 text-slate-400">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                            <circle cx="9" cy="7" r="4" />
+                                            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                        </svg>
+                                        @kurs.OgrenciSayisi
+                                    </span>
+                                </div>
+
+                                @if (kurs.Kategoriler.Any())
+                                {
+                                    <div class="mt-3 flex flex-wrap gap-2">
+                                        @foreach (var kategori in kurs.Kategoriler.Take(2))
+                                        {
+                                            <span class="rounded bg-blue-50 px-2 py-0.5 text-xs font-black text-blue-700">
+                                                @kategori
+                                            </span>
+                                        }
+                                    </div>
+                                }
+
+                                <div class="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                                    @if (aktifOgrenciMi)
+                                    {
+                                        <a asp-controller="OgrenciKurs"
+                                           asp-action="Detay"
+                                           asp-route-id="@kurs.KursId"
+                                           class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700">
+                                            İncele
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        if (girisliMi && ogrenciRoluVarMi)
+                                        {
+                                            string ogrenciKursDetayUrl = Url.Action("Detay", "OgrenciKurs", new { id = kurs.KursId }) ?? $"/OgrenciKurs/Detay/{kurs.KursId}";
+
+                                            <a asp-controller="Account"
+                                               asp-action="PanelDegistir"
+                                               asp-route-rol="Öğrenci"
+                                               asp-route-returnUrl="@ogrenciKursDetayUrl"
+                                               data-ogrenci-gecis="true"
+                                               class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700">
+                                                Öğrenmeye Başla
+                                            </a>
+                                        }
+                                        else if (girisliMi)
+                                        {
+                                            <a asp-controller="ProfilAyarlari"
+                                               asp-action="Index"
+                                               data-ogrenci-profili-yok="true"
+                                               class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700">
+                                                Öğrenmeye Başla
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="Account"
+                                               asp-action="OgrenciLogin"
+                                               asp-route-tab="register"
+                                               class="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700">
+                                                Öğrenmeye Başla
+                                            </a>
+                                        }
+
+                                        <a asp-controller="Home"
+                                           asp-action="KursDetay"
+                                           asp-route-id="@kurs.KursId"
+                                           asp-route-returnUrl="@kurslarReturnUrl"
+                                           class="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
+                                            Detay
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                @if (Model.ToplamSayfa > 1)
+                {
+                    <div class="mt-7 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-sm font-semibold text-slate-500">
+                            Sayfa
+                            <span class="font-black text-slate-900">@Model.Sayfa</span>
+                            /
+                            <span class="font-black text-slate-900">@Model.ToplamSayfa</span>
+                        </p>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if (Model.OncekiSayfaVar)
+                            {
+                                <a asp-controller="Home"
+                                   asp-action="Kurslar"
+                                   asp-route-arama="@Model.Arama"
+                                   asp-route-kategoriId="@Model.KategoriId"
+                                   asp-route-siralama="@Model.Siralama"
+                                   asp-route-sayfa="@(Model.Sayfa - 1)"
+                                   class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
+                                    Önceki
+                                </a>
+                            }
+
+                            @if (ilkSayfa > 1)
+                            {
+                                <a asp-controller="Home"
+                                   asp-action="Kurslar"
+                                   asp-route-arama="@Model.Arama"
+                                   asp-route-kategoriId="@Model.KategoriId"
+                                   asp-route-siralama="@Model.Siralama"
+                                   asp-route-sayfa="1"
+                                   class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
+                                    1
+                                </a>
+
+                                @if (ilkSayfa > 2)
+                                {
+                                    <span class="px-1 text-sm font-black text-slate-400">...</span>
+                                }
+                            }
+
+                            @for (int i = ilkSayfa; i <= sonSayfa; i++)
+                            {
+                                if (i == Model.Sayfa)
+                                {
+                                    <span class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg bg-blue-600 px-3 text-sm font-black text-white">
+                                        @i
+                                    </span>
+                                }
+                                else
+                                {
+                                    <a asp-controller="Home"
+                                       asp-action="Kurslar"
+                                       asp-route-arama="@Model.Arama"
+                                       asp-route-kategoriId="@Model.KategoriId"
+                                       asp-route-siralama="@Model.Siralama"
+                                       asp-route-sayfa="@i"
+                                       class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
+                                        @i
+                                    </a>
+                                }
+                            }
+
+                            @if (sonSayfa < Model.ToplamSayfa)
+                            {
+                                @if (sonSayfa < Model.ToplamSayfa - 1)
+                                {
+                                    <span class="px-1 text-sm font-black text-slate-400">...</span>
+                                }
+
+                                <a asp-controller="Home"
+                                   asp-action="Kurslar"
+                                   asp-route-arama="@Model.Arama"
+                                   asp-route-kategoriId="@Model.KategoriId"
+                                   asp-route-siralama="@Model.Siralama"
+                                   asp-route-sayfa="@Model.ToplamSayfa"
+                                   class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
+                                    @Model.ToplamSayfa
+                                </a>
+                            }
+
+                            @if (Model.SonrakiSayfaVar)
+                            {
+                                <a asp-controller="Home"
+                                   asp-action="Kurslar"
+                                   asp-route-arama="@Model.Arama"
+                                   asp-route-kategoriId="@Model.KategoriId"
+                                   asp-route-siralama="@Model.Siralama"
+                                   asp-route-sayfa="@(Model.Sayfa + 1)"
+                                   class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
+                                    Sonraki
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+                    <h3 class="text-xl font-black text-slate-950">
+                        Kurs bulunamadı
+                    </h3>
+
+                    <p class="mx-auto mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-500">
+                        Arama veya filtreye uygun yayındaki kurs yok. Filtreleri temizleyip tekrar deneyebilirsiniz.
+                    </p>
+
+                    <a asp-controller="Home"
+                       asp-action="Kurslar"
+                       class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700">
+                        Filtreleri Temizle
+                    </a>
+                </div>
+            }
+        </section>
+
+    </main>
+
+</div>

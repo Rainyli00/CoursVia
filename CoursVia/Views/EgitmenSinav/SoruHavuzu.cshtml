@@ -1,0 +1,494 @@
+@model CoursVia.ViewModels.Egitmen.SoruHavuzuViewModel
+
+@{
+    ViewData["Title"] = "Soru Havuzu";
+    bool havuzYetersizMi = Model.HavuzdakiSoruSayisi < Model.SoruSayisi;
+    int ilkSayfa = Math.Max(1, Model.Sayfa - 2);
+    int sonSayfa = Math.Min(Model.ToplamSayfa, Model.Sayfa + 2);
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_EgitmenSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                @if (TempData["KursHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["KursHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["KursBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["KursBasari"]</span>
+                    </div>
+                }
+
+                <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                            Soru Havuzu
+                        </p>
+
+                        <h1 class="mt-1 text-2xl font-black text-slate-900">
+                            @Model.KursAdi
+                        </h1>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <a asp-controller="EgitmenKurs"
+                           asp-action="KursIcerik"
+                           asp-route-id="@Model.KursId"
+                           class="btn btn-sm btn-outline rounded-xl">
+                            İçeriğe Dön
+                        </a>
+
+                        <a asp-controller="EgitmenSinav"
+                           asp-action="SinavHazirla"
+                           asp-route-kursId="@Model.KursId"
+                           class="btn btn-sm btn-outline rounded-xl">
+                            Sınav Ayarları
+                        </a>
+
+                        <a asp-controller="EgitmenKurs"
+                           asp-action="OnIzle"
+                           asp-route-id="@Model.KursId"
+                           class="btn btn-sm rounded-xl bg-slate-900 px-4 text-white hover:bg-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 class="h-4 w-4"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke="currentColor">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+
+                            Ön İzle
+                        </a>
+
+                        @if (Model.KursDuzenlenebilirMi)
+                        {
+                            <a asp-controller="EgitmenSinav"
+                               asp-action="SoruEkle"
+                               asp-route-kursId="@Model.KursId"
+                               class="btn btn-sm btn-primary rounded-xl">
+                                Soru Ekle
+                            </a>
+                        }
+                        else
+                        {
+                            <button type="button"
+                                    class="btn btn-sm rounded-xl"
+                                    disabled>
+                                Soru Ekle
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Geçme Notu</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@Model.GecmeNotu</p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Süre</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@Model.SureDakika dk</p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Çıkacak Soru</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">@Model.SoruSayisi</p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Havuz</p>
+                        <p class="mt-2 text-2xl font-black @(havuzYetersizMi ? "text-amber-600" : "text-slate-900")">
+                            @Model.HavuzdakiSoruSayisi
+                        </p>
+                    </div>
+                </div>
+
+                @if (havuzYetersizMi)
+                {
+                    <div class="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm">
+                        Havuz yetersiz.
+                    </div>
+                }
+
+                <form asp-controller="EgitmenSinav"
+                      asp-action="SoruHavuzu"
+                      method="get"
+                      class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_260px_auto]">
+                    <input type="hidden" name="kursId" value="@Model.KursId" />
+
+                    <input type="text"
+                           name="arama"
+                           value="@Model.Arama"
+                           placeholder="Soru ara"
+                           class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                    <select name="dersId"
+                            class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+                        <option value="">Tüm dersler</option>
+
+                        @foreach (var ders in Model.Dersler)
+                        {
+                            if (Model.DersId == ders.DersId)
+                            {
+                                <option value="@ders.DersId" selected>
+                                    @ders.BolumAdi / @ders.DersAdi
+                                </option>
+                            }
+                            else
+                            {
+                                <option value="@ders.DersId">
+                                    @ders.BolumAdi / @ders.DersAdi
+                                </option>
+                            }
+                        }
+                    </select>
+
+                    <div class="flex flex-wrap gap-2 lg:justify-end">
+                        <button type="submit"
+                                class="btn btn-primary rounded-xl px-6">
+                            Ara
+                        </button>
+
+                        @if (Model.FiltreVarMi)
+                        {
+                            <a asp-controller="EgitmenSinav"
+                               asp-action="SoruHavuzu"
+                               asp-route-kursId="@Model.KursId"
+                               class="btn btn-outline rounded-xl">
+                                Temizle
+                            </a>
+                        }
+                    </div>
+                </form>
+
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div class="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <h2 class="text-base font-black text-slate-900">
+                            Sorular
+                        </h2>
+
+                        <span class="text-sm font-semibold text-slate-500">
+                            @Model.ToplamSoruSayisi sonuç
+                        </span>
+                    </div>
+
+                    @if (Model.Sorular.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+                            @foreach (var soru in Model.Sorular)
+                            {
+                                bool soruKuraliTamMi = soru.SecenekSayisi >= 2 &&
+                                                       soru.DogruSecenekSayisi == 1 &&
+                                                       soru.DersBaglantilariGecerliMi;
+
+                                <article class="transition hover:bg-slate-50">
+                                    <button type="button"
+                                            class="btn-soru-toggle flex w-full items-start justify-between gap-4 px-5 py-4 text-left"
+                                            data-target="soru-detay-@soru.SoruId"
+                                            aria-controls="soru-detay-@soru.SoruId"
+                                            aria-expanded="false">
+                                        <span class="min-w-0 flex-1">
+                                            <span class="flex flex-wrap items-center gap-2">
+                                                @if (!soru.AktifMi)
+                                                {
+                                                    <span class="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-500">
+                                                        Pasif
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="rounded-full border px-2.5 py-0.5 text-xs font-bold @(soruKuraliTamMi ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-amber-100 bg-amber-50 text-amber-700")">
+                                                        @(soruKuraliTamMi ? "Hazır" : "Eksik")
+                                                    </span>
+                                                }
+
+                                                <span class="text-xs font-semibold text-slate-400">
+                                                    #@soru.SoruId
+                                                </span>
+
+                                                <span class="text-xs font-semibold text-slate-500">
+                                                    @soru.SecenekSayisi seçenek
+                                                </span>
+
+                                                <span class="text-xs font-semibold text-slate-500">
+                                                    @soru.DogruSecenekSayisi doğru
+                                                </span>
+
+                                                @if (!soru.DersBaglantilariGecerliMi)
+                                                {
+                                                    <span class="text-xs font-semibold text-amber-600">
+                                                        ders bağlantısı eksik
+                                                    </span>
+                                                }
+                                            </span>
+
+                                            <span class="mt-2 block text-sm font-semibold leading-6 @(soru.AktifMi ? "text-slate-800" : "text-slate-400")">
+                                                @soru.SoruMetni
+                                            </span>
+                                        </span>
+
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             class="soru-chevron mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform"
+                                             fill="none"
+                                             viewBox="0 0 24 24"
+                                             stroke="currentColor">
+                                            <path stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                                  stroke-width="2"
+                                                  d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <div id="soru-detay-@soru.SoruId"
+                                         class="hidden border-t border-slate-100 px-5 py-4">
+                                        <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex flex-wrap gap-2">
+                                                    @foreach (var dersAdi in soru.DersAdlari)
+                                                    {
+                                                        <span class="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                                                            @dersAdi
+                                                        </span>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div class="flex shrink-0 gap-2">
+                                                @if (Model.KursDuzenlenebilirMi)
+                                                {
+                                                    <form asp-controller="EgitmenSinav"
+                                                          asp-action="SoruDurumDegistir"
+                                                          method="post"
+                                                          class="inline-block">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="soruId" value="@soru.SoruId" />
+                                                        <button type="submit" class="btn btn-xs btn-outline rounded-lg">
+                                                            @(soru.AktifMi ? "Pasife Al" : "Aktife Al")
+                                                        </button>
+                                                    </form>
+
+                                                    <a asp-controller="EgitmenSinav"
+                                                       asp-action="SoruDuzenle"
+                                                       asp-route-soruId="@soru.SoruId"
+                                                       class="btn btn-xs btn-outline rounded-lg">
+                                                        Düzenle
+                                                    </a>
+
+                                                    <form asp-controller="EgitmenSinav"
+                                                          asp-action="SoruSil"
+                                                          method="post"
+                                                          class="js-swal-form"
+                                                          data-swal-title="Soru silinsin mi?"
+                                                          data-swal-text="Soru öğrenci cevaplarında kullanıldıysa pasife alınır."
+                                                          data-swal-confirm="Sil"
+                                                          data-swal-confirm-color="#dc2626">
+                                                        @Html.AntiForgeryToken()
+
+                                                        <input type="hidden"
+                                                               name="soruId"
+                                                               value="@soru.SoruId" />
+
+                                                        <button type="submit"
+                                                                class="btn btn-xs btn-outline btn-error rounded-lg">
+                                                            Sil
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button"
+                                                            class="btn btn-xs btn-outline rounded-lg"
+                                                            disabled>
+                                                        Düzenle
+                                                    </button>
+
+                                                    <button type="button"
+                                                            class="btn btn-xs btn-outline btn-error rounded-lg"
+                                                            disabled>
+                                                        Sil
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                <span class="text-sm font-semibold text-slate-500">
+                                    Sayfa @Model.Sayfa / @Model.ToplamSayfa
+                                </span>
+
+                                <div class="join">
+                                    @if (Model.Sayfa > 1)
+                                    {
+                                        <a asp-controller="EgitmenSinav"
+                                           asp-action="SoruHavuzu"
+                                           asp-route-kursId="@Model.KursId"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-dersId="@Model.DersId"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-sm btn-outline join-item">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline join-item"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @for (int sayfaNo = ilkSayfa; sayfaNo <= sonSayfa; sayfaNo++)
+                                    {
+                                        <a asp-controller="EgitmenSinav"
+                                           asp-action="SoruHavuzu"
+                                           asp-route-kursId="@Model.KursId"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-dersId="@Model.DersId"
+                                           asp-route-sayfa="@sayfaNo"
+                                           class="btn btn-sm join-item @(sayfaNo == Model.Sayfa ? "btn-primary" : "btn-outline")">
+                                            @sayfaNo
+                                        </a>
+                                    }
+
+                                    @if (Model.Sayfa < Model.ToplamSayfa)
+                                    {
+                                        <a asp-controller="EgitmenSinav"
+                                           asp-action="SoruHavuzu"
+                                           asp-route-kursId="@Model.KursId"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-dersId="@Model.DersId"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-sm btn-outline join-item">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline join-item"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-12 text-center">
+                            <h3 class="text-lg font-black text-slate-900">
+                                @(Model.FiltreVarMi ? "Sonuç bulunamadı" : "Soru yok")
+                            </h3>
+
+                            @if (Model.FiltreVarMi)
+                            {
+                                <a asp-controller="EgitmenSinav"
+                                   asp-action="SoruHavuzu"
+                                   asp-route-kursId="@Model.KursId"
+                                   class="btn btn-outline mt-4 rounded-xl px-6">
+                                    Temizle
+                                </a>
+                            }
+                            else if (Model.KursDuzenlenebilirMi)
+                            {
+                                <a asp-controller="EgitmenSinav"
+                                   asp-action="SoruEkle"
+                                   asp-route-kursId="@Model.KursId"
+                                   class="btn btn-primary mt-4 rounded-xl px-6">
+                                    Soru Ekle
+                                </a>
+                            }
+                        </div>
+                    }
+                </section>
+
+            </div>
+        </main>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.btn-soru-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const target = document.getElementById(this.dataset.target);
+
+                    if (!target) {
+                        return;
+                    }
+
+                    const acikMi = !target.classList.contains('hidden');
+                    target.classList.toggle('hidden', acikMi);
+                    this.setAttribute('aria-expanded', (!acikMi).toString());
+
+                    const chevron = this.querySelector('.soru-chevron');
+
+                    if (chevron) {
+                        chevron.classList.toggle('rotate-180', !acikMi);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.js-swal-form').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.swalConfirmed === 'true') {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    if (!window.Swal) {
+                        form.dataset.swalConfirmed = 'true';
+                        form.submit();
+                        return;
+                    }
+
+                    Swal.fire({
+                        title: form.dataset.swalTitle || 'Emin misiniz?',
+                        text: form.dataset.swalText || '',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: form.dataset.swalConfirm || 'Onayla',
+                        cancelButtonText: 'Vazgeç',
+                        confirmButtonColor: form.dataset.swalConfirmColor || '#2563eb',
+                        cancelButtonColor: '#64748b',
+                        reverseButtons: true
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            form.dataset.swalConfirmed = 'true';
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+}

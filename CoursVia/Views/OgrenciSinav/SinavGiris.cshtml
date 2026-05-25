@@ -1,0 +1,553 @@
+﻿@model CoursVia.ViewModels.Ogrenci.OgrenciSinavaGirisViewModel
+
+@{
+    ViewData["Title"] = Model.SinavAdi;
+
+    DateTime sinavBitisZamani = Model.BaslamaTarihi.AddMinutes(Model.SureDakika);
+
+    int cevaplananSoruSayisi = Model.Sorular.Count(x => x.SeciliSecenekId.HasValue);
+    int toplamSoruSayisi = Model.Sorular.Count;
+
+    string CevapDurumClass(bool cevaplandiMi)
+    {
+        return cevaplandiMi
+            ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+            : "border-slate-200 bg-slate-50 text-slate-500";
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <main class="px-5 py-7 sm:px-7 lg:px-10">
+
+        <div class="mx-auto max-w-6xl space-y-5">
+
+            <!-- Üst Başlık -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+                    <div class="min-w-0">
+
+                        <div class="mb-2 flex flex-wrap items-center gap-2 text-sm">
+                            <a asp-controller="OgrenciSinav"
+                               asp-action="Index"
+                               class="font-bold text-blue-600 transition hover:text-blue-700">
+                                Sınavlarım
+                            </a>
+
+                            <span class="text-slate-300">/</span>
+
+                            <span class="font-semibold text-slate-500">
+                                Sınav Girişi
+                            </span>
+                        </div>
+
+                        <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                            @Model.KursAdi
+                        </p>
+
+                        <h1 class="mt-1 text-2xl font-black text-slate-900">
+                            @Model.SinavAdi
+                        </h1>
+
+                        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                            @(string.IsNullOrWhiteSpace(Model.Aciklama)
+                                                        ? "Bu sınav için açıklama girilmemiş."
+                                                        : Model.Aciklama)
+                        </p>
+
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 lg:w-[360px]">
+
+                        <div class="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-center">
+                            <p class="text-xs font-bold text-slate-400">
+                                Soru
+                            </p>
+
+                            <p class="mt-1 text-lg font-black text-slate-900">
+                                @Model.SoruSayisi
+                            </p>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-center">
+                            <p class="text-xs font-bold text-slate-400">
+                                Süre
+                            </p>
+
+                            <p class="mt-1 text-lg font-black text-slate-900">
+                                @Model.SureDakika dk
+                            </p>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-center">
+                            <p class="text-xs font-bold text-slate-400">
+                                Geçme
+                            </p>
+
+                            <p class="mt-1 text-lg font-black text-slate-900">
+                                @Model.GecmeNotu
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Sabit Durum Barı -->
+            <section class="sticky top-20 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+                    <div class="flex flex-wrap items-center gap-3">
+
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2">
+                            <p class="text-xs font-bold uppercase tracking-wide text-blue-500">
+                                Kalan Süre
+                            </p>
+
+                            <p id="sinavSayac"
+                               class="mt-0.5 text-xl font-black tabular-nums text-blue-800">
+                                --:--
+                            </p>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2">
+                            <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                Cevaplanan
+                            </p>
+
+                            <p class="mt-0.5 text-xl font-black text-slate-900">
+                                <span id="cevaplananSoruSayisi">@cevaplananSoruSayisi</span>
+                                <span class="text-slate-400">/</span>
+                                <span>@toplamSoruSayisi</span>
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+
+                        <a asp-controller="OgrenciSinav"
+                           asp-action="Index"
+                           class="btn btn-outline btn-sm rounded-xl">
+                            Sınavlarım
+                        </a>
+
+                        <button type="submit"
+                                form="sinavBitirForm"
+                                id="sinavBitirButton"
+                                class="btn btn-primary btn-sm rounded-xl px-6">
+                            Sınavı Bitir
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Uyarı -->
+            <section class="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800">
+                Seçtiğin cevaplar otomatik olarak kaydedilir. Süre dolduğunda sınav mevcut kayıtlı cevaplarınla değerlendirilir.
+            </section>
+
+            <!-- Form -->
+            <form id="sinavBitirForm"
+                  asp-controller="OgrenciSinav"
+                  asp-action="Bitir"
+                  method="post"
+                  class="space-y-4">
+
+                @Html.AntiForgeryToken()
+
+                <input type="hidden"
+                       name="SinavKatilimId"
+                       value="@Model.SinavKatilimId" />
+
+                @for (int i = 0; i < Model.Sorular.Count; i++)
+                {
+                    var soru = Model.Sorular[i];
+                    bool cevaplandiMi = soru.SeciliSecenekId.HasValue;
+
+                    <article class="soru-karti rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                             data-soru-id="@soru.SoruId">
+
+                        <input type="hidden"
+                               name="Cevaplar[@i].SoruId"
+                               value="@soru.SoruId" />
+
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+
+                            <div class="min-w-0">
+
+                                <div class="mb-3 flex flex-wrap items-center gap-2">
+
+                                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-sm font-black text-blue-700">
+                                        @soru.SiraNo
+                                    </span>
+
+                                    <span class="soru-durum-badge rounded-full border px-2.5 py-1 text-xs font-bold @CevapDurumClass(cevaplandiMi)">
+                                        @(cevaplandiMi ? "Cevaplandı" : "Cevap bekliyor")
+                                    </span>
+
+                                </div>
+
+                                <h2 class="text-base font-black leading-7 text-slate-900">
+                                    @soru.SoruMetni
+                                </h2>
+
+                            </div>
+
+                        </div>
+
+                        <div class="mt-5 space-y-2">
+
+                            @foreach (var secenek in soru.Secenekler)
+                            {
+                                string inputId = $"soru_{soru.SoruId}_secenek_{secenek.SecenekId}";
+                                bool seciliMi = soru.SeciliSecenekId == secenek.SecenekId;
+
+                                <label for="@inputId"
+                                       class="secenek-label flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition
+                                                      @(seciliMi
+                                                                                         ? "border-blue-200 bg-blue-50"
+                                                                                         : "border-slate-200 bg-white hover:border-blue-100 hover:bg-blue-50/40")">
+
+                            <input id="@inputId"
+                                   type="radio"
+                                   name="Cevaplar[@i].SecenekId"
+                                   value="@secenek.SecenekId"
+                                   class="js-sinav-cevap radio radio-primary mt-0.5"
+                                   data-soru-id="@soru.SoruId"
+                                   data-soru-index="@i"
+                                   @(seciliMi ? "checked" : "") />
+
+                                    <span class="text-sm font-semibold leading-6 text-slate-700">
+                                        @secenek.SecenekMetni
+                                    </span>
+
+                                </label>
+                                                }
+
+                        </div>
+
+                        <div class="kayit-durumu mt-3 hidden text-xs font-semibold text-slate-400">
+                            Cevap kaydediliyor...
+                        </div>
+
+                    </article>
+                }
+
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                        <div>
+                            <h2 class="text-base font-black text-slate-900">
+                                Sınavı tamamla
+                            </h2>
+
+                            <p class="mt-1 text-sm leading-6 text-slate-500">
+                                Cevaplarını kontrol ettikten sonra sınavı bitirebilirsin. Bitirdikten sonra cevaplar değiştirilemez.
+                            </p>
+                        </div>
+
+                        <button type="submit"
+                                class="btn btn-primary rounded-xl px-7">
+                            Sınavı Bitir
+                        </button>
+
+                    </div>
+
+                </section>
+
+            </form>
+
+        </div>
+
+    </main>
+
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sinavKatilimId = "@Model.SinavKatilimId";
+            const sonucUrl = "@Url.Action("Sonuc", "OgrenciSinav", new { id = Model.SinavKatilimId })";
+            const cevapKaydetUrl = "@Url.Action("CevapKaydet", "OgrenciSinav")";
+            const bitirForm = document.getElementById("sinavBitirForm");
+            const bitirButton = document.getElementById("sinavBitirButton");
+            const bitirButtons = document.querySelectorAll('[form="sinavBitirForm"], #sinavBitirForm button[type="submit"]');
+            const sayacElement = document.getElementById("sinavSayac");
+            const cevaplananElement = document.getElementById("cevaplananSoruSayisi");
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+
+            const bitisZamani = new Date("@sinavBitisZamani.ToString("O")").getTime();
+
+            let sureBitti = false;
+            let otomatikGonderildi = false;
+            let manuelGonderimOnaylandi = false;
+
+            function bitirButonlariniAyarla(disabled, text) {
+                bitirButtons.forEach(function (button) {
+                    button.disabled = disabled;
+
+                    if (text) {
+                        button.textContent = text;
+                    }
+                });
+            }
+
+            function cevapEksikOnayiGoster(onayCallback) {
+                const mesaj = "Bazı sorular cevaplanmamış görünüyor. Yine de sınavı bitirmek istiyor musun?";
+
+                if (!window.Swal) {
+                    onayCallback();
+                    return;
+                }
+
+                Swal.fire({
+                    icon: "warning",
+                    title: "Cevaplanmamış Sorular Var",
+                    text: mesaj,
+                    showCancelButton: true,
+                    confirmButtonText: "Evet, Bitir",
+                    cancelButtonText: "Vazgeç",
+                    confirmButtonColor: "#2563eb",
+                    cancelButtonColor: "#64748b",
+                    reverseButtons: true,
+                    focusCancel: true
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        onayCallback();
+                    }
+                });
+            }
+
+            function cevaplananSayisiniGuncelle() {
+                const soruKartlari = document.querySelectorAll(".soru-karti");
+                let cevaplanan = 0;
+
+                soruKartlari.forEach(function (kart) {
+                    const secili = kart.querySelector("input[type='radio']:checked");
+
+                    if (secili) {
+                        cevaplanan++;
+                    }
+                });
+
+                if (cevaplananElement) {
+                    cevaplananElement.textContent = cevaplanan;
+                }
+            }
+
+            function soruDurumunuGuncelle(soruId, durum, kayitMesaji) {
+                const kart = document.querySelector(`.soru-karti[data-soru-id="${soruId}"]`);
+
+                if (!kart) {
+                    return;
+                }
+
+                const badge = kart.querySelector(".soru-durum-badge");
+                const kayitDurumu = kart.querySelector(".kayit-durumu");
+
+                if (badge) {
+                    if (durum === "kaydedildi") {
+                        badge.className = "soru-durum-badge rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700";
+                        badge.textContent = "Cevaplandı";
+                    }
+                    else if (durum === "kaydediliyor") {
+                        badge.className = "soru-durum-badge rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700";
+                        badge.textContent = "Kaydediliyor";
+                    }
+                    else if (durum === "hata") {
+                        badge.className = "soru-durum-badge rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700";
+                        badge.textContent = "Kaydedilemedi";
+                    }
+                }
+
+                if (kayitDurumu) {
+                    if (kayitMesaji) {
+                        kayitDurumu.classList.remove("hidden");
+                        kayitDurumu.textContent = kayitMesaji;
+                    }
+                    else {
+                        kayitDurumu.classList.add("hidden");
+                        kayitDurumu.textContent = "";
+                    }
+                }
+            }
+
+            function secenekGorunumunuGuncelle(radio) {
+                const soruId = radio.dataset.soruId;
+                const kart = document.querySelector(`.soru-karti[data-soru-id="${soruId}"]`);
+
+                if (!kart) {
+                    return;
+                }
+
+                kart.querySelectorAll(".secenek-label").forEach(function (label) {
+                    label.classList.remove("border-blue-200", "bg-blue-50");
+                    label.classList.add("border-slate-200", "bg-white");
+                });
+
+                const seciliLabel = radio.closest(".secenek-label");
+
+                if (seciliLabel) {
+                    seciliLabel.classList.remove("border-slate-200", "bg-white");
+                    seciliLabel.classList.add("border-blue-200", "bg-blue-50");
+                }
+            }
+
+            function cevapKaydet(radio) {
+                if (sureBitti) {
+                    return;
+                }
+
+                const soruId = radio.dataset.soruId;
+                const secenekId = radio.value;
+
+                soruDurumunuGuncelle(soruId, "kaydediliyor", "Cevap kaydediliyor...");
+
+                const body = new URLSearchParams();
+                body.append("sinavKatilimId", sinavKatilimId);
+                body.append("soruId", soruId);
+                body.append("secenekId", secenekId);
+
+                fetch(cevapKaydetUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "RequestVerificationToken": tokenInput ? tokenInput.value : ""
+                    },
+                    body: body.toString(),
+                    credentials: "same-origin"
+                })
+                    .then(function (response) {
+                        if (response.status === 409) {
+                            sureBitti = true;
+                            window.location.href = sonucUrl;
+                            return;
+                        }
+
+                        if (response.status === 423) {
+                            response.json()
+                                .then(function (data) {
+                                    window.location.href = data.yonlendirUrl || "@Url.Action("Kurslarim", "OgrenciKurs")";
+                                })
+                                .catch(function () {
+                                    window.location.href = "@Url.Action("Kurslarim", "OgrenciKurs")";
+                                });
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            soruDurumunuGuncelle(soruId, "hata", "Cevap kaydedilemedi. Bağlantını kontrol edip tekrar seç.");
+                            return;
+                        }
+
+                        soruDurumunuGuncelle(soruId, "kaydedildi", "Cevap kaydedildi.");
+
+                        setTimeout(function () {
+                            const kart = document.querySelector(`.soru-karti[data-soru-id="${soruId}"]`);
+                            const kayitDurumu = kart ? kart.querySelector(".kayit-durumu") : null;
+
+                            if (kayitDurumu) {
+                                kayitDurumu.classList.add("hidden");
+                                kayitDurumu.textContent = "";
+                            }
+                        }, 1200);
+                    })
+                    .catch(function () {
+                        soruDurumunuGuncelle(soruId, "hata", "Cevap kaydedilemedi. Bağlantını kontrol edip tekrar seç.");
+                    });
+            }
+
+            document.querySelectorAll(".js-sinav-cevap").forEach(function (radio) {
+                radio.addEventListener("change", function () {
+                    secenekGorunumunuGuncelle(this);
+                    cevaplananSayisiniGuncelle();
+                    cevapKaydet(this);
+                });
+            });
+
+            function sayaciGuncelle() {
+                const simdi = new Date().getTime();
+                const kalanMs = bitisZamani - simdi;
+
+                if (kalanMs <= 0) {
+                    if (sayacElement) {
+                        sayacElement.textContent = "00:00";
+                        sayacElement.classList.remove("text-blue-800");
+                        sayacElement.classList.add("text-red-700");
+                    }
+
+                    sureBitti = true;
+
+                    if (!otomatikGonderildi && bitirForm) {
+                        otomatikGonderildi = true;
+
+                        bitirButonlariniAyarla(true, "Süre doldu");
+
+                        bitirForm.submit();
+                    }
+
+                    return;
+                }
+
+                const toplamSaniye = Math.floor(kalanMs / 1000);
+                const dakika = Math.floor(toplamSaniye / 60);
+                const saniye = toplamSaniye % 60;
+
+                if (sayacElement) {
+                    sayacElement.textContent =
+                        String(dakika).padStart(2, "0") + ":" + String(saniye).padStart(2, "0");
+
+                    if (toplamSaniye <= 60) {
+                        sayacElement.classList.remove("text-blue-800");
+                        sayacElement.classList.add("text-red-700");
+                    }
+                }
+
+                setTimeout(sayaciGuncelle, 1000);
+            }
+
+            if (bitirForm) {
+                bitirForm.addEventListener("submit", function (event) {
+                    if (otomatikGonderildi) {
+                        return;
+                    }
+
+                    if (manuelGonderimOnaylandi) {
+                        bitirButonlariniAyarla(true, "Değerlendiriliyor...");
+                        return;
+                    }
+
+                    const cevaplanan = parseInt(cevaplananElement ? cevaplananElement.textContent : "0");
+                    const toplam = @toplamSoruSayisi;
+
+                    if (cevaplanan < toplam) {
+                        event.preventDefault();
+
+                        cevapEksikOnayiGoster(function () {
+                            manuelGonderimOnaylandi = true;
+                            bitirButonlariniAyarla(true, "Değerlendiriliyor...");
+                            bitirForm.submit();
+                        });
+
+                        return;
+                    }
+
+                    bitirButonlariniAyarla(true, "Değerlendiriliyor...");
+                });
+            }
+
+            cevaplananSayisiniGuncelle();
+            sayaciGuncelle();
+        });
+    </script>
+}

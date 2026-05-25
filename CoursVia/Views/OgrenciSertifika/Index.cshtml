@@ -1,0 +1,326 @@
+﻿@model CoursVia.ViewModels.Ogrenci.OgrenciSertifikalarViewModel
+
+@{
+    ViewData["Title"] = "Sertifikalarım";
+
+    int bulunanSertifikaSayisi = Model.ToplamKayit > 0
+        ? Model.ToplamKayit
+        : Model.Sertifikalar.Count;
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_OgrenciSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-6xl space-y-5">
+
+                @if (TempData["OgrenciHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["OgrenciHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["OgrenciBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["OgrenciBasari"]</span>
+                    </div>
+                }
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                            Öğrenci Paneli
+                        </p>
+
+                        <h1 class="mt-1 text-2xl font-black text-slate-900">
+                            Sertifikalarım
+                        </h1>
+
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                            Başarıyla tamamladığın kurslara ait sertifikalarını buradan görüntüleyebilir ve PDF olarak indirebilirsin.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Filtre -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+
+                    <form asp-controller="OgrenciSertifika"
+                          asp-action="Index"
+                          method="get"
+                          class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_240px_auto]">
+
+                        <input type="hidden" name="sayfa" value="1" />
+
+                        <input type="text"
+                               name="arama"
+                               value="@Model.Arama"
+                               placeholder="Kurs adı veya sertifika kodu ara"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                        <select name="sirala"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+
+                            @if (Model.Sirala == "tarih-desc")
+                            {
+                                <option value="tarih-desc" selected>Yeni → Eski</option>
+                            }
+                            else
+                            {
+                                <option value="tarih-desc">Yeni → Eski</option>
+                            }
+
+                            @if (Model.Sirala == "tarih-asc")
+                            {
+                                <option value="tarih-asc" selected>Eski → Yeni</option>
+                            }
+                            else
+                            {
+                                <option value="tarih-asc">Eski → Yeni</option>
+                            }
+
+                        </select>
+
+                        <div class="flex gap-2 lg:justify-end">
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl px-6">
+                                Filtrele
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) || Model.Sirala != "tarih-desc")
+                            {
+                                <a asp-controller="OgrenciSertifika"
+                                   asp-action="Index"
+                                   class="btn btn-outline rounded-xl">
+                                    Temizle
+                                </a>
+                            }
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- Liste -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 class="text-base font-black text-slate-900">
+                                Sertifika Listesi
+                            </h2>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                @bulunanSertifikaSayisi sertifika bulundu
+                            </p>
+                        </div>
+                    </div>
+
+                    @if (Model.Sertifikalar.Any())
+                    {
+                        <div class="grid gap-5 p-5 md:grid-cols-2 xl:grid-cols-3">
+
+                            @foreach (var sertifika in Model.Sertifikalar)
+                            {
+                                <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+
+                                    <div class="h-32 bg-slate-100">
+                                        @if (!string.IsNullOrWhiteSpace(sertifika.KapakGorselUrl))
+                                        {
+                                            <img src="@sertifika.KapakGorselUrl"
+                                                 alt="@sertifika.KursAdi"
+                                                 class="h-full w-full object-cover" />
+                                        }
+                                        else
+                                        {
+                                            <div class="flex h-full w-full items-center justify-center bg-blue-50 text-blue-600">
+                                                <span class="text-4xl">🎓</span>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="space-y-4 p-5">
+
+                                        <div>
+                                            <p class="text-xs font-black uppercase tracking-wide text-blue-600">
+                                                Başarı Sertifikası
+                                            </p>
+
+                                            <h3 class="mt-1 line-clamp-2 text-base font-black text-slate-900">
+                                                @sertifika.KursAdi
+                                            </h3>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3 text-sm">
+
+                                            <div class="flex items-center justify-between gap-3">
+                                                <span class="text-slate-500">
+                                                    Sertifika Kodu
+                                                </span>
+
+                                                <span class="font-bold text-slate-900">
+                                                    @sertifika.SertifikaKodu
+                                                </span>
+                                            </div>
+
+                                            <div class="mt-2 flex items-center justify-between gap-3">
+                                                <span class="text-slate-500">
+                                                    Verilme Tarihi
+                                                </span>
+
+                                                <span class="font-bold text-slate-900">
+                                                    @sertifika.VerilmeTarihi.ToString("dd.MM.yyyy")
+                                                </span>
+                                            </div>
+
+                                        </div>
+
+                                        <a asp-controller="OgrenciSertifika"
+                                           asp-action="Indir"
+                                           asp-route-id="@sertifika.SertifikaId"
+                                           class="btn btn-primary btn-sm w-full rounded-xl">
+                                            PDF İndir
+                                        </a>
+
+                                    </div>
+
+                                </article>
+                            }
+
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Sayfa
+                                    <span class="font-bold text-slate-900">@Model.Sayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.ToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.OncekiSayfaVar)
+                                    {
+                                        <a asp-controller="OgrenciSertifika"
+                                           asp-action="Index"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-sirala="@Model.Sirala"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @for (int i = 1; i <= Model.ToplamSayfa; i++)
+                                    {
+                                        if (i == Model.Sayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="OgrenciSertifika"
+                                               asp-action="Index"
+                                               asp-route-arama="@Model.Arama"
+                                               asp-route-sirala="@Model.Sirala"
+                                               asp-route-sayfa="@i"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (Model.SonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="OgrenciSertifika"
+                                           asp-action="Index"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-sirala="@Model.Sirala"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                                <span class="text-2xl">🎓</span>
+                            </div>
+
+                            <h3 class="mt-4 text-base font-black text-slate-900">
+                                Sertifika bulunamadı
+                            </h3>
+
+                            <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                                @if (string.IsNullOrWhiteSpace(Model.Arama))
+                                {
+                                    <span>Bir kursun tüm derslerini tamamlayıp sınavı başarıyla geçtiğinde sertifikan burada görünecek.</span>
+                                }
+                                else
+                                {
+                                    <span>Arama kriterine uygun sertifika bulunamadı. Farklı bir kurs adı veya sertifika kodu deneyebilirsin.</span>
+                                }
+                            </p>
+
+                            <div class="mt-6 flex justify-center gap-2">
+                                <a asp-controller="OgrenciSertifika"
+                                   asp-action="Index"
+                                   class="btn btn-outline rounded-xl px-6">
+                                    Filtreleri Temizle
+                                </a>
+
+                                <a asp-controller="OgrenciKurs"
+                                   asp-action="Kesfet"
+                                   class="btn btn-primary rounded-xl px-6">
+                                    Kurs Keşfet
+                                </a>
+                            </div>
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>

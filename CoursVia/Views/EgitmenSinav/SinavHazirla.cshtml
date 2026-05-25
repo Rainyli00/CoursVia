@@ -1,0 +1,193 @@
+@model CoursVia.ViewModels.Egitmen.SinavHazirlaViewModel
+
+@{
+    ViewData["Title"] = "Sınav Hazırla";
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_EgitmenSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+            <div class="mx-auto max-w-5xl space-y-5">
+
+                @if (TempData["KursHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["KursHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["KursBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["KursBasari"]</span>
+                    </div>
+                }
+
+                <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                            Sınav Hazırlığı
+                        </p>
+
+                        <h1 class="mt-1 text-2xl font-black text-slate-900">
+                            @Model.KursAdi
+                        </h1>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        @if (Model.SinavId != null)
+                        {
+                            <a asp-controller="EgitmenSinav"
+                               asp-action="SoruHavuzu"
+                               asp-route-kursId="@Model.KursId"
+                               class="btn btn-sm btn-primary rounded-xl">
+                                Soru Havuzu
+                            </a>
+                        }
+
+                        <a asp-controller="EgitmenKurs"
+                           asp-action="KursIcerik"
+                           asp-route-id="@Model.KursId"
+                           class="btn btn-sm btn-outline rounded-xl">
+                            İçeriğe Dön
+                        </a>
+                    </div>
+                </div>
+
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="mb-5 text-xl font-black text-slate-900">
+                        Sınav Ayarları
+                    </h2>
+
+                    <form asp-controller="EgitmenSinav"
+                          asp-action="SinavHazirla"
+                          method="post"
+                          class="space-y-5">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden" asp-for="KursId" />
+                        <input type="hidden" asp-for="SinavId" />
+                        <input type="hidden" asp-for="KursAdi" />
+                        <input type="hidden" asp-for="HavuzdakiSoruSayisi" />
+
+                        <div asp-validation-summary="ModelOnly"
+                             class="text-sm font-semibold text-red-600">
+                        </div>
+
+                        <div>
+                            <label asp-for="SinavAdi"
+                                   class="mb-2 block text-sm font-bold text-slate-700">
+                                Sınav Adı
+                            </label>
+
+                            <input asp-for="SinavAdi"
+                                   class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                            <span asp-validation-for="SinavAdi"
+                                  class="mt-1 block text-sm text-red-500">
+                            </span>
+                        </div>
+
+                        <div>
+                            <label asp-for="Aciklama"
+                                   class="mb-2 block text-sm font-bold text-slate-700">
+                                Açıklama
+                            </label>
+
+                            <textarea asp-for="Aciklama"
+                                      rows="4"
+                                      class="textarea textarea-bordered w-full rounded-xl border-slate-300 bg-white"></textarea>
+
+                            <span asp-validation-for="Aciklama"
+                                  class="mt-1 block text-sm text-red-500">
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div>
+                                <label asp-for="GecmeNotu"
+                                       class="mb-2 block text-sm font-bold text-slate-700">
+                                    Geçme Notu
+                                </label>
+
+                                <input asp-for="GecmeNotu"
+                                       type="number"
+                                       min="1"
+                                       max="100"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                                <span asp-validation-for="GecmeNotu"
+                                      class="mt-1 block text-sm text-red-500">
+                                </span>
+                            </div>
+
+                            <div>
+                                <label asp-for="SureDakika"
+                                       class="mb-2 block text-sm font-bold text-slate-700">
+                                    Süre
+                                </label>
+
+                                <div class="join w-full">
+                                    <input asp-for="SureDakika"
+                                           type="number"
+                                           min="1"
+                                           max="300"
+                                           class="input input-bordered join-item w-full rounded-l-xl border-slate-300 bg-white" />
+
+                                    <span class="join-item flex items-center rounded-r-xl border border-l-0 border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-500">
+                                        dk
+                                    </span>
+                                </div>
+
+                                <span asp-validation-for="SureDakika"
+                                      class="mt-1 block text-sm text-red-500">
+                                </span>
+                            </div>
+
+                            <div>
+                                <label asp-for="SoruSayisi"
+                                       class="mb-2 block text-sm font-bold text-slate-700">
+                                    Çıkacak Soru
+                                </label>
+
+                                <input asp-for="SoruSayisi"
+                                       type="number"
+                                       min="1"
+                                       max="200"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                                <span asp-validation-for="SoruSayisi"
+                                      class="mt-1 block text-sm text-red-500">
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                            <a asp-controller="EgitmenKurs"
+                               asp-action="KursIcerik"
+                               asp-route-id="@Model.KursId"
+                               class="btn btn-outline rounded-xl border-slate-900 px-6 text-slate-900 hover:bg-slate-900 hover:text-white">
+                                Geri Dön
+                            </a>
+
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl">
+                                Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+            </div>
+        </main>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

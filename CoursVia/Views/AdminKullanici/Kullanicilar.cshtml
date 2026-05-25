@@ -1,0 +1,639 @@
+@using System.Security.Claims
+@model CoursVia.ViewModels.Admin.KullaniciYonetimiViewModel
+
+@{
+    ViewData["Title"] = "Kullanıcılar";
+
+    int aktifAdminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
+
+    int bulunanKullaniciSayisi = Model.ToplamKayit > 0
+        ? Model.ToplamKayit
+        : Model.Kullanicilar.Count;
+
+    string DurumBadgeClass(int durumId)
+    {
+        return durumId switch
+        {
+            1 => "border-emerald-100 bg-emerald-50 text-emerald-700",
+            2 => "border-red-100 bg-red-50 text-red-700",
+            _ => "border-slate-200 bg-slate-50 text-slate-600"
+        };
+    }
+
+    string RolBadgeClass(string rolAdi)
+    {
+        return rolAdi switch
+        {
+            "Admin" => "bg-slate-900 text-white",
+            "Eğitmen" => "bg-blue-50 text-blue-700",
+            "Öğrenci" => "bg-emerald-50 text-emerald-700",
+            _ => "bg-slate-100 text-slate-600"
+        };
+    }
+
+    string BasHarf(string? adSoyad)
+    {
+        return string.IsNullOrWhiteSpace(adSoyad)
+            ? "?"
+            : adSoyad.Trim().Substring(0, 1).ToUpper();
+    }
+
+    string? AramaDegeri = Model.Arama;
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_AdminSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                @if (TempData["AdminHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["AdminBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminBasari"]</span>
+                    </div>
+                }
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+                        <div>
+                            <h1 class="text-2xl font-black tracking-tight text-slate-900">
+                                Kullanıcılar
+                            </h1>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                @bulunanKullaniciSayisi kullanıcı listeleniyor.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 text-xs font-bold md:justify-end">
+
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                                Toplam: @Model.ToplamKullaniciSayisi
+                            </span>
+
+                            <span class="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                                Online: @Model.OnlineKullaniciSayisi
+                            </span>
+
+                            <span class="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+                                Aktif: @Model.AktifKullaniciSayisi
+                            </span>
+
+                            <span class="rounded-full bg-sky-50 px-3 py-1 text-sky-700">
+                                Öğrenci: @Model.OgrenciSayisi
+                            </span>
+
+                            <span class="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700">
+                                Eğitmen: @Model.EgitmenSayisi
+                            </span>
+
+                            <span class="rounded-full bg-slate-200 px-3 py-1 text-slate-700">
+                                Admin: @Model.AdminSayisi
+                            </span>
+
+                            <span class="rounded-full bg-red-50 px-3 py-1 text-red-700">
+                                Pasif: @Model.PasifKullaniciSayisi
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- Filtre -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+
+                    <form asp-controller="AdminKullanici"
+                          asp-action="Kullanicilar"
+                          method="get"
+                          class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_200px_200px_auto]">
+
+                        <input type="hidden" name="sayfa" value="1" />
+
+                        <input type="text"
+                               name="arama"
+                               value="@Model.Arama"
+                               placeholder="Ad, soyad, e-posta, telefon veya IP ara"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                        <select name="rol"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+
+                            @if (Model.Rol == "tum")
+                            {
+                                <option value="tum" selected>Tüm Roller</option>
+                            }
+                            else
+                            {
+                                <option value="tum">Tüm Roller</option>
+                            }
+
+                            @if (Model.Rol == "admin")
+                            {
+                                <option value="admin" selected>Admin</option>
+                            }
+                            else
+                            {
+                                <option value="admin">Admin</option>
+                            }
+
+                            @if (Model.Rol == "egitmen")
+                            {
+                                <option value="egitmen" selected>Eğitmen</option>
+                            }
+                            else
+                            {
+                                <option value="egitmen">Eğitmen</option>
+                            }
+
+                            @if (Model.Rol == "ogrenci")
+                            {
+                                <option value="ogrenci" selected>Öğrenci</option>
+                            }
+                            else
+                            {
+                                <option value="ogrenci">Öğrenci</option>
+                            }
+
+                        </select>
+
+                        <select name="durum"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+
+                            @if (Model.Durum == "tum")
+                            {
+                                <option value="tum" selected>Tüm Durumlar</option>
+                            }
+                            else
+                            {
+                                <option value="tum">Tüm Durumlar</option>
+                            }
+
+                            @if (Model.Durum == "aktif")
+                            {
+                                <option value="aktif" selected>Aktif</option>
+                            }
+                            else
+                            {
+                                <option value="aktif">Aktif</option>
+                            }
+
+                            @if (Model.Durum == "pasif")
+                            {
+                                <option value="pasif" selected>Pasif</option>
+                            }
+                            else
+                            {
+                                <option value="pasif">Pasif</option>
+                            }
+
+                        </select>
+
+                        <div class="flex gap-2 xl:justify-end">
+
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl px-6">
+                                Filtrele
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) || Model.Rol != "tum" || Model.Durum != "tum")
+                            {
+                                <a asp-controller="AdminKullanici"
+                                   asp-action="Kullanicilar"
+                                   class="btn btn-outline rounded-xl">
+                                    Temizle
+                                </a>
+                            }
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- Liste -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    @if (Model.Kullanicilar.Any())
+                    {
+                        <div class="overflow-x-auto">
+
+                            <table class="table table-sm w-full">
+
+                                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                    <tr>
+                                        <th class="px-4 py-2.5">
+                                            Kullanıcı
+                                        </th>
+
+                                        <th class="px-4 py-2.5">
+                                            Roller
+                                        </th>
+
+                                        <th class="px-4 py-2.5">
+                                            Durum
+                                        </th>
+
+                                        <th class="px-4 py-2.5">
+                                            Online
+                                        </th>
+
+                                        <th class="px-4 py-2.5">
+                                            Son IP
+                                        </th>
+
+                                        <th class="px-4 py-2.5">
+                                            Son Giriş
+                                        </th>
+
+                                        <th class="px-4 py-2.5 text-right">
+                                            İşlem
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-100">
+
+                                    @foreach (var kullanici in Model.Kullanicilar)
+                                    {
+                                        <tr class="hover:bg-slate-50">
+
+                                            <td class="min-w-[260px] px-4 py-2.5">
+
+                                                <div class="flex items-center gap-2.5">
+
+                                                    @if (!string.IsNullOrWhiteSpace(kullanici.ProfilFotoUrl))
+                                                    {
+                                                        <img src="@kullanici.ProfilFotoUrl"
+                                                             alt="@kullanici.AdSoyad"
+                                                             class="h-9 w-9 rounded-lg object-cover ring-1 ring-slate-200" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-xs font-black text-slate-500 ring-1 ring-slate-200">
+                                                            @BasHarf(kullanici.AdSoyad)
+                                                        </div>
+                                                    }
+
+                                                    <div class="min-w-0">
+
+                                                        <p class="truncate text-sm font-black text-slate-900">
+                                                            @kullanici.AdSoyad
+                                                        </p>
+
+                                                        <p class="truncate text-xs font-semibold text-slate-500">
+                                                            @kullanici.Eposta
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+
+                                            </td>
+
+                                            <td class="min-w-[170px] px-4 py-2.5">
+
+                                                <div class="flex flex-nowrap gap-1.5">
+
+                                                    @if (kullanici.Roller.Any())
+                                                    {
+                                                        @foreach (var rolAdi in kullanici.Roller)
+                                                        {
+                                                            <span class="rounded-full px-2 py-0.5 text-xs font-bold @RolBadgeClass(rolAdi)">
+                                                                @rolAdi
+                                                            </span>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
+                                                            Rol yok
+                                                        </span>
+                                                    }
+
+                                                </div>
+
+                                            </td>
+
+                                            <td class="px-4 py-2.5">
+
+                                                <span class="rounded-full border px-2 py-0.5 text-xs font-bold @DurumBadgeClass(kullanici.DurumId)">
+                                                    @kullanici.DurumAdi
+                                                </span>
+
+                                            </td>
+
+                                            <td class="px-4 py-2.5">
+
+                                                @if (kullanici.OnlineMi)
+                                                {
+                                                    <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                                                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                                        Online
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-500">
+                                                        <span class="h-2 w-2 rounded-full bg-slate-300"></span>
+                                                        Çevrimdışı
+                                                    </span>
+                                                }
+
+                                            </td>
+
+                                            <td class="min-w-[130px] px-4 py-2.5">
+
+                                                @if (!string.IsNullOrWhiteSpace(kullanici.SonIpAdresi))
+                                                {
+                                                    <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                                                        @kullanici.SonIpAdresi
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-xs font-semibold text-slate-400">
+                                                        IP kaydı yok
+                                                    </span>
+                                                }
+
+                                        </td>
+
+                                        <td class="min-w-[110px] px-4 py-2.5">
+
+                                            <span class="text-xs font-semibold text-slate-600">
+                                                @(kullanici.SonGirisTarihi.HasValue
+                                                                                            ? kullanici.SonGirisTarihi.Value.ToString("dd.MM.yyyy")
+                                                                                            : "-")
+                                        </span>
+
+                                            </td>
+
+                                            <td class="px-4 py-2.5">
+
+                                                <div class="flex items-center justify-end gap-1.5">
+
+                                                    <a asp-controller="AdminKullanici"
+                                                       asp-action="Detay"
+                                                       asp-route-id="@kullanici.KullaniciId"
+                                                       class="btn btn-primary btn-xs h-7 min-h-7 rounded-lg px-2">
+                                                        Detay
+                                                    </a>
+
+                                                    <a asp-controller="AdminKullanici"
+                                                       asp-action="Duzenle"
+                                                       asp-route-id="@kullanici.KullaniciId"
+                                                       class="btn btn-outline btn-xs h-7 min-h-7 rounded-lg px-2">
+                                                        Düzenle
+                                                    </a>
+
+                                            @if (kullanici.KullaniciId != aktifAdminId)
+                                                    {
+                                                        <button type="button"
+                                                                onclick="document.getElementById('kullaniciSilModal_@kullanici.KullaniciId').showModal()"
+                                                                class="btn btn-error btn-xs h-7 min-h-7 rounded-lg px-2 text-white">
+                                                            Sil
+                                                        </button>
+
+                                                        <dialog id="kullaniciSilModal_@kullanici.KullaniciId" class="modal">
+                                                            <div class="modal-box max-w-lg rounded-2xl bg-white text-left whitespace-normal">
+
+                                                                <form method="dialog">
+                                                                    <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                                                                        ✕
+                                                                    </button>
+                                                                </form>
+
+                                                                <h3 class="text-lg font-black text-slate-900">
+                                                                    Kullanıcı silinsin mi?
+                                                                </h3>
+
+                                                                <p class="mt-2 text-sm leading-6 text-slate-500">
+                                                                    <strong>@kullanici.AdSoyad</strong> adlı kullanıcı silinmek üzere.
+                                                                    Kullanıcıya bağlı önemli sistem kaydı varsa sistem kalıcı silme yerine kullanıcıyı pasife alacaktır.
+                                                                </p>
+
+                                                                <div class="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-left">
+                                                                    <p class="text-sm font-semibold leading-6 text-red-700">
+                                                                        Bu işlem geri alınamayabilir.
+                                                                    </p>
+                                                                </div>
+
+                                                                <div class="modal-action">
+                                                                    <form asp-controller="AdminKullanici"
+                                                                          asp-action="Sil"
+                                                                          asp-route-id="@kullanici.KullaniciId"
+                                                                          method="post"
+                                                                          class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                                                        @Html.AntiForgeryToken()
+
+                                                                        <button type="button"
+                                                                                onclick="document.getElementById('kullaniciSilModal_@kullanici.KullaniciId').close()"
+                                                                                class="btn btn-outline rounded-xl">
+                                                                            Vazgeç
+                                                                        </button>
+
+                                                                        <button type="submit"
+                                                                                class="btn btn-error rounded-xl text-white">
+                                                                            Evet, Sil
+                                                                        </button>
+                                                                    </form>
+                                                                </div>
+
+                                                            </div>
+
+                                                            <form method="dialog" class="modal-backdrop">
+                                                                <button>Kapat</button>
+                                                            </form>
+                                                        </dialog>
+                                                    }
+
+                                                </div>
+
+                                            </td>
+
+                                        </tr>
+                                    }
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            int baslangicSayfa = Math.Max(1, Model.Sayfa - 2);
+                            int bitisSayfa = Math.Min(Model.ToplamSayfa, Model.Sayfa + 2);
+
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Sayfa
+                                    <span class="font-bold text-slate-900">@Model.Sayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.ToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.OncekiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminKullanici"
+                                           asp-action="Kullanicilar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-rol="@Model.Rol"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @if (baslangicSayfa > 1)
+                                    {
+                                        <a asp-controller="AdminKullanici"
+                                           asp-action="Kullanicilar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-rol="@Model.Rol"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="1"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            1
+                                        </a>
+
+                                        @if (baslangicSayfa > 2)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+                                    }
+
+                                    @for (int i = baslangicSayfa; i <= bitisSayfa; i++)
+                                    {
+                                        if (i == Model.Sayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="AdminKullanici"
+                                               asp-action="Kullanicilar"
+                                               asp-route-arama="@AramaDegeri"
+                                               asp-route-rol="@Model.Rol"
+                                               asp-route-durum="@Model.Durum"
+                                               asp-route-sayfa="@i"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (bitisSayfa < Model.ToplamSayfa)
+                                    {
+                                        @if (bitisSayfa < Model.ToplamSayfa - 1)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+
+                                        <a asp-controller="AdminKullanici"
+                                           asp-action="Kullanicilar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-rol="@Model.Rol"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="@Model.ToplamSayfa"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            @Model.ToplamSayfa
+                                        </a>
+                                    }
+
+                                    @if (Model.SonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminKullanici"
+                                           asp-action="Kullanicilar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-rol="@Model.Rol"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <h3 class="text-base font-black text-slate-900">
+                                Kullanıcı bulunamadı
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Arama veya filtreye uygun kullanıcı bulunmuyor.
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) || Model.Rol != "tum" || Model.Durum != "tum")
+                            {
+                                <div class="mt-5 flex justify-center">
+                                    <a asp-controller="AdminKullanici"
+                                       asp-action="Kullanicilar"
+                                       class="btn btn-outline rounded-xl px-6">
+                                        Filtreleri Temizle
+                                    </a>
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>

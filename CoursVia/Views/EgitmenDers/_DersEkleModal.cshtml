@@ -1,0 +1,171 @@
+@model CoursVia.Models.Kurs
+
+<dialog id="dersEkleModal" class="modal">
+
+    <div class="modal-box max-w-lg rounded-3xl bg-white">
+
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 text-slate-500">
+                ✕
+            </button>
+        </form>
+
+        <h3 class="mb-1 text-xl font-bold text-slate-900">
+            Yeni Ders Ekle
+        </h3>
+
+        <p class="mb-6 text-sm text-slate-500">
+            <span id="modalBolumAdi" class="font-bold text-blue-600"></span>
+            adlı bölüme ders ekliyorsunuz.
+        </p>
+
+        <form asp-controller="EgitmenDers"
+              asp-action="DersEkle"
+              method="post"
+              enctype="multipart/form-data">
+
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" name="kursId" id="modalKursId" />
+            <input type="hidden" name="bolumId" id="modalBolumId" />
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text font-bold text-slate-700">
+                        Ders Adı <span class="text-red-500">*</span>
+                    </span>
+                </label>
+
+                <input type="text"
+                       name="dersAdi"
+                       class="input input-bordered rounded-xl border-slate-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                       required
+                       placeholder="Örn: C# Nedir?" />
+            </div>
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text font-bold text-slate-700">
+                        Video Kaynağı <span class="text-red-500">*</span>
+                    </span>
+                </label>
+
+                <div class="mb-2 flex gap-4">
+
+                    <label class="flex cursor-pointer items-center gap-2">
+                        <input type="radio"
+                               name="videoTipi"
+                               value="link"
+                               class="radio radio-primary radio-sm"
+                               checked
+                               onchange="toggleVideoInput('link')" />
+
+                        <span class="text-sm font-medium">
+                            İnternet Linki
+                        </span>
+                    </label>
+
+                    <label class="flex cursor-pointer items-center gap-2">
+                        <input type="radio"
+                               name="videoTipi"
+                               value="dosya"
+                               class="radio radio-primary radio-sm"
+                               onchange="toggleVideoInput('dosya')" />
+
+                        <span class="text-sm font-medium">
+                            PC'den Yükle
+                        </span>
+                    </label>
+
+                </div>
+
+                <div id="videoLinkContainer">
+                    <input type="url"
+                           id="videoUrlInput"
+                           name="videoUrl"
+                           class="input input-bordered w-full rounded-xl border-slate-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                           required
+                           placeholder="Örn: https://youtube.com/..." />
+                </div>
+
+                <div id="videoDosyaContainer" class="hidden">
+                    <input type="file"
+                           id="videoDosyasiInput"
+                           name="videoDosyasi"
+                           accept="video/mp4,video/webm"
+                           class="file-input file-input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                    <p class="mt-1 text-xs text-slate-500">
+                        İzin verilen formatlar: MP4, WebM
+                    </p>
+                </div>
+            </div>
+
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text font-bold text-slate-700">
+                        Ders Açıklaması
+                    </span>
+                </label>
+
+                <textarea name="aciklama"
+                          class="textarea textarea-bordered h-24 rounded-xl border-slate-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          placeholder="Bu derste neler öğrenilecek?"></textarea>
+            </div>
+
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text font-bold text-slate-700">
+                        Ders Materyalleri
+                    </span>
+                </label>
+
+                <p class="mb-3 text-xs text-slate-500">
+                    PDF, Word, PowerPoint, görsel, ses, video, kod dosyası veya arşiv ekleyebilirsiniz.
+                </p>
+
+                <div id="materyalListesi" class="space-y-3"></div>
+
+                <button type="button"
+                        id="materyalEkleBtn"
+                        class="btn btn-sm btn-outline btn-info mt-3 self-start rounded-xl">
+
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="h-4 w-4"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M12 4v16m8-8H4" />
+                    </svg>
+
+                    Materyal Ekle
+                </button>
+            </div>
+
+            <div class="modal-action">
+
+                <button type="button"
+                        class="btn btn-ghost rounded-xl text-slate-500"
+                        onclick="dersEkleModal.close()">
+                    İptal
+                </button>
+
+                <button type="submit"
+                        class="btn btn-primary rounded-xl px-8 shadow-sm">
+                    Dersi Kaydet
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+
+</dialog>

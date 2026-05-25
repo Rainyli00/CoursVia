@@ -1,0 +1,895 @@
+@model CoursVia.Models.Kurs
+
+@{
+    ViewData["Title"] = "Kurs İçerik Yönetimi";
+
+    bool isEditable = Model.DurumId == 3 ||
+                      Model.DurumId == 5 ||
+                      Model.DurumId == 6 ||
+                      Model.DurumId == 7;
+
+    bool aktifDersVarMi = Model.Bolumler
+        .Any(b => b.Dersler.Any(d => d.AktifMi && !d.SistemDersiMi));
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_EgitmenSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-6">
+
+                <!-- Kurs Mesajları -->
+                @if (TempData["KursHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+
+                        <span>@TempData["KursHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["KursBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+
+                        <span>@TempData["KursBasari"]</span>
+                    </div>
+                }
+
+                <!-- Kurs Üst Bilgi -->
+                <partial name="_KursIcerikHeader" model="Model" />
+
+                <!-- İçerik Alanı -->
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_350px]">
+
+                    <!-- Bölüm ve Ders Listesi -->
+                    <partial name="~/Views/EgitmenBolum/_BolumDersListesi.cshtml" model="Model" />
+
+                    <!-- Bölüm Ekle Paneli -->
+                    <partial name="~/Views/EgitmenBolum/_BolumEklePanel.cshtml" model="Model" />
+
+                </div>
+
+                <div class="flex justify-end">
+                    @if (isEditable && aktifDersVarMi)
+                    {
+                        <a asp-controller="EgitmenSinav"
+                           asp-action="SinavHazirla"
+                           asp-route-kursId="@Model.KursId"
+                           class="btn btn-primary rounded-xl px-8">
+                            Devam Et
+
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 class="h-5 w-5"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke="currentColor">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M9 5l7 7-7 7" />
+                            </svg>
+                        </a>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="btn rounded-xl px-8"
+                                disabled
+                                title="Devam etmek için önce en az bir ders eklemelisiniz.">
+                            Devam Et
+                        </button>
+                    }
+                </div>
+
+            </div>
+
+            <!-- Modallar -->
+            <partial name="~/Views/EgitmenBolum/_BolumDuzenleModal.cshtml" model="Model" />
+            <partial name="~/Views/EgitmenDers/_DersEkleModal.cshtml" model="Model" />
+            <partial name="~/Views/EgitmenDers/_DersDuzenleModal.cshtml" model="Model" />
+            <partial name="~/Views/EgitmenDers/_VideoIzleModal.cshtml" />
+
+        </main>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+        // =========================
+        // BÖLÜM AÇ / KAPAT
+        // =========================
+
+        document.querySelectorAll('.btn-bolum-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+        const targetId = this.dataset.target;
+        const target = document.getElementById(targetId);
+
+        if (!target) {
+        return;
+        }
+
+        const acikMi = !target.classList.contains('hidden');
+        target.classList.toggle('hidden', acikMi);
+        this.setAttribute('aria-expanded', (!acikMi).toString());
+
+        const chevron = this.querySelector('.bolum-chevron');
+
+        if (chevron) {
+        chevron.classList.toggle('rotate-180', !acikMi);
+        }
+        });
+        });
+
+        // =========================
+        // BÖLÜM DÜZENLE MODAL
+        // =========================
+
+        document.querySelectorAll('.btn-bolum-duzenle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+        const modal = document.getElementById('bolumDuzenleModal');
+        const bolumIdInput = document.getElementById('bolumDuzenleBolumId');
+        const bolumAdiInput = document.getElementById('bolumDuzenleBolumAdi');
+
+        if (!modal || !bolumIdInput || !bolumAdiInput) {
+        return;
+        }
+
+        bolumIdInput.value = this.dataset.bolumId || '';
+        bolumAdiInput.value = this.dataset.bolumAdi || '';
+
+        modal.showModal();
+        bolumAdiInput.focus();
+        bolumAdiInput.select();
+        });
+        });
+
+        // =========================
+        // DERS EKLE MODAL
+        // =========================
+
+        document.querySelectorAll('.btn-ders-ekle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+        const modalBolumId = document.getElementById('modalBolumId');
+        const modalKursId = document.getElementById('modalKursId');
+        const modalBolumAdi = document.getElementById('modalBolumAdi');
+        const dersEkleModal = document.getElementById('dersEkleModal');
+
+        if (!modalBolumId || !modalKursId || !modalBolumAdi || !dersEkleModal) {
+        return;
+        }
+
+        modalBolumId.value = this.dataset.bolumId;
+        modalKursId.value = this.dataset.kursId;
+        modalBolumAdi.textContent = this.dataset.bolumAdi;
+
+        dersEkleModal.showModal();
+        });
+        });
+
+        // =========================
+        // VIDEO INPUT TOGGLE
+        // =========================
+
+        window.toggleVideoInput = function (type) {
+        const videoLinkContainer = document.getElementById('videoLinkContainer');
+        const videoDosyaContainer = document.getElementById('videoDosyaContainer');
+        const videoUrlInput = document.getElementById('videoUrlInput');
+        const videoDosyasiInput = document.getElementById('videoDosyasiInput');
+
+        if (!videoLinkContainer || !videoDosyaContainer || !videoUrlInput || !videoDosyasiInput) {
+        return;
+        }
+
+        if (type === 'link') {
+        videoLinkContainer.classList.remove('hidden');
+        videoDosyaContainer.classList.add('hidden');
+
+        videoUrlInput.required = true;
+        videoDosyasiInput.required = false;
+        videoDosyasiInput.value = '';
+        }
+        else {
+        videoLinkContainer.classList.add('hidden');
+        videoDosyaContainer.classList.remove('hidden');
+
+        videoUrlInput.required = false;
+        videoDosyasiInput.required = true;
+        videoUrlInput.value = '';
+        }
+        };
+
+        // =========================
+        // VIDEO ÖNİZLEME
+        // =========================
+
+        let plyrInstance = null;
+        const materyalAccept = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,.mp3,.wav,.mp4,.webm,.zip,.rar,.cs,.js,.ts,.html,.css,.json,.xml,.sql,.java,.py,.cpp,.c,.php';
+
+        function materyalleriOku(rawValue) {
+        if (!rawValue) {
+        return [];
+        }
+
+        try {
+        return JSON.parse(rawValue);
+        }
+        catch {
+        return [];
+        }
+        }
+
+        function materyalLinkiOlustur(materyal) {
+        const link = document.createElement('a');
+        link.href = materyal.materyalUrl || '#';
+        link.target = '_blank';
+        link.className = 'flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-blue-400 hover:text-white';
+        link.textContent = materyal.baslik || 'Materyal';
+
+        return link;
+        }
+
+        document.querySelectorAll('.btn-video-izle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+        const url = this.dataset.videoUrl;
+        const title = this.dataset.dersAdi;
+        const aciklama = this.dataset.aciklama || '';
+        const materyaller = materyalleriOku(this.dataset.materyaller);
+
+        const videoModalTitle = document.getElementById('videoModalTitle');
+        const videoContainer = document.getElementById('videoContainer');
+        const videoIzleModal = document.getElementById('videoIzleModal');
+        const videoModalBilgiPanel = document.getElementById('videoModalBilgiPanel');
+        const videoModalAciklamaWrapper = document.getElementById('videoModalAciklamaWrapper');
+        const videoModalAciklama = document.getElementById('videoModalAciklama');
+        const videoModalMateryalWrapper = document.getElementById('videoModalMateryalWrapper');
+        const videoModalMateryaller = document.getElementById('videoModalMateryaller');
+
+        if (!url || !videoModalTitle || !videoContainer || !videoIzleModal) {
+        return;
+        }
+
+        videoModalTitle.textContent = title || 'Video Önizleme';
+
+        if (plyrInstance) {
+        plyrInstance.destroy();
+        plyrInstance = null;
+        }
+
+        videoContainer.innerHTML = '';
+
+        if (videoModalAciklamaWrapper && videoModalAciklama) {
+        const aciklamaVarMi = aciklama.trim().length > 0;
+        videoModalAciklamaWrapper.classList.toggle('hidden', !aciklamaVarMi);
+        videoModalAciklama.textContent = aciklama;
+        }
+
+        if (videoModalMateryalWrapper && videoModalMateryaller) {
+        videoModalMateryaller.innerHTML = '';
+        videoModalMateryalWrapper.classList.toggle('hidden', materyaller.length === 0);
+
+        materyaller.forEach(function (materyal) {
+        videoModalMateryaller.appendChild(materyalLinkiOlustur(materyal));
+        });
+        }
+
+        if (videoModalBilgiPanel) {
+        videoModalBilgiPanel.classList.toggle('hidden', aciklama.trim().length === 0 && materyaller.length === 0);
+        }
+
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        let videoId = '';
+
+        if (url.includes('v=')) {
+        videoId = url.split('v=')[1].split('&')[0];
+        }
+        else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1].split('?')[0];
+        }
+        else if (url.includes('embed/')) {
+        videoId = url.split('embed/')[1].split('?')[0];
+        }
+
+        videoContainer.innerHTML = `
+        <div id="plyr-player"
+        data-plyr-provider="youtube"
+        data-plyr-embed-id="${videoId}">
+        </div>
+        `;
+        }
+        else if (url.includes('vimeo.com')) {
+        const videoId = url.split('vimeo.com/')[1].split('?')[0];
+
+        videoContainer.innerHTML = `
+        <div id="plyr-player"
+        data-plyr-provider="vimeo"
+        data-plyr-embed-id="${videoId}">
+        </div>
+        `;
+        }
+        else {
+        const videoType = url.toLowerCase().endsWith('.webm')
+        ? 'video/webm'
+        : 'video/mp4';
+
+        videoContainer.innerHTML = `
+        <video id="plyr-player" playsinline controls>
+        <source src="${url}" type="${videoType}">
+        </video>
+        `;
+        }
+
+        videoIzleModal.showModal();
+
+        plyrInstance = new Plyr('#plyr-player', {
+        autoplay: true,
+        ratio: '16:9'
+        });
+        });
+        });
+
+        window.stopVideo = function () {
+        const videoContainer = document.getElementById('videoContainer');
+
+        if (plyrInstance) {
+        plyrInstance.destroy();
+        plyrInstance = null;
+        }
+
+        if (videoContainer) {
+        videoContainer.innerHTML = '';
+        }
+        };
+
+        // =========================
+        // MATERYAL EKLEME
+        // =========================
+
+        const materyalListesi = document.getElementById('materyalListesi');
+        const materyalEkleBtn = document.getElementById('materyalEkleBtn');
+
+        if (materyalEkleBtn && materyalListesi) {
+        materyalEkleBtn.addEventListener('click', function () {
+        const row = document.createElement('div');
+
+        row.className = 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center';
+
+        row.innerHTML = `
+        <input type="text"
+        name="materyalBasliklari"
+        placeholder="Başlık (opsiyonel)"
+        class="input input-sm input-bordered flex-1 rounded-lg border-slate-300 bg-white" />
+
+        <input type="file"
+        name="materyalDosyalari"
+        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,.mp3,.wav,.mp4,.webm,.zip,.rar,.cs,.js,.ts,.html,.css,.json,.xml,.sql,.java,.py,.cpp,.c,.php"
+        class="file-input file-input-sm file-input-bordered flex-1 rounded-lg border-slate-300 bg-white"
+        required />
+
+        <button type="button"
+        class="btn btn-sm btn-ghost btn-square rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 materyal-sil-btn">
+        <svg xmlns="http://www.w3.org/2000/svg"
+        class="h-4 w-4"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor">
+        <path stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        </button>
+        `;
+
+        materyalListesi.appendChild(row);
+        });
+
+        materyalListesi.addEventListener('click', function (e) {
+        const btn = e.target.closest('.materyal-sil-btn');
+
+        if (btn) {
+        btn.closest('div').remove();
+        }
+        });
+        }
+
+        // =========================
+        // DERS DÜZENLE MODAL
+        // =========================
+
+        window.toggleDersDuzenleVideoInput = function (type) {
+        const linkContainer = document.getElementById('duzenleVideoLinkContainer');
+        const dosyaContainer = document.getElementById('duzenleVideoDosyaContainer');
+        const linkInput = document.getElementById('duzenleVideoUrl');
+        const dosyaInput = document.getElementById('duzenleVideoDosyasi');
+
+        if (!linkContainer || !dosyaContainer || !linkInput || !dosyaInput) {
+        return;
+        }
+
+        linkContainer.classList.toggle('hidden', type !== 'link');
+        dosyaContainer.classList.toggle('hidden', type !== 'dosya');
+        linkInput.required = type === 'link';
+        dosyaInput.required = type === 'dosya';
+
+        if (type !== 'link') {
+        linkInput.value = '';
+        }
+
+        if (type !== 'dosya') {
+        dosyaInput.value = '';
+        }
+        };
+
+        function mevcutMateryalSatiriOlustur(materyal) {
+        const row = document.createElement('div');
+        row.className = 'grid gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center';
+
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'MevcutMateryalIdleri';
+        idInput.value = materyal.materyalId;
+
+        const baslikInput = document.createElement('input');
+        baslikInput.type = 'text';
+        baslikInput.name = 'MevcutMateryalBasliklari';
+        baslikInput.value = materyal.baslik || '';
+        baslikInput.className = 'input input-sm input-bordered rounded-lg border-slate-300 bg-white';
+
+        const actions = document.createElement('div');
+        actions.className = 'flex items-center gap-2';
+
+        const link = document.createElement('a');
+        link.href = materyal.materyalUrl || '#';
+        link.target = '_blank';
+        link.className = 'btn btn-sm btn-outline rounded-lg';
+        link.textContent = 'Aç';
+
+        const silLabel = document.createElement('label');
+        silLabel.className = 'flex cursor-pointer items-center gap-2 text-sm font-semibold text-red-500';
+
+        const silInput = document.createElement('input');
+        silInput.type = 'checkbox';
+        silInput.name = 'SilinecekMateryalIdleri';
+        silInput.value = materyal.materyalId;
+        silInput.className = 'checkbox checkbox-error checkbox-sm';
+
+        silInput.addEventListener('change', function () {
+        row.classList.toggle('opacity-50', this.checked);
+        baslikInput.readOnly = this.checked;
+        });
+
+        silLabel.appendChild(silInput);
+        silLabel.append(' Sil');
+
+        row.appendChild(idInput);
+        row.appendChild(baslikInput);
+        actions.appendChild(link);
+        actions.appendChild(silLabel);
+        row.appendChild(actions);
+
+        return row;
+        }
+
+        function yeniMateryalSatiriOlustur() {
+        const row = document.createElement('div');
+        row.className = 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center';
+
+        row.innerHTML = `
+        <input type="text"
+        name="MateryalBasliklari"
+        placeholder="Başlık (opsiyonel)"
+        class="input input-sm input-bordered flex-1 rounded-lg border-slate-300 bg-white" />
+
+        <input type="file"
+        name="MateryalDosyalari"
+        accept="${materyalAccept}"
+        class="file-input file-input-sm file-input-bordered flex-1 rounded-lg border-slate-300 bg-white"
+        required />
+
+        <button type="button"
+        class="btn btn-sm btn-ghost btn-square rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 materyal-sil-btn">
+        <svg xmlns="http://www.w3.org/2000/svg"
+        class="h-4 w-4"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor">
+        <path stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        </button>
+        `;
+
+        return row;
+        }
+
+        document.querySelectorAll('.btn-ders-duzenle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+        const modal = document.getElementById('dersDuzenleModal');
+        const mevcutMateryalListesi = document.getElementById('duzenleMevcutMateryalListesi');
+        const yeniMateryalListesi = document.getElementById('duzenleYeniMateryalListesi');
+
+        if (!modal || !mevcutMateryalListesi || !yeniMateryalListesi) {
+        return;
+        }
+
+        document.getElementById('duzenleDersId').value = this.dataset.dersId || '';
+        document.getElementById('duzenleKursId').value = this.dataset.kursId || '';
+        document.getElementById('duzenleBolumId').value = this.dataset.bolumId || '';
+        document.getElementById('duzenleDersAdi').value = this.dataset.dersAdi || '';
+        document.getElementById('duzenleAciklama').value = this.dataset.aciklama || '';
+        document.getElementById('duzenleMevcutVideoUrl').value = this.dataset.videoUrl || '';
+        document.getElementById('duzenleMevcutVideoText').textContent = this.dataset.videoUrl || '';
+
+        const mevcutRadio = modal.querySelector('input[name="VideoTipi"][value="mevcut"]');
+
+        if (mevcutRadio) {
+        mevcutRadio.checked = true;
+        }
+
+        toggleDersDuzenleVideoInput('mevcut');
+
+        mevcutMateryalListesi.innerHTML = '';
+        yeniMateryalListesi.innerHTML = '';
+
+        const materyaller = materyalleriOku(this.dataset.materyaller);
+
+        if (materyaller.length === 0) {
+        const bosMesaj = document.createElement('p');
+        bosMesaj.className = 'rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-400';
+        bosMesaj.textContent = 'Bu derste materyal yok.';
+        mevcutMateryalListesi.appendChild(bosMesaj);
+        }
+        else {
+        materyaller.forEach(function (materyal) {
+        mevcutMateryalListesi.appendChild(mevcutMateryalSatiriOlustur(materyal));
+        });
+        }
+
+        modal.showModal();
+        });
+        });
+
+        const duzenleMateryalEkleBtn = document.getElementById('duzenleMateryalEkleBtn');
+        const duzenleYeniMateryalListesi = document.getElementById('duzenleYeniMateryalListesi');
+
+        if (duzenleMateryalEkleBtn && duzenleYeniMateryalListesi) {
+        duzenleMateryalEkleBtn.addEventListener('click', function () {
+        duzenleYeniMateryalListesi.appendChild(yeniMateryalSatiriOlustur());
+        });
+
+        duzenleYeniMateryalListesi.addEventListener('click', function (e) {
+        const btn = e.target.closest('.materyal-sil-btn');
+
+        if (btn) {
+        btn.closest('div').remove();
+        }
+        });
+        }
+
+        // =========================
+        // MATERYAL TOGGLE
+        // =========================
+
+        document.querySelectorAll('.btn-toggle-materyal').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+        const targetId = this.dataset.target;
+        const target = document.getElementById(targetId);
+
+        if (!target) {
+        return;
+        }
+
+        target.classList.toggle('hidden');
+
+        const svg = this.querySelector('svg');
+
+        if (svg) {
+        svg.style.transform = target.classList.contains('hidden')
+        ? ''
+        : 'rotate(180deg)';
+        }
+        });
+        });
+
+        // =========================
+        // BÖLÜM SİLME ONAYI
+        // =========================
+
+        document.querySelectorAll('.form-bolum-sil').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        Swal.fire({
+        title: 'Emin misiniz?',
+        text: 'Bu bölüm kalıcı olarak silinecek. İçerisinde ders olan bölümler silinemez.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Evet, sil',
+        cancelButtonText: 'İptal',
+        customClass: {
+        popup: 'rounded-3xl',
+        confirmButton: 'btn btn-error text-white rounded-xl px-6',
+        cancelButton: 'btn btn-ghost rounded-xl px-6'
+        },
+        buttonsStyling: false
+        }).then(function (result) {
+        if (result.isConfirmed) {
+        form.submit();
+        }
+        });
+        });
+        });
+
+
+
+
+        // =========================
+        // DERS SİLME ONAYI
+        // =========================
+
+        document.querySelectorAll('.form-ders-sil').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        Swal.fire({
+        title: 'Dersi silmek istiyor musunuz?',
+        text: 'Ders öğrenciler tarafından kullanıldıysa pasife alınır. Kullanılmadıysa videosu ve materyalleriyle birlikte silinir. Derse bağlı sorular varsa Diğer dersine aktarılır.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Evet, sil',
+        cancelButtonText: 'İptal',
+        customClass: {
+        popup: 'rounded-3xl',
+        confirmButton: 'btn btn-error text-white rounded-xl px-6',
+        cancelButton: 'btn btn-ghost rounded-xl px-6'
+        },
+        buttonsStyling: false
+        }).then(function (result) {
+        if (result.isConfirmed) {
+        form.submit();
+        }
+        });
+        });
+        });
+
+        // =========================
+        // BÖLÜM SIRALAMA
+        // =========================
+
+        const sortableContainer = document.getElementById('sortable-bolumler');
+        const isEditable = @isEditable.ToString().ToLower();
+
+        if (sortableContainer && isEditable) {
+        Sortable.create(sortableContainer, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'opacity-50',
+
+        onEnd: function () {
+        const bolumIds = [];
+
+        document.querySelectorAll('#sortable-bolumler > div').forEach(function (item) {
+        const id = parseInt(item.getAttribute('data-id'));
+
+        if (!Number.isNaN(id)) {
+        bolumIds.push(id);
+        }
+        });
+
+        let sira = 1;
+
+        document.querySelectorAll('.bolum-sira').forEach(function (item) {
+        item.textContent = 'Bölüm ' + (sira++) + ':';
+        });
+
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+
+        fetch('@Url.Action("BolumSiralaAjax", "EgitmenBolum")', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': tokenInput ? tokenInput.value : ''
+        },
+        body: JSON.stringify(bolumIds)
+        })
+        .then(function (response) {
+        return response.json();
+        })
+        .then(function (data) {
+        if (!data.success) {
+        Swal.fire({
+        title: 'Hata',
+        text: data.message || 'Bölüm sıralaması kaydedilirken bir hata oluştu.',
+        icon: 'error',
+        confirmButtonText: 'Tamam',
+        customClass: {
+        popup: 'rounded-3xl',
+        confirmButton: 'btn btn-error text-white rounded-xl px-6'
+        },
+        buttonsStyling: false
+        }).then(function () {
+        location.reload();
+        });
+        }
+        })
+        .catch(function () {
+        Swal.fire({
+        title: 'Hata',
+        text: 'Bölüm sıralaması kaydedilirken iletişim hatası oluştu.',
+        icon: 'error',
+        confirmButtonText: 'Tamam',
+        customClass: {
+        popup: 'rounded-3xl',
+        confirmButton: 'btn btn-error text-white rounded-xl px-6'
+        },
+        buttonsStyling: false
+        }).then(function () {
+        location.reload();
+        });
+        });
+        }
+        });
+        }
+
+        // =========================
+        // DERS SIRALAMA / DERSİ BÖLÜMLER ARASI TAŞIMA
+        // =========================
+
+        function dersSiralariniEkrandaGuncelle() {
+        let sira = 1;
+
+        document.querySelectorAll('.sortable-dersler').forEach(function (liste) {
+        liste.querySelectorAll('li[data-ders-id]').forEach(function (dersItem) {
+        const siraSpan = dersItem.querySelector('.ders-sira');
+
+        if (siraSpan) {
+        siraSpan.textContent = sira + '.';
+        }
+
+        sira++;
+        });
+        });
+        }
+
+        function bolumDersSayilariniGuncelle() {
+        document.querySelectorAll('.sortable-dersler').forEach(function (liste) {
+        const bolumKart = liste.closest('[data-id]');
+        const sayac = bolumKart ? bolumKart.querySelector('.bolum-ders-sayisi') : null;
+
+        if (!sayac) {
+        return;
+        }
+
+        const dersSayisi = liste.querySelectorAll('li[data-ders-id]').length;
+        sayac.textContent = dersSayisi + ' ders';
+        });
+        }
+
+        function dersSiralamayiKaydet() {
+        const dersler = [];
+
+        document.querySelectorAll('.sortable-dersler').forEach(function (liste) {
+        const bolumId = parseInt(liste.dataset.bolumId);
+
+        if (Number.isNaN(bolumId)) {
+        return;
+        }
+
+        liste.querySelectorAll('li[data-ders-id]').forEach(function (dersItem) {
+        const dersId = parseInt(dersItem.dataset.dersId);
+
+        if (!Number.isNaN(dersId)) {
+        dersler.push({
+        dersId: dersId,
+        bolumId: bolumId
+        });
+        }
+        });
+        });
+
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+
+        fetch('@Url.Action("DersSiralaAjax", "EgitmenDers")', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': tokenInput ? tokenInput.value : ''
+        },
+        body: JSON.stringify(dersler)
+        })
+        .then(function (response) {
+        return response.json();
+        })
+        .then(function (data) {
+        if (!data.success) {
+        Swal.fire({
+        title: 'Hata',
+        text: data.message || 'Ders sıralaması kaydedilirken bir hata oluştu.',
+        icon: 'error',
+        confirmButtonText: 'Tamam',
+        customClass: {
+        popup: 'rounded-3xl',
+        confirmButton: 'btn btn-error text-white rounded-xl px-6'
+        },
+        buttonsStyling: false
+        }).then(function () {
+        location.reload();
+        });
+        }
+        })
+        .catch(function () {
+        Swal.fire({
+        title: 'Hata',
+        text: 'Ders sıralaması kaydedilirken iletişim hatası oluştu.',
+        icon: 'error',
+        confirmButtonText: 'Tamam',
+        customClass: {
+        popup: 'rounded-3xl',
+        confirmButton: 'btn btn-error text-white rounded-xl px-6'
+        },
+        buttonsStyling: false
+        }).then(function () {
+        location.reload();
+        });
+        });
+        }
+
+        if (isEditable) {
+        document.querySelectorAll('.sortable-dersler').forEach(function (liste) {
+             Sortable.create(liste, {
+            group: 'dersler',
+            handle: '.ders-drag-handle',
+            draggable: 'li[data-ders-id]',
+            animation: 150,
+            ghostClass: 'opacity-50',
+            emptyInsertThreshold: 12,
+
+            onEnd: function () {
+                document.querySelectorAll('.sortable-dersler').forEach(function (liste) {
+                    const placeholder = liste.querySelector('.ders-empty-placeholder');
+                    const dersSayisi = liste.querySelectorAll('li[data-ders-id]').length;
+
+                    if (placeholder) {
+                        placeholder.classList.toggle('hidden', dersSayisi > 0);
+                    }
+                });
+
+                bolumDersSayilariniGuncelle();
+                dersSiralariniEkrandaGuncelle();
+                dersSiralamayiKaydet();
+            }
+        });
+        });
+        }
+        });
+    </script>
+}

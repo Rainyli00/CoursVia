@@ -1,0 +1,475 @@
+﻿@model CoursVia.ViewModels.Admin.AdminLogViewModel
+
+@{
+    ViewData["Title"] = "Admin Logları";
+
+    string? AramaDegeri = Model.Arama;
+    string? BaslangicDegeri = Model.BaslangicTarihi?.ToString("yyyy-MM-dd");
+    string? BitisDegeri = Model.BitisTarihi?.ToString("yyyy-MM-dd");
+
+    string IslemBadgeClass(string islemTipi)
+    {
+        string lower = islemTipi.ToLower();
+
+        if (lower.Contains("sistem"))
+        {
+            return "bg-slate-100 text-slate-700";
+        }
+
+        if (lower.Contains("kullan"))
+        {
+            return "bg-blue-50 text-blue-700";
+        }
+
+        if (lower.Contains("eğitmen") || lower.Contains("egitmen"))
+        {
+            return "bg-violet-50 text-violet-700";
+        }
+
+        if (lower.Contains("kurs onay"))
+        {
+            return "bg-emerald-50 text-emerald-700";
+        }
+
+        if (lower.Contains("kurs"))
+        {
+            return "bg-indigo-50 text-indigo-700";
+        }
+
+        if (lower.Contains("yorum"))
+        {
+            return "bg-amber-50 text-amber-700";
+        }
+
+        if (lower.Contains("kategori"))
+        {
+            return "bg-cyan-50 text-cyan-700";
+        }
+
+        if (lower.Contains("sil"))
+        {
+            return "bg-red-50 text-red-700";
+        }
+
+        if (lower.Contains("pasif") || lower.Contains("red") || lower.Contains("redd"))
+        {
+            return "bg-amber-50 text-amber-700";
+        }
+
+        if (lower.Contains("onay") || lower.Contains("yayın"))
+        {
+            return "bg-emerald-50 text-emerald-700";
+        }
+
+        return "bg-slate-100 text-slate-600";
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_AdminSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+                        <div>
+                            <h1 class="text-2xl font-black tracking-tight text-slate-900">
+                                Admin Logları
+                            </h1>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Admin panelinde yapılan işlemleri ve işlem IP kayıtlarını görüntüleyin.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 text-xs font-bold">
+
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                                Toplam: @Model.ToplamLogSayisi
+                            </span>
+
+                            <span class="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+                                Bugün: @Model.BugunkuLogSayisi
+                            </span>
+
+                            <span class="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                                Listelenen: @Model.ToplamKayit
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- Filtre -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+
+                    <form asp-controller="AdminLog"
+                          asp-action="Loglar"
+                          method="get"
+                          class="overflow-x-auto">
+
+                        <input type="hidden" name="sayfa" value="1" />
+
+                        <div class="flex min-w-[1080px] items-center gap-2">
+
+                            <input type="text"
+                                   name="arama"
+                                   value="@Model.Arama"
+                                   placeholder="Admin, işlem, açıklama veya IP ara"
+                                   class="input input-bordered h-10 min-w-0 flex-1 rounded-xl border-slate-300 bg-white" />
+
+                            <select name="kategori"
+                                    class="select select-bordered h-10 w-[210px] rounded-xl border-slate-300 bg-white">
+
+                                <option value="tum" selected='@(Model.Kategori == "tum")'>Tümü</option>
+                                <option value="kullanici" selected='@(Model.Kategori == "kullanici")'>Kullanıcı İşlemleri</option>
+                                <option value="egitmen-basvuru" selected='@(Model.Kategori == "egitmen-basvuru")'>Eğitmen Başvuruları</option>
+                                <option value="kurs-onay" selected='@(Model.Kategori == "kurs-onay")'>Kurs Onayları</option>
+                                <option value="kurs" selected='@(Model.Kategori == "kurs")'>Kurs İşlemleri</option>
+                                <option value="yorum" selected='@(Model.Kategori == "yorum")'>Yorum İşlemleri</option>
+                                <option value="kategori" selected='@(Model.Kategori == "kategori")'>Kategori İşlemleri</option>
+                                <option value="sistem" selected='@(Model.Kategori == "sistem")'>Sistem / Kullanıcı</option>
+
+                            </select>
+
+                            <select name="siralama"
+                                    class="select select-bordered h-10 w-[160px] rounded-xl border-slate-300 bg-white">
+
+                                @if (Model.Siralama == "yeni")
+                                {
+                                    <option value="yeni" selected>Yeni → Eski</option>
+                                }
+                                else
+                                {
+                                    <option value="yeni">Yeni → Eski</option>
+                                }
+
+                                @if (Model.Siralama == "eski")
+                                {
+                                    <option value="eski" selected>Eski → Yeni</option>
+                                }
+                                else
+                                {
+                                    <option value="eski">Eski → Yeni</option>
+                                }
+
+                            </select>
+
+                            <input type="date"
+                                   name="baslangicTarihi"
+                                   value="@BaslangicDegeri"
+                                   class="input input-bordered h-10 w-[145px] rounded-xl border-slate-300 bg-white" />
+
+                            <input type="date"
+                                   name="bitisTarihi"
+                                   value="@BitisDegeri"
+                                   class="input input-bordered h-10 w-[145px] rounded-xl border-slate-300 bg-white" />
+
+                            <div class="flex shrink-0 gap-2">
+
+                                <button type="submit"
+                                        class="btn btn-primary btn-sm h-10 rounded-xl px-5">
+                                    Filtrele
+                                </button>
+
+                                @if (!string.IsNullOrWhiteSpace(Model.Arama) ||
+                                                                Model.Kategori != "tum" ||
+                                                                Model.Siralama != "yeni" ||
+                                                                Model.BaslangicTarihi.HasValue ||
+                                                                Model.BitisTarihi.HasValue)
+                                {
+                                    <a asp-controller="AdminLog"
+                                       asp-action="Loglar"
+                                       class="btn btn-outline btn-sm h-10 rounded-xl px-4">
+                                        Temizle
+                                    </a>
+                                }
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- Liste -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    @if (Model.Loglar.Any())
+                    {
+                        <div class="overflow-x-auto">
+
+                            <table class="table w-full">
+
+                                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                    <tr>
+                                        <th class="px-5 py-3">
+                                            İşlem
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Admin
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            IP Adresi
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Açıklama
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Tarih
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-100">
+
+                                    @foreach (var log in Model.Loglar)
+                                    {
+                                        <tr class="hover:bg-slate-50">
+
+                                            <td class="min-w-[200px] px-5 py-4">
+                                                <span class="rounded-full px-2.5 py-1 text-xs font-bold @IslemBadgeClass(log.IslemTipiAdi)">
+                                                    @log.IslemTipiAdi
+                                                </span>
+                                            </td>
+
+                                            <td class="min-w-[180px] px-5 py-4">
+                                                <p class="text-sm font-black text-slate-900">
+                                                    @log.AdminAdSoyad
+                                                </p>
+
+                                                <p class="mt-0.5 text-xs font-semibold text-slate-400">
+                                                    @log.AdminEposta
+                                                </p>
+                                            </td>
+
+                                            <td class="min-w-[140px] px-5 py-4">
+                                                @if (!string.IsNullOrWhiteSpace(log.IpAdresi))
+                                                {
+                                                    <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-600">
+                                                        @log.IpAdresi
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="inline-flex rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-400">
+                                                        -
+                                                    </span>
+                                                }
+                                            </td>
+
+                                            <td class="min-w-[360px] px-5 py-4">
+                                                <p class="line-clamp-3 text-sm font-semibold leading-6 text-slate-700">
+                                                    @(string.IsNullOrWhiteSpace(log.Aciklama) ? "-" : log.Aciklama)
+                                                </p>
+                                            </td>
+
+                                            <td class="min-w-[150px] px-5 py-4">
+                                                <p class="text-sm font-bold text-slate-700">
+                                                    @log.IslemTarihi.ToString("dd.MM.yyyy")
+                                                </p>
+
+                                                <p class="mt-0.5 text-xs font-semibold text-slate-400">
+                                                    @log.IslemTarihi.ToString("HH:mm")
+                                                </p>
+                                            </td>
+
+                                        </tr>
+                                    }
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            int baslangicSayfa = Math.Max(1, Model.Sayfa - 2);
+                            int bitisSayfa = Math.Min(Model.ToplamSayfa, Model.Sayfa + 2);
+
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Sayfa
+                                    <span class="font-bold text-slate-900">@Model.Sayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.ToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.OncekiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminLog"
+                                           asp-action="Loglar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-kategori="@Model.Kategori"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-baslangicTarihi="@BaslangicDegeri"
+                                           asp-route-bitisTarihi="@BitisDegeri"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @if (baslangicSayfa > 1)
+                                    {
+                                        <a asp-controller="AdminLog"
+                                           asp-action="Loglar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-kategori="@Model.Kategori"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-baslangicTarihi="@BaslangicDegeri"
+                                           asp-route-bitisTarihi="@BitisDegeri"
+                                           asp-route-sayfa="1"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            1
+                                        </a>
+
+                                        @if (baslangicSayfa > 2)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+                                    }
+
+                                    @for (int i = baslangicSayfa; i <= bitisSayfa; i++)
+                                    {
+                                        if (i == Model.Sayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="AdminLog"
+                                               asp-action="Loglar"
+                                               asp-route-arama="@AramaDegeri"
+                                               asp-route-kategori="@Model.Kategori"
+                                               asp-route-siralama="@Model.Siralama"
+                                               asp-route-baslangicTarihi="@BaslangicDegeri"
+                                               asp-route-bitisTarihi="@BitisDegeri"
+                                               asp-route-sayfa="@i"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (bitisSayfa < Model.ToplamSayfa)
+                                    {
+                                        @if (bitisSayfa < Model.ToplamSayfa - 1)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+
+                                        <a asp-controller="AdminLog"
+                                           asp-action="Loglar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-kategori="@Model.Kategori"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-baslangicTarihi="@BaslangicDegeri"
+                                           asp-route-bitisTarihi="@BitisDegeri"
+                                           asp-route-sayfa="@Model.ToplamSayfa"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            @Model.ToplamSayfa
+                                        </a>
+                                    }
+
+                                    @if (Model.SonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminLog"
+                                           asp-action="Loglar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-kategori="@Model.Kategori"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-baslangicTarihi="@BaslangicDegeri"
+                                           asp-route-bitisTarihi="@BitisDegeri"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <h3 class="text-base font-black text-slate-900">
+                                Log kaydı bulunamadı
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Arama veya filtreye uygun admin log kaydı bulunmuyor.
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) ||
+                                                    Model.Kategori != "tum" ||
+                                                    Model.Siralama != "yeni" ||
+                                                    Model.BaslangicTarihi.HasValue ||
+                                                    Model.BitisTarihi.HasValue)
+                            {
+                                <div class="mt-5 flex justify-center">
+                                    <a asp-controller="AdminLog"
+                                       asp-action="Loglar"
+                                       class="btn btn-outline rounded-xl px-6">
+                                        Filtreleri Temizle
+                                    </a>
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </section>  
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+

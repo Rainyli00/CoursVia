@@ -1,0 +1,791 @@
+@using System.Security.Claims
+@model CoursVia.ViewModels.Admin.KullaniciDetayViewModel
+
+@{
+    ViewData["Title"] = "Kullanıcı Detayı";
+
+    int aktifAdminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
+    bool kendiHesabiMi = aktifAdminId == Model.KullaniciId;
+
+    string DurumBadgeClass(int durumId)
+    {
+        return durumId switch
+        {
+            1 => "border-emerald-100 bg-emerald-50 text-emerald-700",
+            2 => "border-red-100 bg-red-50 text-red-700",
+            4 => "border-amber-100 bg-amber-50 text-amber-700",
+            5 => "border-emerald-100 bg-emerald-50 text-emerald-700",
+            6 => "border-red-100 bg-red-50 text-red-700",
+            _ => "border-slate-200 bg-slate-50 text-slate-600"
+        };
+    }
+
+    string RolBadgeClass(string rolAdi)
+    {
+        return rolAdi switch
+        {
+            "Admin" => "bg-slate-900 text-white",
+            "Eğitmen" => "bg-blue-50 text-blue-700",
+            "Öğrenci" => "bg-emerald-50 text-emerald-700",
+            _ => "bg-slate-100 text-slate-600"
+        };
+    }
+
+    string KursKayitBadgeClass(string kayitDurumu)
+    {
+        return kayitDurumu switch
+        {
+            "Aktif" => "border-emerald-100 bg-emerald-50 text-emerald-700",
+            "Tamamlandı" => "border-blue-100 bg-blue-50 text-blue-700",
+            "Pasif" => "border-red-100 bg-red-50 text-red-700",
+            _ => "border-slate-200 bg-slate-50 text-slate-600"
+        };
+    }
+
+    string SinavDurumClass(string? durum, bool? gectiMi)
+    {
+        if (gectiMi == true)
+            return "border-emerald-100 bg-emerald-50 text-emerald-700";
+
+        if (gectiMi == false)
+            return "border-red-100 bg-red-50 text-red-700";
+
+        if (durum == "Devam ediyor")
+            return "border-blue-100 bg-blue-50 text-blue-700";
+
+        if (durum == "Sınav yok")
+            return "border-slate-200 bg-slate-50 text-slate-500";
+
+        return "border-slate-200 bg-slate-50 text-slate-600";
+    }
+
+    string IlerlemeBarClass(int yuzde)
+    {
+        if (yuzde >= 80)
+            return "bg-emerald-500";
+
+        if (yuzde >= 40)
+            return "bg-blue-500";
+
+        return "bg-amber-500";
+    }
+
+    string IlerlemeTextClass(int yuzde)
+    {
+        if (yuzde >= 80)
+            return "text-emerald-700";
+
+        if (yuzde >= 40)
+            return "text-blue-700";
+
+        return "text-amber-700";
+    }
+
+    string BosMetin(string? metin)
+    {
+        return string.IsNullOrWhiteSpace(metin)
+            ? "-"
+            : metin;
+    }
+
+    string TarihYaz(DateTime tarih)
+    {
+        return tarih.ToString("dd.MM.yyyy HH:mm");
+    }
+
+    string NullableTarihYaz(DateTime? tarih)
+    {
+        return tarih.HasValue
+            ? tarih.Value.ToString("dd.MM.yyyy HH:mm")
+            : "-";
+    }
+
+    string KursBasHarf(string kursAdi)
+    {
+        return string.IsNullOrWhiteSpace(kursAdi)
+            ? "?"
+            : kursAdi.Trim().Substring(0, 1).ToUpper();
+    }
+
+    string basHarf = string.IsNullOrWhiteSpace(Model.AdSoyad)
+        ? "?"
+        : Model.AdSoyad.Trim().Substring(0, 1).ToUpper();
+
+    int aktifKayitSayisi = Model.KayitliKurslar.Count(x => x.AktifMi);
+    int pasifKayitSayisi = Model.KayitliKurslar.Count(x => !x.AktifMi);
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_AdminSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                @if (TempData["AdminHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["AdminBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["AdminBasari"]</span>
+                    </div>
+                }
+
+                <!-- Üst Alan -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                    <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+
+                        <div class="flex min-w-0 items-center gap-4">
+
+                            @if (!string.IsNullOrWhiteSpace(Model.ProfilFotoUrl))
+                            {
+                                <img src="@Model.ProfilFotoUrl"
+                                     alt="@Model.AdSoyad"
+                                     class="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200" />
+                            }
+                            else
+                            {
+                                <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-2xl font-black text-slate-500 ring-1 ring-slate-200">
+                                    @basHarf
+                                </div>
+                            }
+
+                            <div class="min-w-0">
+
+                                @if (kendiHesabiMi)
+                                {
+                                    <div class="mb-2">
+                                        <span class="inline-flex rounded-full bg-slate-800 px-2.5 py-1 text-xs font-bold text-white">
+                                            Kendi Hesabınız
+                                        </span>
+                                    </div>
+                                }
+
+                                <h1 class="truncate text-2xl font-black text-slate-900">
+                                    @Model.AdSoyad
+                                </h1>
+
+                                <p class="mt-1 truncate text-sm font-semibold text-slate-500">
+                                    @Model.Eposta
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <section class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+
+                    <!-- Sol İçerik -->
+                    <div class="space-y-5">
+
+                        <!-- Kullanıcı Bilgileri -->
+                        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                            <div class="border-b border-slate-100 px-5 py-4">
+                                <h2 class="text-base font-black text-slate-900">
+                                    Kullanıcı Bilgileri
+                                </h2>
+                            </div>
+
+                            <div class="divide-y divide-slate-100">
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Ad
+                                    </p>
+
+                                    <p class="text-sm font-semibold text-slate-800">
+                                        @Model.Ad
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Soyad
+                                    </p>
+
+                                    <p class="text-sm font-semibold text-slate-800">
+                                        @Model.Soyad
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        E-posta
+                                    </p>
+
+                                    <p class="break-all text-sm font-semibold text-slate-800">
+                                        @Model.Eposta
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Telefon
+                                    </p>
+
+                                    <p class="text-sm font-semibold text-slate-800">
+                                        @BosMetin(Model.Telefon)
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Durum
+                                    </p>
+
+                                    <div>
+                                        <span class="rounded-full border px-2.5 py-1 text-xs font-bold @DurumBadgeClass(Model.DurumId)">
+                                            @Model.DurumAdi
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Online Durumu
+                                    </p>
+
+                                    <div>
+                                        @if (Model.OnlineMi)
+                                        {
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                                                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                                Online
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-500">
+                                                <span class="h-2 w-2 rounded-full bg-slate-300"></span>
+                                                Çevrimdışı
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Roller
+                                    </p>
+
+                                    <div class="flex flex-wrap gap-1.5">
+
+                                        @if (Model.Roller.Any())
+                                        {
+                                            @foreach (var rol in Model.Roller)
+                                            {
+                                                <span class="rounded-full px-2.5 py-1 text-xs font-bold @RolBadgeClass(rol)">
+                                                    @rol
+                                                </span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-sm font-semibold text-slate-500">
+                                                Rol yok
+                                            </span>
+                                        }
+
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Kayıt Tarihi
+                                    </p>
+
+                                    <p class="text-sm font-semibold text-slate-800">
+                                        @TarihYaz(Model.KayitTarihi)
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Son IP Adresi
+                                    </p>
+
+                                    @if (!string.IsNullOrWhiteSpace(Model.SonIpAdresi))
+                                    {
+                                        <div>
+                                            <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                                                @Model.SonIpAdresi
+                                            </span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-sm font-semibold text-slate-400">
+                                            IP kaydı yok
+                                        </p>
+                                    }
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                    <p class="text-sm font-bold text-slate-400">
+                                        Son Giriş
+                                    </p>
+
+                                    <p class="text-sm font-semibold text-slate-800">
+                                        @NullableTarihYaz(Model.SonGirisTarihi)
+                                    </p>
+                                </div>
+
+                            </div>
+
+                        </section>
+
+                        <!-- Eğitmen Bilgileri -->
+                        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                            <div class="border-b border-slate-100 px-5 py-4">
+                                <h2 class="text-base font-black text-slate-900">
+                                    Eğitmen Bilgileri
+                                </h2>
+                            </div>
+
+                            @if (Model.EgitmenDetay == null)
+                            {
+                                <div class="px-5 py-5">
+                                    <p class="text-sm font-semibold text-slate-500">
+                                        Bu kullanıcıya ait eğitmen profili bulunmuyor.
+                                    </p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="divide-y divide-slate-100">
+
+                                    <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                        <p class="text-sm font-bold text-slate-400">
+                                            Uzmanlık Alanı
+                                        </p>
+
+                                        <p class="text-sm font-semibold text-slate-800">
+                                            @BosMetin(Model.EgitmenDetay.UzmanlikAlani)
+                                        </p>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                        <p class="text-sm font-bold text-slate-400">
+                                            Deneyim
+                                        </p>
+
+                                        <p class="text-sm font-semibold text-slate-800">
+                                            @(Model.EgitmenDetay.DeneyimYili.HasValue
+                                                                                    ? $"{Model.EgitmenDetay.DeneyimYili.Value} yıl"
+                                                                                    : "-")
+                                    </p>
+                                </div>
+
+                                    <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                        <p class="text-sm font-bold text-slate-400">
+                                            Website
+                                        </p>
+
+                                    @if (!string.IsNullOrWhiteSpace(Model.EgitmenDetay.WebsiteUrl))
+                                        {
+                                            <a href="@Model.EgitmenDetay.WebsiteUrl"
+                                               target="_blank"
+                                               class="break-all text-sm font-semibold text-blue-700 hover:underline">
+                                                @Model.EgitmenDetay.WebsiteUrl
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-sm font-semibold text-slate-800">
+                                                -
+                                            </p>
+                                        }
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                        <p class="text-sm font-bold text-slate-400">
+                                            Branşlar
+                                        </p>
+
+                                        <div class="flex flex-wrap gap-1.5">
+
+                                            @if (Model.EgitmenDetay.Branslar.Any())
+                                            {
+                                                @foreach (var brans in Model.EgitmenDetay.Branslar)
+                                                {
+                                                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                                                        @brans
+                                                    </span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="text-sm font-semibold text-slate-500">
+                                                    Branş seçilmemiş.
+                                                </span>
+                                            }
+
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-1 px-5 py-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                        <p class="text-sm font-bold text-slate-400">
+                                            Biyografi
+                                        </p>
+
+                                        <p class="whitespace-pre-line text-sm leading-7 text-slate-900">
+                                            @BosMetin(Model.EgitmenDetay.Biyografi)
+                                        </p>
+                                    </div>
+
+                                </div>
+                            }
+
+                        </section>
+
+                        @if (Model.KursIliskisiVar)
+                        {
+                            <!-- Kurs Baglantilari -->
+                            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                                @if (Model.KayitliKurslar.Any())
+                                {
+                                    <div class="border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <h3 class="text-sm font-black text-slate-800">
+                                                Kayıtlı Kurslar
+                                            </h3>
+
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                                                    @Model.KayitliKurslar.Count kurs
+                                                </span>
+
+                                                <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                                                    @aktifKayitSayisi aktif
+                                                </span>
+
+                                                @if (pasifKayitSayisi > 0)
+                                                {
+                                                    <span class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+                                                        @pasifKayitSayisi pasif
+                                                    </span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="table w-full">
+                                            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                                <tr>
+                                                    <th class="px-5 py-4">Kurs</th>
+                                                    <th class="px-5 py-4">Kayıt Tarihi</th>
+                                                    <th class="px-5 py-4">Ders İlerlemesi</th>
+                                                    <th class="px-5 py-4">Kayıt Durumu</th>
+                                                    <th class="px-5 py-4">Sınav Durumu</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody class="divide-y divide-slate-100">
+                                                @foreach (var kurs in Model.KayitliKurslar)
+                                                {
+                                                    int ilerleme = Math.Clamp(kurs.IlerlemeYuzdesi, 0, 100);
+
+                                                    <tr class="transition hover:bg-slate-50">
+                                                        <td class="px-5 py-4">
+                                                            <div class="min-w-0">
+                                                                <a asp-controller="AdminKurs"
+                                                                   asp-action="Detay"
+                                                                   asp-route-id="@kurs.KursId"
+                                                                   class="font-bold text-slate-900 hover:text-blue-700 hover:underline">
+                                                                    @kurs.KursAdi
+                                                                </a>
+                                                            </div>
+                                                        </td>
+
+                                                        <td class="px-5 py-4">
+                                                            <p class="text-sm font-medium text-slate-600">
+                                                                @kurs.KayitTarihi.ToString("dd.MM.yyyy HH:mm")
+                                                            </p>
+                                                        </td>
+
+                                                        <td class="px-5 py-4">
+                                                            <div class="w-56">
+                                                                <div class="mb-1.5 flex items-center justify-between gap-3">
+                                                                    <span class="text-xs font-semibold text-slate-500">
+                                                                        @kurs.TamamlananDersSayisi / @kurs.ToplamDersSayisi ders
+                                                                    </span>
+
+                                                                    <span class="text-xs font-black @IlerlemeTextClass(ilerleme)">
+                                                                        %@ilerleme
+                                                                    </span>
+                                                                </div>
+
+                                                                <div class="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                                                                    <div class="h-full rounded-full @IlerlemeBarClass(ilerleme) transition-all duration-500"
+                                                                         style="width:@ilerleme%">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+
+                                                        <td class="px-5 py-4">
+                                                            <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold @KursKayitBadgeClass(kurs.KayitDurumu)">
+                                                                @kurs.KayitDurumu
+                                                            </span>
+                                                        </td>
+
+                                                        <td class="px-5 py-4">
+                                                            <div class="space-y-1">
+                                                                <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold @SinavDurumClass(kurs.SinavDurumu, kurs.SinavdanGectiMi)">
+                                                                    @kurs.SinavDurumu
+                                                                </span>
+
+                                                                @if (kurs.SinavGirisSayisi > 0)
+                                                                {
+                                                                    <p class="text-xs font-semibold text-slate-500">
+                                                                        @kurs.SinavGirisSayisi giriş
+
+                                                                        @if (kurs.SonSinavPuani.HasValue)
+                                                                        {
+                                                                            <span> · @kurs.SonSinavPuani puan</span>
+                                                                        }
+                                                                    </p>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <p class="text-xs font-semibold text-slate-400">
+                                                                        Sınav kaydı yok
+                                                                    </p>
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+
+                                @if (Model.VerdigiKurslar.Any())
+                                {
+                                    <div class="border-y border-slate-100 bg-slate-50/60 px-5 py-3">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <h3 class="text-sm font-black text-slate-800">
+                                                Eğitmen Olarak Verdiği Kurslar
+                                            </h3>
+
+                                            <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                                                @Model.VerdigiKurslar.Count kurs
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="divide-y divide-slate-100">
+                                        @foreach (var kurs in Model.VerdigiKurslar)
+                                        {
+                                            string kapakHarf = KursBasHarf(kurs.KursAdi);
+
+                                            <article class="grid grid-cols-1 gap-4 px-5 py-4 md:grid-cols-[80px_minmax(0,1fr)_170px_auto] md:items-center">
+
+                                                @if (!string.IsNullOrWhiteSpace(kurs.KapakGorselUrl))
+                                                {
+                                                    <img src="@kurs.KapakGorselUrl"
+                                                         alt="@kurs.KursAdi"
+                                                         class="h-14 w-20 rounded-xl object-cover ring-1 ring-slate-200" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="flex h-14 w-20 items-center justify-center rounded-xl bg-slate-100 text-lg font-black text-slate-500 ring-1 ring-slate-200">
+                                                        @kapakHarf
+                                                    </div>
+                                                }
+
+                                                <div class="min-w-0">
+                                                    <h4 class="truncate text-sm font-black text-slate-900">
+                                                        @kurs.KursAdi
+                                                    </h4>
+
+                                                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                                                        <span class="rounded-full border px-2.5 py-1 text-xs font-bold @DurumBadgeClass(kurs.DurumId)">
+                                                            @kurs.DurumAdi
+                                                        </span>
+
+                                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                                                            @kurs.DersSayisi ders
+                                                        </span>
+
+                                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                                                            @kurs.OgrenciSayisi öğrenci
+                                                        </span>
+                                                    </div>
+
+                                                    @if (kurs.Kategoriler.Any())
+                                                    {
+                                                        <div class="mt-2 flex flex-wrap gap-1.5">
+                                                            @foreach (var kategori in kurs.Kategoriler)
+                                                            {
+                                                                <span class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700">
+                                                                    @kategori
+                                                                </span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+
+                                                <div class="space-y-1 text-sm md:text-right">
+                                                    <p class="font-bold text-slate-400">
+                                                        Oluşturma
+                                                    </p>
+
+                                                    <p class="font-semibold text-slate-800">
+                                                        @TarihYaz(kurs.OlusturmaTarihi)
+                                                    </p>
+
+                                                    @if (kurs.GuncellemeTarihi.HasValue)
+                                                    {
+                                                        <p class="pt-1 text-xs font-semibold text-slate-500">
+                                                            Güncel: @NullableTarihYaz(kurs.GuncellemeTarihi)
+                                                        </p>
+                                                    }
+                                                </div>
+
+                                                <div>
+                                                    <a asp-controller="AdminKurs"
+                                                       asp-action="Detay"
+                                                       asp-route-id="@kurs.KursId"
+                                                       class="btn btn-sm btn-outline w-full rounded-xl md:w-auto">
+                                                        Detay
+                                                    </a>
+                                                </div>
+
+                                            </article>
+                                        }
+                                    </div>
+                                }
+
+                            </section>
+                        }
+
+                    </div>
+
+                    <!-- Sağ Panel -->
+                    <aside class="space-y-5 xl:sticky xl:top-24 xl:h-fit">
+
+                        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                            <h2 class="text-base font-black text-slate-900">
+                                İşlemler
+                            </h2>
+
+                            <div class="mt-4 space-y-2">
+
+                                <a asp-controller="AdminKullanici"
+                                   asp-action="Duzenle"
+                                   asp-route-id="@Model.KullaniciId"
+                                   class="btn btn-primary w-full rounded-xl">
+                                    Düzenle
+                                </a>
+
+                                <a asp-controller="AdminKullanici"
+                                   asp-action="Kullanicilar"
+                                   class="btn btn-outline w-full rounded-xl">
+                                    Listeye Dön
+                                </a>
+
+                                @if (!kendiHesabiMi)
+                                {
+                                    <button type="button"
+                                            onclick="document.getElementById('kullaniciSilModal').showModal()"
+                                            class="btn btn-error w-full rounded-xl text-white">
+                                        Sil
+                                    </button>
+                                }
+
+                            </div>
+
+                        </section>
+
+                    </aside>
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+@if (!kendiHesabiMi)
+{
+    <dialog id="kullaniciSilModal" class="modal">
+
+        <div class="modal-box max-w-lg rounded-2xl bg-white">
+
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                    ✕
+                </button>
+            </form>
+
+            <h3 class="text-lg font-black text-slate-900">
+                Kullanıcı silinsin mi?
+            </h3>
+
+            <p class="mt-2 text-sm leading-6 text-slate-500">
+                <strong>@Model.AdSoyad</strong> adlı kullanıcı silinmek üzere.
+                Kullanıcıya bağlı kayıt varsa sistem kalıcı silme yerine kullanıcıyı pasife alacaktır.
+            </p>
+
+            <div class="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                <p class="text-sm font-semibold leading-6 text-red-700">
+                    Bu işlem geri alınamayabilir.
+                </p>
+            </div>
+
+            <div class="modal-action">
+
+                <form asp-controller="AdminKullanici"
+                      asp-action="Sil"
+                      asp-route-id="@Model.KullaniciId"
+                      method="post"
+                      class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+                    @Html.AntiForgeryToken()
+
+                    <button type="button"
+                            onclick="document.getElementById('kullaniciSilModal').close()"
+                            class="btn btn-outline rounded-xl">
+                        Vazgeç
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-error rounded-xl text-white">
+                        Evet, Sil
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        <form method="dialog" class="modal-backdrop">
+            <button>Kapat</button>
+        </form>
+
+    </dialog>
+}

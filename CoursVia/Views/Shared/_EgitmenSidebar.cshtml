@@ -1,0 +1,258 @@
+﻿@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    bool genelAktif = currentController == "Egitmen" &&
+        currentAction == "Index";
+
+    bool kurslarimAktif =
+        (currentController == "EgitmenKurs" &&
+            (currentAction == "Kurslarim" ||
+             currentAction == "KursDetay" ||
+             currentAction == "KursDuzenle" ||
+             currentAction == "KursIcerik" ||
+             currentAction == "OnIzle")) ||
+        currentController == "EgitmenBolum" ||
+        currentController == "EgitmenDers" ||
+        currentController == "EgitmenSinav";
+
+    bool kursOlusturAktif = currentController == "EgitmenKurs" &&
+        currentAction == "KursOlustur";
+
+    bool ogrencilerimAktif = currentController == "Egitmen" &&
+        currentAction == "Ogrencilerim";
+
+    bool onerilerAktif = currentController == "EgitmenAi";
+
+    bool bildirimlerAktif = currentController == "Bildirim" &&
+        currentAction == "Bildirimler";
+}
+
+<aside class="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-24 lg:ml-4">
+
+    <div class="mb-5 px-2 pt-1">
+        <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+            Eğitmen Paneli
+        </p>
+
+        <h2 class="mt-1 text-base font-black text-slate-900">
+            Yönetim
+        </h2>
+    </div>
+
+    <nav class="space-y-5">
+
+        <!-- Panel -->
+        <div>
+            <p class="mb-2 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Panel
+            </p>
+
+            <div class="space-y-1.5">
+
+                <a asp-controller="Egitmen"
+                   asp-action="Index"
+                   class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors
+                          @(genelAktif
+                                                 ? "border-blue-100 bg-blue-50 text-blue-700"
+                                                 : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-blue-600")">
+
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                                 @(genelAktif
+                                                               ? "bg-blue-100 text-blue-700"
+                                                               : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600")">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2"
+                             stroke="currentColor"
+                             class="h-5 w-5">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                        </svg>
+                    </span>
+
+                    <span>Genel Bakış</span>
+                </a>
+
+            </div>
+        </div>
+
+        <!-- Kurs Yönetimi -->
+        <div>
+            <p class="mb-2 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Kurs Yönetimi
+            </p>
+
+            <div class="space-y-1.5">
+
+                <a asp-controller="EgitmenKurs"
+                   asp-action="Kurslarim"
+                   class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors
+                          @(kurslarimAktif
+                                                 ? "border-blue-100 bg-blue-50 text-blue-700"
+                                                 : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-blue-600")">
+
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                                 @(kurslarimAktif
+                                                               ? "bg-blue-100 text-blue-700"
+                                                               : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600")">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2"
+                             stroke="currentColor"
+                             class="h-5 w-5">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25A8.967 8.967 0 0 1 18 3.75c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                        </svg>
+                    </span>
+
+                    <span>Kurslarım</span>
+                </a>
+
+                <a asp-controller="EgitmenKurs"
+                   asp-action="KursOlustur"
+                   class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors
+                          @(kursOlusturAktif
+                                                 ? "border-blue-100 bg-blue-50 text-blue-700"
+                                                 : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-blue-600")">
+
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                                 @(kursOlusturAktif
+                                                               ? "bg-blue-100 text-blue-700"
+                                                               : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600")">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2"
+                             stroke="currentColor"
+                             class="h-5 w-5">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                    </span>
+
+                    <span>Kurs Oluştur</span>
+                </a>
+
+            </div>
+        </div>
+
+        <!-- Öğrenciler -->
+        <div>
+            <p class="mb-2 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Öğrenciler
+            </p>
+
+            <div class="space-y-1.5">
+
+                <a asp-controller="Egitmen"
+                   asp-action="Ogrencilerim"
+                   class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors
+                          @(ogrencilerimAktif
+                                                 ? "border-blue-100 bg-blue-50 text-blue-700"
+                                                 : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-blue-600")">
+
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                                 @(ogrencilerimAktif
+                                                               ? "bg-blue-100 text-blue-700"
+                                                               : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600")">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2"
+                             stroke="currentColor"
+                             class="h-5 w-5">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM4.5 20.25a8.25 8.25 0 0 1 15 0" />
+                        </svg>
+                    </span>
+
+                    <span>Öğrencilerim</span>
+                </a>
+
+            </div>
+        </div>
+
+        <!-- AI -->
+        <div>
+            <p class="mb-2 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                AI
+            </p>
+
+            <div class="space-y-1.5">
+
+                <a asp-controller="EgitmenAi"
+                   asp-action="Oneriler"
+                   class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors
+                          @(onerilerAktif
+                                                 ? "border-blue-100 bg-blue-50 text-blue-700"
+                                                 : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-blue-600")">
+
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                                 @(onerilerAktif
+                                                               ? "bg-blue-100 text-blue-700"
+                                                               : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600")">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2"
+                             stroke="currentColor"
+                             class="h-5 w-5">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.091-3.091L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.091-3.091L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.091 3.091L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.091 3.091ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.456-2.456L14.25 6l1.035-.259a3.375 3.375 0 0 0 2.456-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423L16.5 15.75l.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                        </svg>
+                    </span>
+
+                    <span>Öneriler</span>
+                </a>
+
+            </div>
+        </div>
+
+        <!-- Sistem -->
+        <div>
+            <p class="mb-2 px-2 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Sistem
+            </p>
+
+            <div class="space-y-1.5">
+
+                <a asp-controller="Bildirim"
+                   asp-action="Bildirimler"
+                   class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors
+                          @(bildirimlerAktif
+                                                 ? "border-blue-100 bg-blue-50 text-blue-700"
+                                                 : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-blue-600")">
+
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                                 @(bildirimlerAktif
+                                                               ? "bg-blue-100 text-blue-700"
+                                                               : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600")">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2"
+                             stroke="currentColor"
+                             class="h-5 w-5">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a3 3 0 0 1-5.714 0" />
+                        </svg>
+                    </span>
+
+                    <span>Bildirimler</span>
+                </a>
+
+            </div>
+        </div>
+
+    </nav>
+
+</aside>

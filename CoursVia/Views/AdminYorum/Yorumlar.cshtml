@@ -1,0 +1,554 @@
+@model CoursVia.ViewModels.Admin.AdminYorumYonetimiViewModel
+
+@{
+    ViewData["Title"] = "Yorumlar";
+
+    string? AramaDegeri = Model.Arama;
+
+    string PuanBadgeClass(int puan)
+    {
+        return puan switch
+        {
+            5 => "bg-emerald-50 text-emerald-700",
+            4 => "bg-blue-50 text-blue-700",
+            3 => "bg-amber-50 text-amber-700",
+            2 => "bg-orange-50 text-orange-700",
+            1 => "bg-red-50 text-red-700",
+            _ => "bg-slate-100 text-slate-600"
+        };
+    }
+
+    string Yildizlar(int puan)
+    {
+        int temizPuan = Math.Clamp(puan, 0, 5);
+
+        return new string('★', temizPuan) + new string('☆', 5 - temizPuan);
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_AdminSidebar" />
+
+        <main class="min-w-0 overflow-x-hidden px-4 py-7 sm:px-6 lg:px-6 xl:px-8">
+
+            <div class="w-full max-w-full space-y-5">
+
+                @if (TempData["AdminHata"] != null)
+                {
+                    <div class="flash-message transition-all duration-500 ease-in-out alert alert-error rounded-2xl shadow-sm">
+                        <span>@TempData["AdminHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["AdminBasari"] != null)
+                {
+                    <div class="flash-message transition-all duration-500 ease-in-out alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm">
+                        <span>@TempData["AdminBasari"]</span>
+                    </div>
+                }
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+
+                        <div>
+                            <h1 class="text-2xl font-black tracking-tight text-slate-900">
+                                Yorumlar
+                            </h1>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Öğrenci değerlendirmelerini görüntüleyin, arayın ve uygunsuz yorumları kaldırın.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 text-xs font-bold">
+
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                                Toplam: @Model.ToplamYorumSayisi
+                            </span>
+
+                            <span class="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+                                Bugün: @Model.BugunkuYorumSayisi
+                            </span>
+
+                            <span class="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+                                Ortalama: @Model.OrtalamaPuan.ToString("0.0")
+                            </span>
+
+                            <span class="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                                Listelenen: @Model.ToplamKayit
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- Filtre -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+
+                    <form asp-controller="AdminYorum"
+                          asp-action="Yorumlar"
+                          method="get"
+                          class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_160px_210px_auto]">
+
+                        <input type="hidden" name="sayfa" value="1" />
+
+                        <input type="text"
+                               name="arama"
+                               value="@Model.Arama"
+                               placeholder="Yorum, öğrenci, kurs veya eğitmen ara"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                        <select name="puan"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+
+                            @if (!Model.Puan.HasValue)
+                            {
+                                <option value="" selected>Tüm Puanlar</option>
+                            }
+                            else
+                            {
+                                <option value="">Tüm Puanlar</option>
+                            }
+
+                            @for (int i = 5; i >= 1; i--)
+                            {
+                                if (Model.Puan == i)
+                                {
+                                    <option value="@i" selected>
+                                        @i Puan
+                                    </option>
+                                }
+                                else
+                                {
+                                    <option value="@i">
+                                        @i Puan
+                                    </option>
+                                }
+                            }
+
+                        </select>
+
+                        <select name="siralama"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+
+                            @if (Model.Siralama == "yeni")
+                            {
+                                <option value="yeni" selected>Tarih: Yeni → Eski</option>
+                            }
+                            else
+                            {
+                                <option value="yeni">Tarih: Yeni → Eski</option>
+                            }
+
+                            @if (Model.Siralama == "eski")
+                            {
+                                <option value="eski" selected>Tarih: Eski → Yeni</option>
+                            }
+                            else
+                            {
+                                <option value="eski">Tarih: Eski → Yeni</option>
+                            }
+
+                        </select>
+
+                        <div class="flex gap-2 xl:justify-end">
+
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl px-6">
+                                Filtrele
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) ||
+                                                        Model.Puan.HasValue ||
+                                                        Model.Siralama != "yeni")
+                            {
+                                <a asp-controller="AdminYorum"
+                                   asp-action="Yorumlar"
+                                   class="btn btn-outline rounded-xl">
+                                    Temizle
+                                </a>
+                            }
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- Liste -->
+                <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    @if (Model.Yorumlar.Any())
+                    {
+                        <div class="max-w-full overflow-x-auto">
+
+                            <table class="table w-full">
+
+                                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                    <tr>
+                                        <th class="px-5 py-3">
+                                            Yorum
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Öğrenci
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Kurs
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Puan
+                                        </th>
+
+                                        <th class="px-5 py-3">
+                                            Tarih
+                                        </th>
+
+                                        <th class="px-5 py-3 text-right">
+                                            İşlem
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-100">
+
+                                    @foreach (var yorum in Model.Yorumlar)
+                                    {
+                                        <tr class="hover:bg-slate-50">
+
+                                            <td class="min-w-[360px] px-5 py-4">
+
+                                                <p class="line-clamp-2 text-sm font-semibold leading-6 text-slate-700">
+                                                    @(string.IsNullOrWhiteSpace(yorum.YorumMetni) ? "Yorum metni yok." : yorum.YorumMetni)
+                                                </p>
+
+                                                <p class="mt-1 text-xs font-semibold text-slate-400">
+                                                    Yorum ID: #@yorum.DegerlendirmeId
+                                                </p>
+
+                                            </td>
+
+                                            <td class="min-w-[220px] px-5 py-4">
+
+                                                <p class="line-clamp-1 text-sm font-black text-slate-900">
+                                                    @yorum.OgrenciAdSoyad
+                                                </p>
+
+                                                <p class="mt-0.5 truncate text-xs font-semibold text-slate-500">
+                                                    @yorum.OgrenciEposta
+                                                </p>
+
+                                            </td>
+
+                                            <td class="min-w-[260px] px-5 py-4">
+
+                                                <p class="line-clamp-1 text-sm font-black text-slate-900">
+                                                    @yorum.KursAdi
+                                                </p>
+
+                                                <p class="mt-0.5 truncate text-xs font-semibold text-slate-500">
+                                                    Eğitmen: @yorum.EgitmenAdSoyad
+                                                </p>
+
+                                            </td>
+
+                                            <td class="min-w-[140px] px-5 py-4">
+
+                                                <span class="rounded-full px-2.5 py-1 text-xs font-black @PuanBadgeClass(yorum.Puan)">
+                                                    @yorum.Puan / 5
+                                                </span>
+
+                                                <p class="mt-1 text-xs font-black tracking-wide text-amber-500">
+                                                    @Yildizlar(yorum.Puan)
+                                                </p>
+
+                                            </td>
+
+                                            <td class="min-w-[150px] px-5 py-4">
+
+                                                <p class="text-sm font-bold text-slate-700">
+                                                    @yorum.DegerlendirmeTarihi.ToString("dd.MM.yyyy")
+                                                </p>
+
+                                                <p class="mt-0.5 text-xs font-semibold text-slate-400">
+                                                    @yorum.DegerlendirmeTarihi.ToString("HH:mm")
+                                                </p>
+
+                                            </td>
+
+                                            <td class="px-5 py-4">
+
+                                                <div class="flex justify-end gap-2">
+
+                                                    <a asp-controller="AdminKurs"
+                                                       asp-action="Detay"
+                                                       asp-route-id="@yorum.KursId"
+                                                       class="btn btn-outline btn-xs rounded-lg">
+                                                        Kursu Gör
+                                                    </a>
+
+                                                    <button type="button"
+                                                            onclick="document.getElementById('yorumSilModal-@yorum.DegerlendirmeId').showModal()"
+                                                            class="btn btn-error btn-xs rounded-lg text-white">
+                                                        Sil
+                                                    </button>
+
+                                                </div>
+
+                                            </td>
+
+                                        </tr>
+                                    }
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            int baslangicSayfa = Math.Max(1, Model.Sayfa - 2);
+                            int bitisSayfa = Math.Min(Model.ToplamSayfa, Model.Sayfa + 2);
+
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Sayfa
+                                    <span class="font-bold text-slate-900">@Model.Sayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.ToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.OncekiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminYorum"
+                                           asp-action="Yorumlar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-puan="@Model.Puan"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @if (baslangicSayfa > 1)
+                                    {
+                                        <a asp-controller="AdminYorum"
+                                           asp-action="Yorumlar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-puan="@Model.Puan"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-sayfa="1"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            1
+                                        </a>
+
+                                        @if (baslangicSayfa > 2)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+                                    }
+
+                                    @for (int i = baslangicSayfa; i <= bitisSayfa; i++)
+                                    {
+                                        if (i == Model.Sayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="AdminYorum"
+                                               asp-action="Yorumlar"
+                                               asp-route-arama="@AramaDegeri"
+                                               asp-route-puan="@Model.Puan"
+                                               asp-route-siralama="@Model.Siralama"
+                                               asp-route-sayfa="@i"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (bitisSayfa < Model.ToplamSayfa)
+                                    {
+                                        @if (bitisSayfa < Model.ToplamSayfa - 1)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+
+                                        <a asp-controller="AdminYorum"
+                                           asp-action="Yorumlar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-puan="@Model.Puan"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-sayfa="@Model.ToplamSayfa"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            @Model.ToplamSayfa
+                                        </a>
+                                    }
+
+                                    @if (Model.SonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminYorum"
+                                           asp-action="Yorumlar"
+                                           asp-route-arama="@AramaDegeri"
+                                           asp-route-puan="@Model.Puan"
+                                           asp-route-siralama="@Model.Siralama"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <h3 class="text-base font-black text-slate-900">
+                                Yorum bulunamadı
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Arama veya filtreye uygun yorum/değerlendirme bulunmuyor.
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) ||
+                                                    Model.Puan.HasValue ||
+                                                    Model.Siralama != "yeni")
+                            {
+                                <div class="mt-5 flex justify-center">
+                                    <a asp-controller="AdminYorum"
+                                       asp-action="Yorumlar"
+                                       class="btn btn-outline rounded-xl px-6">
+                                        Filtreleri Temizle
+                                    </a>
+                                </div>
+                            }
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+@foreach (var yorum in Model.Yorumlar)
+{
+    <dialog id="yorumSilModal-@yorum.DegerlendirmeId" class="modal">
+
+        <div class="modal-box max-w-lg rounded-2xl bg-white">
+
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                    ✕
+                </button>
+            </form>
+
+            <h3 class="text-lg font-black text-slate-900">
+                Yorum silinsin mi?
+            </h3>
+
+            <p class="mt-2 text-sm leading-6 text-slate-500">
+                <strong>@yorum.OgrenciAdSoyad</strong> tarafından
+                <strong>@yorum.KursAdi</strong> kursuna yapılan değerlendirme silinecek.
+            </p>
+
+            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+
+                <div class="mb-2 flex items-center gap-2">
+                    <span class="rounded-full px-2.5 py-1 text-xs font-black @PuanBadgeClass(yorum.Puan)">
+                        @yorum.Puan / 5
+                    </span>
+
+                    <span class="text-xs font-black tracking-wide text-amber-500">
+                        @Yildizlar(yorum.Puan)
+                    </span>
+                </div>
+
+                <p class="line-clamp-4 text-sm font-semibold leading-6 text-slate-600">
+                    @(string.IsNullOrWhiteSpace(yorum.YorumMetni) ? "Yorum metni yok." : yorum.YorumMetni)
+                </p>
+
+            </div>
+
+            <div class="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                <p class="text-sm font-semibold leading-6 text-red-700">
+                    Bu işlem geri alınamaz. Yorum kalıcı olarak silinir.
+                </p>
+            </div>
+
+            <form asp-controller="AdminYorum"
+                  asp-action="Sil"
+                  asp-route-id="@yorum.DegerlendirmeId"
+                  method="post"
+                  class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+                @Html.AntiForgeryToken()
+
+                <button type="button"
+                        onclick="document.getElementById('yorumSilModal-@yorum.DegerlendirmeId').close()"
+                        class="btn btn-outline rounded-xl">
+                    Vazgeç
+                </button>
+
+                <button type="submit"
+                        class="btn btn-error rounded-xl px-6 text-white">
+                    Yorumu Sil
+                </button>
+
+            </form>
+
+        </div>
+
+        <form method="dialog" class="modal-backdrop">
+            <button>Kapat</button>
+        </form>
+
+    </dialog>
+}

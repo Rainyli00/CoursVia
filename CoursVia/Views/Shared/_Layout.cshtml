@@ -1,0 +1,800 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    var kullaniciAdi = User.Identity?.Name ?? "";
+
+    var ilkHarf = !string.IsNullOrWhiteSpace(kullaniciAdi)
+        ? kullaniciAdi.Trim().Substring(0, 1).ToUpper()
+        : "U";
+
+    var aktifRol = User.FindFirst("AktifRol")?.Value;
+    var profilFotoUrl = User.FindFirst("ProfilFotoUrl")?.Value;
+
+    if (string.IsNullOrWhiteSpace(aktifRol))
+    {
+        if (User.IsInRole("Admin"))
+        {
+            aktifRol = "Admin";
+        }
+        else if (User.IsInRole("Eğitmen"))
+        {
+            aktifRol = "Eğitmen";
+        }
+        else if (User.IsInRole("Öğrenci"))
+        {
+            aktifRol = "Öğrenci";
+        }
+    }
+
+    string? panelController = aktifRol switch
+    {
+        "Admin" => "Admin",
+        "Eğitmen" => "Egitmen",
+        "Öğrenci" => "Ogrenci",
+        _ => null
+    };
+
+    bool panelDonGoster = User.Identity?.IsAuthenticated == true &&
+        !string.IsNullOrWhiteSpace(panelController);
+
+    bool anaSayfaAktif = currentController == "Home" && currentAction == "Index";
+    bool kurslarAktif =
+        (currentController == "Home" &&
+            (currentAction == "Kurslar" || currentAction == "KursDetay")) ||
+        (currentController == "OgrenciKurs" &&
+            (currentAction == "Kesfet" || currentAction == "Detay"));
+    bool hakkimizdaAktif = currentController == "Home" && currentAction == "Hakkimizda";
+    bool sertifikaDogrulaAktif = currentController == "SertifikaDogrulama";
+    bool profilAyarlariAktif = currentController == "ProfilAyarlari";
+    bool kursKesfetHedefiOgrenciMi = aktifRol == "Öğrenci";
+
+    string kurslarController = kursKesfetHedefiOgrenciMi
+        ? "OgrenciKurs"
+        : "Home";
+
+    string kurslarAction = kursKesfetHedefiOgrenciMi
+        ? "Kesfet"
+        : "Kurslar";
+
+    string kursAramaDegeri = kurslarAktif
+        ? Context.Request.Query["arama"].ToString()
+        : "";
+
+    bool ogrenciProfilGoster = User.IsInRole("Öğrenci") && aktifRol != "Öğrenci";
+    bool egitmenProfilGoster = User.IsInRole("Eğitmen") && aktifRol != "Eğitmen";
+    bool adminProfilGoster = User.IsInRole("Admin") && aktifRol != "Admin";
+
+    bool profilGecisiVarMi =
+        ogrenciProfilGoster ||
+        egitmenProfilGoster ||
+        adminProfilGoster;
+
+    string NavLinkClass(bool aktif)
+    {
+        return aktif
+            ? "whitespace-nowrap rounded-xl bg-blue-50 px-2.5 py-2 text-sm font-bold text-blue-700"
+            : "whitespace-nowrap rounded-xl px-2.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-blue-700";
+    }
+
+    string DropdownLinkClass(bool aktif)
+    {
+        return aktif
+            ? "block bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700"
+            : "block px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-blue-600";
+    }
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - CoursVia</title>
+
+    <link rel="stylesheet"
+          href="~/css/output.css"
+          asp-append-version="true" />
+
+    <link rel="stylesheet"
+          href="~/lib/sweetalert2/sweetalert2.min.css" />
+
+    <style>
+        .profile-dropdown:focus-within .profile-dropdown-arrow {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+
+<body class="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900">
+
+    <!-- Navbar -->
+    <header class="sticky top-0 z-50 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-md">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
+
+            <div class="flex h-16 items-center justify-between gap-4">
+
+                <!-- Sol: Logo + Ana Menü -->
+                <div class="flex min-w-0 items-center gap-10">
+                    <a asp-controller="Home"
+                       asp-action="Index"
+                       class="flex shrink-0 items-center gap-2.5 text-xl font-black tracking-tight text-blue-600 xl:text-2xl">
+
+                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 p-2 text-white shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke-width="2"
+                                 stroke="currentColor"
+                                 class="h-full w-full">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      d="M4.26 10.147a60.436 60.436 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+                            </svg>
+                        </div>
+
+                        <span>CoursVia</span>
+                    </a>
+
+                    <nav class="hidden items-center gap-2 lg:flex">
+                        <a asp-controller="Home"
+                           asp-action="Index"
+                           class="@NavLinkClass(anaSayfaAktif)">
+                            Ana Sayfa
+                        </a>
+
+                        <a asp-controller="Home"
+                           asp-action="Hakkimizda"
+                           class="@NavLinkClass(hakkimizdaAktif)">
+                            Hakkımızda
+                        </a>
+                    </nav>
+                </div>
+
+                <!-- Orta: Kurs Arama -->
+                <form asp-controller="@kurslarController"
+                      asp-action="@kurslarAction"
+                      method="get"
+                      class="hidden min-w-[320px] max-w-2xl flex-1 xl:flex">
+
+                    <div class="relative w-full">
+                        <input type="search"
+                               name="arama"
+                               value="@kursAramaDegeri"
+                               class="input input-bordered h-11 w-full rounded-2xl border-slate-200 bg-slate-50 pl-4 pr-12 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                               placeholder="Kurs ara..." />
+
+                        <button type="submit"
+                                class="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
+                                aria-label="Kurs ara">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke-width="2"
+                                 stroke="currentColor"
+                                 class="h-4.5 w-4.5">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Sağ: Kullanıcı -->
+                <div class="flex shrink-0 items-center gap-1.5">
+                    <nav class="ml-2 mr-4 hidden items-center gap-2 lg:flex">
+                        <a asp-controller="@kurslarController"
+                           asp-action="@kurslarAction"
+                           class="@NavLinkClass(kurslarAktif)">
+                            Kurslar
+                        </a>
+
+                        <a asp-controller="SertifikaDogrulama"
+                           asp-action="Index"
+                           class="@NavLinkClass(sertifikaDogrulaAktif)">
+                            Sertifika Doğrula
+                        </a>
+                    </nav>
+
+                    @if (User.Identity != null && User.Identity.IsAuthenticated)
+                    {
+                        <div id="bildirim-antiforgery" class="hidden">
+                            @Html.AntiForgeryToken()
+                        </div>
+
+                        <!-- Bildirim Dropdown -->
+                        <div class="dropdown dropdown-end mr-1">
+
+                            <div tabindex="0"
+                                 role="button"
+                                 id="btn-bildirimler"
+                                 class="relative flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 focus:outline-none">
+
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="1.5"
+                                     stroke="currentColor"
+                                     class="h-6 w-6">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                                </svg>
+
+                                <span id="bildirim-badge"
+                                      class="absolute right-2 top-2 hidden h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500">
+                                </span>
+                            </div>
+
+                            <div tabindex="0"
+                                 class="dropdown-content z-[60] mt-2 w-80 overflow-hidden rounded-2xl border border-slate-100 bg-white p-0 shadow-xl">
+
+                                <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+                                    <span class="text-sm font-black text-slate-800">
+                                        Bildirimler
+                                    </span>
+                                </div>
+
+                                <div id="bildirim-listesi" class="max-h-72 overflow-y-auto">
+                                    <div class="p-6 text-center text-sm font-semibold text-slate-500">
+                                        Bildirimler hazırlanıyor...
+                                    </div>
+                                </div>
+
+                                <div class="border-t border-slate-100 bg-slate-50/50 p-3 text-center">
+                                    <a asp-controller="Bildirim"
+                                       asp-action="Bildirimler"
+                                       asp-route-durum="okunmamis"
+                                       class="text-sm font-bold text-blue-600 transition hover:text-blue-700">
+                                        Tümünü Gör
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Profil Dropdown -->
+                        <div class="dropdown dropdown-end profile-dropdown">
+
+                            <button type="button"
+                                    tabindex="0"
+                                    role="button"
+                                    class="flex items-center gap-3 rounded-2xl px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none">
+
+                                @if (!string.IsNullOrWhiteSpace(profilFotoUrl))
+                                {
+                                    <img src="@profilFotoUrl"
+                                         alt="@kullaniciAdi"
+                                         class="h-11 w-11 rounded-full object-cover shadow-sm ring-2 ring-blue-100" />
+                                }
+                                else
+                                {
+                                    <div class="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 text-base font-black text-blue-700 ring-2 ring-blue-50">
+                                        @ilkHarf
+                                    </div>
+                                }
+
+                                <div class="hidden min-w-0 sm:flex sm:flex-col sm:items-start sm:leading-tight">
+                                    <span class="max-w-[170px] truncate text-sm font-bold text-slate-800">
+                                        @kullaniciAdi
+                                    </span>
+
+                                    @if (!string.IsNullOrWhiteSpace(aktifRol))
+                                    {
+                                        <span class="mt-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                                            @aktifRol
+                                        </span>
+                                    }
+                                </div>
+
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     class="profile-dropdown-arrow hidden h-4 w-4 text-slate-400 transition-transform duration-200 ease-out sm:block"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke="currentColor">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          stroke-width="2"
+                                          d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            <!-- Kullanıcı Dropdown -->
+                            <div tabindex="0"
+                                 class="dropdown-content z-[60] mt-2 w-72 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+
+                                <div class="border-b border-slate-100 px-4 py-4">
+                                    <div class="flex items-center gap-3">
+
+                                        @if (!string.IsNullOrWhiteSpace(profilFotoUrl))
+                                        {
+                                            <img src="@profilFotoUrl"
+                                                 alt="@kullaniciAdi"
+                                                 class="h-12 w-12 rounded-full object-cover shadow-sm ring-2 ring-blue-100" />
+                                        }
+                                        else
+                                        {
+                                            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-lg font-black text-blue-700">
+                                                @ilkHarf
+                                            </div>
+                                        }
+
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-black text-slate-900">
+                                                @kullaniciAdi
+                                            </p>
+
+                                            @if (!string.IsNullOrWhiteSpace(aktifRol))
+                                            {
+                                                <p class="mt-1 text-xs font-bold text-blue-600">
+                                                    @aktifRol
+                                                </p>
+                                            }
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <!-- Menü -->
+                                <div class="py-2">
+
+                                    @if (panelDonGoster)
+                                    {
+                                        <a asp-controller="@panelController"
+                                           asp-action="Index"
+                                           class="@DropdownLinkClass(false)">
+                                            Panele Dön
+                                        </a>
+                                    }
+
+                                    <a asp-controller="ProfilAyarlari"
+                                       asp-action="Index"
+                                       class="@DropdownLinkClass(false)">
+                                        Profil Ayarları
+                                    </a>
+
+                                </div>
+
+                                @if (profilGecisiVarMi)
+                                {
+                                    <div class="border-t border-slate-100 py-2">
+                                        <div class="px-4 pb-1 pt-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                            Profiller
+                                        </div>
+
+                                        @if (ogrenciProfilGoster)
+                                        {
+                                            <a asp-controller="Account"
+                                               asp-action="PanelDegistir"
+                                               asp-route-rol="Öğrenci"
+                                               class="@DropdownLinkClass(false)">
+                                                Öğrenci Profiline Geç
+                                            </a>
+                                        }
+
+                                        @if (egitmenProfilGoster)
+                                        {
+                                            <a asp-controller="Account"
+                                               asp-action="PanelDegistir"
+                                               asp-route-rol="Eğitmen"
+                                               class="@DropdownLinkClass(false)">
+                                                Eğitmen Profiline Geç
+                                            </a>
+                                        }
+
+                                        @if (adminProfilGoster)
+                                        {
+                                            <a asp-controller="Account"
+                                               asp-action="PanelDegistir"
+                                               asp-route-rol="Admin"
+                                               class="@DropdownLinkClass(false)">
+                                                Admin Profiline Geç
+                                            </a>
+                                        }
+                                    </div>
+                                }
+
+                                <div class="border-t border-slate-100 py-2">
+                                    <a asp-controller="Account"
+                                       asp-action="Logout"
+                                       class="block px-4 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-50">
+                                        Çıkış Yap
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-controller="Account"
+                           asp-action="OgrenciLogin"
+                           class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
+                            Giriş Yap
+                        </a>
+                    }
+
+                </div>
+
+            </div>
+
+            <!-- Mobil Menü -->
+            <div class="border-t border-slate-100 py-2 lg:hidden">
+                <div class="flex gap-2 overflow-x-auto">
+
+                    <a asp-controller="Home"
+                       asp-action="Index"
+                       class="@NavLinkClass(anaSayfaAktif)">
+                        Ana Sayfa
+                    </a>
+
+                    <a asp-controller="@kurslarController"
+                       asp-action="@kurslarAction"
+                       class="@NavLinkClass(kurslarAktif)">
+                        Kurslar
+                    </a>
+
+                    <a asp-controller="Home"
+                       asp-action="Hakkimizda"
+                       class="@NavLinkClass(hakkimizdaAktif)">
+                        Hakkımızda
+                    </a>
+
+                    <a asp-controller="SertifikaDogrulama"
+                       asp-action="Index"
+                       class="@NavLinkClass(sertifikaDogrulaAktif)">
+                        Sertifika Doğrula
+                    </a>
+
+                </div>
+
+                <form asp-controller="@kurslarController"
+                      asp-action="@kurslarAction"
+                      method="get"
+                      class="mt-2">
+
+                    <div class="relative">
+                        <input type="search"
+                               name="arama"
+                               value="@kursAramaDegeri"
+                               class="input input-bordered h-10 w-full rounded-2xl border-slate-200 bg-slate-50 pl-4 pr-11 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                               placeholder="Kurs ara..." />
+
+                        <button type="submit"
+                                class="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
+                                aria-label="Kurs ara">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke-width="2"
+                                 stroke="currentColor"
+                                 class="h-4.5 w-4.5">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow">
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-200 bg-white py-7">
+        <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 lg:flex-row lg:px-8">
+
+            <div class="flex items-center gap-2 text-lg font-black text-slate-900">
+                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 p-1.5 text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="2"
+                         stroke="currentColor"
+                         class="h-full w-full">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M4.26 10.147a60.436 60.436 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+                    </svg>
+                </div>
+
+                CoursVia
+            </div>
+
+            <p class="text-center text-sm font-medium text-slate-500">
+                Modern online eğitim platformu. &copy; @DateTime.Now.Year Tüm hakları saklıdır.
+            </p>
+
+            <div class="flex flex-wrap items-center justify-center gap-4">
+
+                <a asp-controller="Home"
+                   asp-action="Hakkimizda"
+                   class="text-sm font-semibold text-slate-400 transition hover:text-slate-600">
+                    Hakkımızda
+                </a>
+
+                <a asp-controller="Home"
+                   asp-action="Kurslar"
+                   class="text-sm font-semibold text-slate-400 transition hover:text-slate-600">
+                    Kurslar
+                </a>
+
+                <a asp-controller="Home"
+                   asp-action="Privacy"
+                   class="text-sm font-semibold text-slate-400 transition hover:text-slate-600">
+                    Gizlilik Politikası
+                </a>
+
+            </div>
+
+        </div>
+    </footer>
+
+    <script src="~/lib/sweetalert2/sweetalert2.all.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const flashMessages = document.querySelectorAll(".flash-message");
+
+            if (flashMessages.length > 0) {
+                setTimeout(function () {
+                    flashMessages.forEach(function (message) {
+                        message.classList.add("opacity-0", "-translate-y-1");
+
+                        setTimeout(function () {
+                            message.remove();
+                        }, 500);
+                    });
+                }, 3000);
+            }
+
+            document.querySelectorAll("[data-ogrenci-gecis='true']").forEach(function (link) {
+                link.addEventListener("click", function (event) {
+                    event.preventDefault();
+
+                    if (!window.Swal) {
+                        window.location.href = link.href;
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: "info",
+                        title: "Öğrenci profiline geçeceksiniz",
+                        text: "Bu kursa devam etmek için aktif profiliniz öğrenci olarak değiştirilecek. Geçmek istiyor musunuz?",
+                        showCancelButton: true,
+                        confirmButtonText: "Evet, Geç",
+                        cancelButtonText: "Vazgeç",
+                        confirmButtonColor: "#2563eb",
+                        cancelButtonColor: "#64748b",
+                        reverseButtons: true
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            window.location.href = link.href;
+                        }
+                    });
+                });
+            });
+
+            document.querySelectorAll("[data-ogrenci-profili-yok='true']").forEach(function (link) {
+                link.addEventListener("click", function (event) {
+                    event.preventDefault();
+
+                    if (!window.Swal) {
+                        window.location.href = link.href;
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Öğrenci profili bulunamadı",
+                        text: "Kursa başlamak için bu hesapta öğrenci profili oluşturmanız gerekir.",
+                        showCancelButton: true,
+                        confirmButtonText: "Profil Ayarlarına Git",
+                        cancelButtonText: "Vazgeç",
+                        confirmButtonColor: "#2563eb",
+                        cancelButtonColor: "#64748b",
+                        reverseButtons: true
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            window.location.href = link.href;
+                        }
+                    });
+                });
+            });
+
+            const btnBildirimler = document.getElementById("btn-bildirimler");
+            const bildirimListesi = document.getElementById("bildirim-listesi");
+            const bildirimBadge = document.getElementById("bildirim-badge");
+
+            const bildirimlerUrl = '@Url.Action("Bildirimler", "Bildirim")';
+            const bildirimOkunduUrl = '@Url.Action("OkunduYap", "Bildirim")';
+            const bildirimGetirUrl = '@Url.Action("GetSonBildirimler", "Bildirim")';
+
+            const bildirimAntiforgeryToken = document.querySelector("#bildirim-antiforgery input[name='__RequestVerificationToken']")?.value ?? "";
+
+            let bildirimYukleniyorMu = false;
+            let bildirimYuklendiMi = false;
+
+            function htmlEncode(value) {
+                return String(value ?? "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#39;");
+            }
+
+            function bildirimHtmlOlustur(data) {
+                const count = data.okunmamisSayisi ?? data.OkunmamisSayisi ?? 0;
+                const items = data.bildirimler ?? data.Bildirimler ?? [];
+
+                if (bildirimBadge) {
+                    if (count > 0) {
+                        bildirimBadge.classList.remove("hidden");
+                    } else {
+                        bildirimBadge.classList.add("hidden");
+                    }
+                }
+
+                if (!bildirimListesi) {
+                    return;
+                }
+
+                if (items.length === 0) {
+                    bildirimListesi.innerHTML = `
+                        <div class="p-6 text-center text-sm font-semibold text-slate-500">
+                            Okunmamış bildiriminiz yok.
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = "";
+
+                items.forEach(function (b) {
+                    const bildirimId = htmlEncode(b.bildirimId ?? b.BildirimId ?? "");
+                    const baslik = htmlEncode(b.baslik ?? b.Baslik ?? "");
+                    const mesaj = htmlEncode(b.mesaj ?? b.Mesaj ?? "");
+                    const okunduMu = b.okunduMu ?? b.OkunduMu ?? false;
+                    const tarih = htmlEncode(b.olusturmaTarihi ?? b.OlusturmaTarihi ?? "");
+
+                    const bgClass = okunduMu ? "bg-white" : "bg-blue-50/30";
+
+                    const nokta = okunduMu
+                        ? `<div class="w-2 shrink-0"></div>`
+                        : `<span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-600 shadow-sm shadow-blue-200"></span>`;
+
+                    html += `
+                        <a href="${bildirimlerUrl}" data-bildirim-id="${bildirimId}" class="flex gap-3 border-b border-slate-50 px-4 py-3 transition last:border-0 hover:bg-slate-50 ${bgClass}">
+                            ${nokta}
+
+                            <div class="min-w-0 flex-1">
+                                <p class="line-clamp-1 text-sm font-bold text-slate-800">
+                                    ${baslik}
+                                </p>
+
+                                <p class="mt-0.5 line-clamp-2 text-xs font-medium leading-snug text-slate-500">
+                                    ${mesaj}
+                                </p>
+
+                                <p class="mt-2 text-[10px] font-bold text-slate-400">
+                                    ${tarih}
+                                </p>
+                            </div>
+                        </a>
+                    `;
+                });
+
+                bildirimListesi.innerHTML = html;
+            }
+
+            function bildirimleriYukle(force) {
+                if (!btnBildirimler || !bildirimListesi || !bildirimBadge) {
+                    return;
+                }
+
+                if (bildirimYukleniyorMu) {
+                    return;
+                }
+
+                if (bildirimYuklendiMi && !force) {
+                    return;
+                }
+
+                bildirimYukleniyorMu = true;
+
+                bildirimListesi.innerHTML = `
+                    <div class="flex justify-center p-6 text-slate-500">
+                        <span class="loading loading-spinner loading-sm text-blue-600"></span>
+                    </div>
+                `;
+
+                fetch(bildirimGetirUrl, {
+                    method: "GET",
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error("Bildirim isteği başarısız.");
+                        }
+
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        bildirimHtmlOlustur(data);
+                        bildirimYuklendiMi = true;
+                    })
+                    .catch(function (error) {
+                        console.error(error);
+
+                        bildirimListesi.innerHTML = `
+                            <div class="p-6 text-center text-sm font-semibold text-red-500">
+                                Bildirimler yüklenemedi.
+                            </div>
+                        `;
+                    })
+                    .finally(function () {
+                        bildirimYukleniyorMu = false;
+                    });
+            }
+
+            if (btnBildirimler) {
+                bildirimleriYukle(true);
+
+                btnBildirimler.addEventListener("click", function () {
+                    bildirimleriYukle(false);
+                });
+            }
+
+            if (bildirimListesi) {
+                bildirimListesi.addEventListener("click", function (event) {
+                    const link = event.target.closest("a[data-bildirim-id]");
+
+                    if (!link || !bildirimAntiforgeryToken) {
+                        return;
+                    }
+
+                    const bildirimId = link.getAttribute("data-bildirim-id");
+
+                    if (!bildirimId) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const formData = new FormData();
+                    formData.append("__RequestVerificationToken", bildirimAntiforgeryToken);
+                    formData.append("id", bildirimId);
+                    formData.append("durum", "okunmamis");
+
+                    fetch(bildirimOkunduUrl, {
+                        method: "POST",
+                        body: formData,
+                        credentials: "same-origin",
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest"
+                        }
+                    })
+                        .finally(function () {
+                            window.location.href = link.href;
+                        });
+                });
+            }
+        });
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

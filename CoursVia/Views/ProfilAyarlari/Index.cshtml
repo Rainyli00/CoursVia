@@ -1,0 +1,1181 @@
+@model CoursVia.ViewModels.ProfilAyarlari.ProfilAyarlariViewModel
+
+@{
+    ViewData["Title"] = "Profil Ayarları";
+
+    string adSoyad = $"{Model.Ad} {Model.Soyad}".Trim();
+    string gorunenAd = string.IsNullOrWhiteSpace(adSoyad) ? "Kullanıcı" : adSoyad;
+    string ilkHarf = !string.IsNullOrWhiteSpace(gorunenAd)
+        ? gorunenAd.Substring(0, 1).ToUpper()
+        : "U";
+
+    var egitmenBasvuru = Model.EgitmenBasvuru;
+    bool egitmenBasvuruVarMi = egitmenBasvuru?.BasvuruVarMi == true;
+    int? egitmenDurumId = egitmenBasvuru?.MevcutDurumId;
+
+    bool egitmenBasvurusuYapabilirMi =
+        !Model.EgitmenMi &&
+        (Model.OgrenciMi || Model.AdminMi);
+
+    bool egitmenBasvuruFormuGoster =
+        egitmenBasvurusuYapabilirMi &&
+        (!egitmenBasvuruVarMi || egitmenDurumId == 6 || egitmenDurumId == 7);
+
+    string? basariMesaji = Convert.ToString(TempData["ProfilBasari"] ?? TempData["OgrenciBasari"]);
+    string? hataMesaji = Convert.ToString(TempData["ProfilHata"] ?? TempData["OgrenciHata"]);
+    string aktifRol = User.FindFirst("AktifRol")?.Value ?? Model.AktifRol ?? "";
+
+    if (string.IsNullOrWhiteSpace(aktifRol))
+    {
+        if (User.IsInRole("Admin"))
+        {
+            aktifRol = "Admin";
+        }
+        else if (User.IsInRole("Eğitmen"))
+        {
+            aktifRol = "Eğitmen";
+        }
+        else if (User.IsInRole("Öğrenci"))
+        {
+            aktifRol = "Öğrenci";
+        }
+    }
+
+    bool adminPaneli = aktifRol == "Admin";
+    bool egitmenPaneli = aktifRol == "Eğitmen";
+    bool ogrenciPaneli = aktifRol == "Öğrenci";
+
+    var seciliBranslar = egitmenBasvuru?.BransSecenekleri?
+        .Where(x => egitmenBasvuru.SeciliBransIdleri.Contains(x.KategoriId))
+        .ToList() ?? new List<CoursVia.ViewModels.Ogrenci.OgrenciEgitmenBransSecimViewModel>();
+
+    string EgitmenBasvuruButonYazisi(int? durumId)
+    {
+        return durumId switch
+        {
+            6 => "Tekrar Başvuru Yap",
+            7 => "Düzeltmeyi Gönder",
+            _ => "Başvuru Yap"
+        };
+    }
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
+
+<style>
+    #profilCropperContainer {
+        min-height: 288px;
+    }
+
+    #profilCropperImage {
+        display: block;
+        max-width: 100%;
+    }
+
+    .cropper-view-box,
+    .cropper-face {
+        border-radius: 1rem;
+    }
+
+    .profil-settings-page .input,
+    .profil-settings-page .textarea,
+    .profil-settings-page .select {
+        border-color: #94a3b8;
+        background-color: #ffffff;
+        box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.05);
+    }
+
+    .profil-settings-page .input:focus,
+    .profil-settings-page .textarea:focus,
+    .profil-settings-page .select:focus,
+    .profil-settings-page .input:focus-within,
+    .profil-settings-page .textarea:focus-within,
+    .profil-settings-page .select:focus-within {
+        border-color: #2563eb;
+        outline: 2px solid rgb(37 99 235 / 0.16);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 1px rgb(37 99 235 / 0.12);
+    }
+
+    .profil-settings-page .modal-box {
+        background-color: #ffffff;
+        color: #0f172a;
+    }
+
+    .profil-settings-page .modal-box .input,
+    .profil-settings-page .modal-box .textarea,
+    .profil-settings-page .modal-box .select {
+        background-color: #ffffff;
+        color: #0f172a;
+        border-color: #94a3b8;
+    }
+
+    .profil-settings-page .modal-box .input::placeholder,
+    .profil-settings-page .modal-box .textarea::placeholder {
+        color: #94a3b8;
+    }
+
+    .profil-settings-page .modal-backdrop {
+        background-color: rgb(15 23 42 / 0.45);
+    }
+</style>
+
+<div class="profil-settings-page min-h-[calc(100vh-130px)] bg-slate-50">
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        @if (adminPaneli)
+        {
+            <partial name="_AdminSidebar" />
+        }
+        else if (egitmenPaneli)
+        {
+            <partial name="_EgitmenSidebar" />
+        }
+        else if (ogrenciPaneli)
+        {
+            <partial name="_OgrenciSidebar" />
+        }
+
+        <main class="min-w-0 px-5 py-6 sm:px-7 lg:px-10">
+            <div class="mx-auto max-w-5xl space-y-5">
+
+        @if (!string.IsNullOrWhiteSpace(basariMesaji))
+        {
+            <div class="flash-message rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-all duration-500">
+                @basariMesaji
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(hataMesaji))
+        {
+            <div class="flash-message rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm transition-all duration-500">
+                @hataMesaji
+            </div>
+        }
+
+        <div class="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex min-w-0 items-center gap-4">
+                    @if (!string.IsNullOrWhiteSpace(Model.ProfilFotoUrl))
+                    {
+                        <img src="@Model.ProfilFotoUrl"
+                             alt="@gorunenAd"
+                             class="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-sm ring-2 ring-blue-100" />
+                    }
+                    else
+                    {
+                        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-xl font-black text-white shadow-sm">
+                            @ilkHarf
+                        </div>
+                    }
+
+                    <div class="min-w-0">
+                        <h1 class="text-2xl font-black tracking-tight text-slate-900">
+                            Profil Ayarları
+                        </h1>
+
+                        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                            @if (!string.IsNullOrWhiteSpace(Model.AktifRol))
+                            {
+                                <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
+                                    @Model.AktifRol
+                                </span>
+                            }
+
+                            <span>
+                                Kayıt: @Model.KayitTarihi.ToString("dd.MM.yyyy")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <a asp-controller="Home"
+                   asp-action="Index"
+                   class="btn btn-outline rounded-xl">
+                    Ana Sayfa
+                </a>
+            </div>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+
+            <form id="profilAyarlariForm"
+                  asp-controller="ProfilAyarlari"
+                  asp-action="Index"
+                  method="post"
+                  class="space-y-5">
+
+                @Html.AntiForgeryToken()
+
+                <input asp-for="KirpilmisProfilFotoBase64"
+                       id="KirpilmisProfilFotoBase64"
+                       type="hidden" />
+
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="text-base font-black text-slate-900">
+                        Hesap Bilgileri
+                    </h2>
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div asp-validation-summary="All"
+                             class="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                        </div>
+                    }
+
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label asp-for="Ad" class="mb-1 block text-sm font-bold text-slate-700">
+                                Ad
+                            </label>
+
+                            <input asp-for="Ad"
+                                   class="input input-bordered w-full rounded-xl"
+                                   autocomplete="given-name" />
+
+                            <span asp-validation-for="Ad" class="mt-1 block text-sm text-red-600"></span>
+                        </div>
+
+                        <div>
+                            <label asp-for="Soyad" class="mb-1 block text-sm font-bold text-slate-700">
+                                Soyad
+                            </label>
+
+                            <input asp-for="Soyad"
+                                   class="input input-bordered w-full rounded-xl"
+                                   autocomplete="family-name" />
+
+                            <span asp-validation-for="Soyad" class="mt-1 block text-sm text-red-600"></span>
+                        </div>
+
+                        <div>
+                            <label asp-for="Eposta" class="mb-1 block text-sm font-bold text-slate-700">
+                                E-posta
+                            </label>
+
+                            <input asp-for="Eposta"
+                                   type="email"
+                                   class="input input-bordered w-full rounded-xl"
+                                   autocomplete="email" />
+
+                            <span asp-validation-for="Eposta" class="mt-1 block text-sm text-red-600"></span>
+                        </div>
+
+                        <div>
+                            <label asp-for="Telefon" class="mb-1 block text-sm font-bold text-slate-700">
+                                Telefon
+                            </label>
+
+                            <input asp-for="Telefon"
+                                   id="telefonInput"
+                                   class="input input-bordered w-full rounded-xl"
+                                   autocomplete="tel"
+                                   placeholder="5xx xxx xx xx" />
+
+                            <span asp-validation-for="Telefon" class="mt-1 block text-sm text-red-600"></span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="text-base font-black text-slate-900">
+                        Şifre Değiştir
+                    </h2>
+
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label asp-for="MevcutSifre" class="mb-1 block text-sm font-bold text-slate-700">
+                                Mevcut Şifre
+                            </label>
+
+                            <input asp-for="MevcutSifre"
+                                   type="password"
+                                   class="input input-bordered w-full rounded-xl"
+                                   autocomplete="current-password" />
+
+                            <span asp-validation-for="MevcutSifre" class="mt-1 block text-sm text-red-600"></span>
+                        </div>
+
+                        <div>
+                            <label asp-for="YeniSifre" class="mb-1 block text-sm font-bold text-slate-700">
+                                Yeni Şifre
+                            </label>
+
+                            <input asp-for="YeniSifre"
+                                   id="yeniSifreInput"
+                                   type="password"
+                                   class="input input-bordered w-full rounded-xl"
+                                   autocomplete="new-password" />
+
+                            <span asp-validation-for="YeniSifre" class="mt-1 block text-sm text-red-600"></span>
+                        </div>
+
+                        <div>
+                            <label asp-for="YeniSifreTekrar" class="mb-1 block text-sm font-bold text-slate-700">
+                                Yeni Şifre Tekrar
+                            </label>
+
+                            <input asp-for="YeniSifreTekrar"
+                                   id="yeniSifreTekrarInput"
+                                   type="password"
+                                   class="input input-bordered w-full rounded-xl"
+                                   autocomplete="new-password" />
+
+                            <span asp-validation-for="YeniSifreTekrar" class="mt-1 block text-sm text-red-600"></span>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="flex sm:justify-start">
+                    <button type="submit"
+                            class="btn btn-primary w-full rounded-xl px-8 sm:w-auto">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+
+            <aside class="space-y-5">
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="text-base font-black text-slate-900">
+                        Profil Fotoğrafı
+                    </h2>
+
+                    <div class="mt-5 flex items-center gap-4">
+                        <img id="profilFotoPreview"
+                             src="@(Model.ProfilFotoUrl ?? "")"
+                             alt="@gorunenAd"
+                             class="h-20 w-20 rounded-2xl object-cover ring-2 ring-blue-100 @(string.IsNullOrWhiteSpace(Model.ProfilFotoUrl) ? "hidden" : "")" />
+
+                        <div id="profilFotoInitial"
+                             class="flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-600 text-2xl font-black text-white @(string.IsNullOrWhiteSpace(Model.ProfilFotoUrl) ? "" : "hidden")">
+                            @ilkHarf
+                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <label for="profilFotoDosya"
+                                   class="btn btn-outline btn-sm rounded-xl">
+                                Foto Seç
+                            </label>
+
+                            <input id="profilFotoDosya"
+                                   type="file"
+                                   accept="image/jpeg,image/jpg,image/png,image/webp"
+                                   class="hidden" />
+
+                            <span asp-validation-for="KirpilmisProfilFotoBase64"
+                                  class="mt-2 block text-sm text-red-600"></span>
+
+                            <p class="mt-2 text-xs leading-5 text-slate-500">
+                                JPG, PNG, WEBP.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="profilCropperPanel"
+                         class="mt-5 hidden space-y-3">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                            <div id="profilCropperContainer"
+                                 class="h-72 overflow-hidden rounded-xl bg-slate-100">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="profilFotoIptal"
+                                    type="button"
+                                    class="btn btn-outline rounded-xl">
+                                Vazgeç
+                            </button>
+
+                            <button id="profilFotoKullan"
+                                    type="button"
+                                    class="btn btn-primary rounded-xl">
+                                Kullan
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                @if (!Model.OgrenciMi)
+                {
+                    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 class="text-base font-black text-slate-900">
+                            Öğrenci Profili
+                        </h2>
+
+                        <form id="ogrenciOlusturForm"
+                              asp-controller="ProfilAyarlari"
+                              asp-action="OgrenciRolAktiflestirPanelden"
+                              method="post"
+                              class="mt-4">
+
+                            @Html.AntiForgeryToken()
+
+                            <button type="button"
+                                    id="ogrenciProfiliOlusturBtn"
+                                    class="btn btn-outline w-full rounded-xl">
+                                Öğrenci Profili Oluştur
+                            </button>
+                        </form>
+                    </section>
+                }
+                else if (Model.OgrenciProfiliSilinebilirMi)
+                {
+                    <section class="rounded-3xl border border-red-100 bg-white p-4 shadow-sm">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-base font-black text-red-700">
+                                    Öğrenci Profili
+                                </h2>
+
+                                <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                                    Öğrenci kayıtlarını kaldırır.
+                                </p>
+                            </div>
+
+                            <form id="ogrenciProfiliSilForm"
+                                  asp-controller="ProfilAyarlari"
+                                  asp-action="OgrenciProfilSil"
+                                  method="post">
+
+                                @Html.AntiForgeryToken()
+
+                                <button type="button"
+                                        id="ogrenciProfiliSilBtn"
+                                        class="btn btn-error btn-sm shrink-0 rounded-xl text-white">
+                                    Sil
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+                }
+
+                @if (egitmenBasvurusuYapabilirMi && egitmenBasvuru?.OnaylandiMi != true)
+                {
+                    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <div class="space-y-4">
+                            <div>
+                                <h2 class="text-base font-black text-slate-900">
+                                    Eğitmen Başvurusu
+                                </h2>
+
+                                @if (egitmenBasvuru?.OnayBekliyorMu == true)
+                                {
+                                    <p class="mt-3 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">
+                                        Onay bekliyor.
+                                    </p>
+                                }
+                                else if (egitmenDurumId == 7)
+                                {
+                                    <p class="mt-3 inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-700">
+                                        Düzeltme gerekiyor.
+                                    </p>
+                                }
+                                else if (egitmenBasvuru?.ReddedildiMi == true)
+                                {
+                                    <p class="mt-3 inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700">
+                                        Reddedildi.
+                                    </p>
+                                }
+                            </div>
+
+                            @if (egitmenBasvuruFormuGoster)
+                            {
+                                <button type="button"
+                                        id="egitmenBasvuruModalAc"
+                                        class="btn btn-outline w-full rounded-xl">
+                                    @EgitmenBasvuruButonYazisi(egitmenDurumId)
+                                </button>
+                            }
+                        </div>
+                    </section>
+                }
+
+                <section class="rounded-3xl border border-red-100 bg-white p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <h2 class="text-base font-black text-red-700">
+                            Hesabı Sil
+                        </h2>
+
+                        <button type="button"
+                                id="hesapSilBtn"
+                                class="btn btn-error btn-sm shrink-0 rounded-xl text-white">
+                            Sil
+                        </button>
+                    </div>
+                </section>
+            </aside>
+        </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<form id="hesapSilForm"
+      asp-controller="ProfilAyarlari"
+      asp-action="HesapSil"
+      method="post"
+      class="hidden">
+    @Html.AntiForgeryToken()
+
+    <input type="hidden"
+           id="hesapSilSifre"
+           name="sifre" />
+</form>
+
+@if (egitmenBasvuruFormuGoster)
+{
+    <dialog id="egitmenBasvuruModal" class="modal profil-settings-page">
+        <div class="modal-box max-w-3xl rounded-3xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl">
+            <div class="border-b border-slate-100 bg-slate-50 px-6 py-5 text-slate-900">
+                <h3 class="text-xl font-black text-slate-900">
+                    Eğitmen Başvurusu
+                </h3>
+            </div>
+
+            <form id="egitmenBasvuruForm"
+                  asp-controller="OgrenciEgitmenBasvuru"
+                  asp-action="Basvuru"
+                  method="post"
+                  class="space-y-5 px-6 py-5">
+
+                @Html.AntiForgeryToken()
+
+                <input type="hidden"
+                       name="EgitmenProfilId"
+                       value="@egitmenBasvuru?.EgitmenProfilId" />
+
+                <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-black text-slate-700">
+                            Uzmanlık Alanı
+                        </label>
+
+                        <input type="text"
+                               name="uzmanlikAlani"
+                               value="@egitmenBasvuru?.UzmanlikAlani"
+                               class="input input-bordered w-full rounded-xl"
+                               placeholder="Örn: ASP.NET Core"
+                               required
+                               maxlength="150" />
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-black text-slate-700">
+                            Deneyim Yılı
+                        </label>
+
+                        <input type="number"
+                               name="deneyimYili"
+                               value="@egitmenBasvuru?.DeneyimYili"
+                               class="input input-bordered w-full rounded-xl"
+                               min="0"
+                               max="60"
+                               placeholder="Örn: 2" />
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="mb-1.5 block text-sm font-black text-slate-700">
+                            Web Site / Portfolyo
+                        </label>
+
+                        <input type="url"
+                               name="websiteUrl"
+                               value="@egitmenBasvuru?.WebsiteUrl"
+                               class="input input-bordered w-full rounded-xl"
+                               placeholder="https://..."
+                               maxlength="250" />
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="mb-1.5 block text-sm font-black text-slate-700">
+                            Biyografi
+                        </label>
+
+                        <textarea name="biyografi"
+                                  rows="5"
+                                  class="textarea textarea-bordered w-full rounded-xl"
+                                  placeholder="Kısa biyografi"
+                                  required>@egitmenBasvuru?.Biyografi</textarea>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="mb-1.5 block text-sm font-black text-slate-700">
+                            Branşlar
+                        </label>
+
+                        <div class="flex flex-col gap-2 sm:flex-row">
+                            <select id="bransSecimDropdown"
+                                    class="select select-bordered min-h-12 flex-1 rounded-xl">
+                                <option value="">Branş seçin</option>
+
+                                @if (egitmenBasvuru?.BransSecenekleri != null)
+                                {
+                                    foreach (var brans in egitmenBasvuru.BransSecenekleri)
+                                    {
+                                        <option value="@brans.KategoriId"
+                                                data-ad="@brans.KategoriAdi">
+                                            @brans.KategoriAdi
+                                        </option>
+                                    }
+                                }
+                            </select>
+
+                            <button type="button"
+                                    id="bransEkleBtn"
+                                    class="btn btn-outline min-h-12 rounded-xl px-5">
+                                Ekle
+                            </button>
+                        </div>
+
+                        <div id="seciliBranslarContainer"
+                             class="mt-3 flex min-h-12 flex-wrap gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+
+                            @if (seciliBranslar.Any())
+                            {
+                                foreach (var brans in seciliBranslar)
+                                {
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700"
+                                          data-brans-chip="@brans.KategoriId">
+                                        @brans.KategoriAdi
+
+                                        <button type="button"
+                                                class="text-blue-400 hover:text-red-500"
+                                                data-brans-sil="@brans.KategoriId">
+                                            ×
+                                        </button>
+
+                                        <input type="hidden"
+                                               name="seciliBransIdleri"
+                                               value="@brans.KategoriId"
+                                               data-brans-hidden="@brans.KategoriId" />
+                                    </span>
+                                }
+                            }
+                            else
+                            {
+                                <span id="bransBosMesaj"
+                                      class="text-sm font-semibold text-slate-400">
+                                    Henüz branş eklenmedi.
+                                </span>
+                            }
+                        </div>
+
+                        <p id="bransHataMesaj"
+                           class="mt-2 hidden text-xs font-bold text-red-600">
+                            En az bir branş seçmelisiniz.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="modal-action border-t border-slate-100 pt-5">
+                    <button type="button"
+                            id="egitmenBasvuruModalKapat"
+                            class="btn btn-ghost rounded-xl">
+                        Vazgeç
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary rounded-xl px-6">
+                        Başvuruyu Gönder
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <form method="dialog" class="modal-backdrop">
+            <button>Kapat</button>
+        </form>
+    </dialog>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            function uyariGoster(icon, title, text) {
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: icon,
+                        title: title,
+                        text: text,
+                        confirmButtonText: "Tamam",
+                        confirmButtonColor: "#2563eb"
+                    });
+                    return;
+                }
+
+                const fallback = document.createElement("div");
+                fallback.className = "fixed right-5 top-5 z-50 max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-xl";
+                fallback.textContent = text || title;
+                document.body.appendChild(fallback);
+
+                setTimeout(function () {
+                    fallback.remove();
+                }, 3500);
+            }
+
+            const telefonInput = document.getElementById("telefonInput");
+
+            function telefonFormatla(value) {
+                const digits = value.replace(/\D/g, "").substring(0, 10);
+
+                if (digits.length <= 3) return digits;
+                if (digits.length <= 6) return digits.substring(0, 3) + " " + digits.substring(3);
+                if (digits.length <= 8) return digits.substring(0, 3) + " " + digits.substring(3, 6) + " " + digits.substring(6);
+
+                return digits.substring(0, 3) + " " +
+                    digits.substring(3, 6) + " " +
+                    digits.substring(6, 8) + " " +
+                    digits.substring(8);
+            }
+
+            if (telefonInput) {
+                telefonInput.addEventListener("input", function () {
+                    this.value = telefonFormatla(this.value);
+                });
+            }
+
+            const flashMessages = document.querySelectorAll(".flash-message");
+
+            if (flashMessages.length > 0) {
+                setTimeout(function () {
+                    flashMessages.forEach(function (message) {
+                        message.classList.add("opacity-0", "-translate-y-1");
+
+                        setTimeout(function () {
+                            message.remove();
+                        }, 500);
+                    });
+                }, 3000);
+            }
+
+            const form = document.getElementById("profilAyarlariForm");
+            const yeniSifreInput = document.getElementById("yeniSifreInput");
+            const yeniSifreTekrarInput = document.getElementById("yeniSifreTekrarInput");
+
+            if (form) {
+                form.addEventListener("submit", function (event) {
+                    const yeniSifre = yeniSifreInput ? yeniSifreInput.value : "";
+                    const yeniSifreTekrar = yeniSifreTekrarInput ? yeniSifreTekrarInput.value : "";
+
+                    if (!yeniSifre && !yeniSifreTekrar) {
+                        return;
+                    }
+
+                    if (yeniSifre !== yeniSifreTekrar) {
+                        event.preventDefault();
+
+                        uyariGoster(
+                            "error",
+                            "Şifreler eşleşmiyor",
+                            "Yeni şifre ve tekrar alanı aynı olmalıdır."
+                        );
+                    }
+                });
+            }
+
+            const profilFotoDosya = document.getElementById("profilFotoDosya");
+            const profilFotoPreview = document.getElementById("profilFotoPreview");
+            const profilFotoInitial = document.getElementById("profilFotoInitial");
+            const profilCropperPanel = document.getElementById("profilCropperPanel");
+            const profilCropperContainer = document.getElementById("profilCropperContainer");
+            const profilFotoKullan = document.getElementById("profilFotoKullan");
+            const profilFotoIptal = document.getElementById("profilFotoIptal");
+            const kirpilmisProfilFotoInput = document.getElementById("KirpilmisProfilFotoBase64");
+
+            let profilCropper = null;
+
+            function cropperTemizle() {
+                if (profilCropper) {
+                    profilCropper.destroy();
+                    profilCropper = null;
+                }
+
+                if (profilCropperContainer) {
+                    profilCropperContainer.innerHTML = "";
+                }
+            }
+
+            function cropperPanelKapat() {
+                cropperTemizle();
+
+                if (profilCropperPanel) {
+                    profilCropperPanel.classList.add("hidden");
+                }
+
+                if (profilFotoDosya) {
+                    profilFotoDosya.value = "";
+                }
+            }
+
+            if (profilFotoDosya && profilCropperPanel && profilCropperContainer) {
+                profilFotoDosya.addEventListener("change", function () {
+                    const dosya = this.files && this.files.length > 0 ? this.files[0] : null;
+
+                    if (!dosya) {
+                        return;
+                    }
+
+                    const izinliTipler = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+                    if (!izinliTipler.includes(dosya.type)) {
+                        this.value = "";
+
+                        uyariGoster(
+                            "error",
+                            "Geçersiz Dosya",
+                            "Profil fotoğrafı JPG, PNG veya WEBP olmalıdır."
+                        );
+
+                        return;
+                    }
+
+                    if (dosya.size > 8 * 1024 * 1024) {
+                        this.value = "";
+
+                        uyariGoster(
+                            "error",
+                            "Dosya Çok Büyük",
+                            "En fazla 8 MB görsel seçebilirsiniz."
+                        );
+
+                        return;
+                    }
+
+                    const okuyucu = new FileReader();
+
+                    okuyucu.onload = function (event) {
+                        cropperTemizle();
+
+                        const image = document.createElement("img");
+                        image.id = "profilCropperImage";
+                        image.src = event.target.result;
+                        image.alt = "Profil fotoğrafı";
+
+                        profilCropperContainer.appendChild(image);
+                        profilCropperPanel.classList.remove("hidden");
+
+                        if (!window.Cropper) {
+                            uyariGoster(
+                                "error",
+                                "Kırpma Aracı Yüklenemedi",
+                                "Sayfayı yenileyip tekrar deneyin."
+                            );
+
+                            return;
+                        }
+
+                        profilCropper = new Cropper(image, {
+                            aspectRatio: 1,
+                            viewMode: 1,
+                            dragMode: "move",
+                            autoCropArea: 0.85,
+                            responsive: true,
+                            restore: false,
+                            guides: true,
+                            center: true,
+                            highlight: false,
+                            background: false,
+                            cropBoxMovable: true,
+                            cropBoxResizable: true,
+                            toggleDragModeOnDblclick: false,
+                            minCropBoxWidth: 120,
+                            minCropBoxHeight: 120
+                        });
+                    };
+
+                    okuyucu.readAsDataURL(dosya);
+                });
+            }
+
+            if (profilFotoIptal) {
+                profilFotoIptal.addEventListener("click", cropperPanelKapat);
+            }
+
+            if (profilFotoKullan) {
+                profilFotoKullan.addEventListener("click", function () {
+                    if (!profilCropper) {
+                        return;
+                    }
+
+                    const canvas = profilCropper.getCroppedCanvas({
+                        width: 512,
+                        height: 512,
+                        imageSmoothingEnabled: true,
+                        imageSmoothingQuality: "high",
+                        fillColor: "#ffffff"
+                    });
+
+                    if (!canvas) {
+                        uyariGoster(
+                            "error",
+                            "Kırpma Başarısız",
+                            "Fotoğraf kırpılamadı. Lütfen tekrar deneyin."
+                        );
+
+                        return;
+                    }
+
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+
+                    if (kirpilmisProfilFotoInput) {
+                        kirpilmisProfilFotoInput.value = dataUrl;
+                    }
+
+                    if (profilFotoPreview) {
+                        profilFotoPreview.src = dataUrl;
+                        profilFotoPreview.classList.remove("hidden");
+                    }
+
+                    if (profilFotoInitial) {
+                        profilFotoInitial.classList.add("hidden");
+                    }
+
+                    cropperPanelKapat();
+                });
+            }
+
+            const hesapSilBtn = document.getElementById("hesapSilBtn");
+            const hesapSilForm = document.getElementById("hesapSilForm");
+            const hesapSilSifre = document.getElementById("hesapSilSifre");
+
+            if (hesapSilBtn && hesapSilForm && hesapSilSifre) {
+                hesapSilBtn.addEventListener("click", function () {
+                    if (!window.Swal) {
+                        const sifre = prompt("Hesabı silmek için mevcut şifrenizi girin.");
+
+                        if (!sifre) {
+                            return;
+                        }
+
+                        hesapSilSifre.value = sifre;
+                        hesapSilForm.submit();
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Hesap silinsin mi?",
+                        text: "Devam etmek için mevcut şifreni gir.",
+                        input: "password",
+                        inputPlaceholder: "Mevcut şifre",
+                        inputAttributes: {
+                            autocomplete: "current-password"
+                        },
+                        showCancelButton: true,
+                        confirmButtonText: "Sil",
+                        cancelButtonText: "Vazgeç",
+                        confirmButtonColor: "#dc2626",
+                        cancelButtonColor: "#64748b",
+                        reverseButtons: true,
+                        focusCancel: true,
+                        inputValidator: function (value) {
+                            if (!value) {
+                                return "Şifrenizi girmelisiniz.";
+                            }
+
+                            return undefined;
+                        }
+                    }).then(function (result) {
+                        if (!result.isConfirmed || !result.value) {
+                            return;
+                        }
+
+                        hesapSilSifre.value = result.value;
+                        hesapSilForm.submit();
+                    });
+                });
+            }
+
+            const ogrenciProfiliOlusturBtn = document.getElementById("ogrenciProfiliOlusturBtn");
+            const ogrenciOlusturForm = document.getElementById("ogrenciOlusturForm");
+            const ogrenciProfiliSilBtn = document.getElementById("ogrenciProfiliSilBtn");
+            const ogrenciProfiliSilForm = document.getElementById("ogrenciProfiliSilForm");
+
+            if (ogrenciProfiliOlusturBtn && ogrenciOlusturForm) {
+                ogrenciProfiliOlusturBtn.addEventListener("click", function () {
+                    if (!window.Swal) {
+                        ogrenciOlusturForm.submit();
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: "question",
+                        title: "Öğrenci Profili Oluşturulacak",
+                        text: "Onaylıyor musunuz?",
+                        showCancelButton: true,
+                        confirmButtonText: "Oluştur",
+                        cancelButtonText: "Vazgeç",
+                        confirmButtonColor: "#2563eb",
+                        cancelButtonColor: "#64748b",
+                        reverseButtons: true,
+                        focusCancel: true
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            ogrenciOlusturForm.submit();
+                        }
+                    });
+                });
+            }
+
+            if (ogrenciProfiliSilBtn && ogrenciProfiliSilForm) {
+                ogrenciProfiliSilBtn.addEventListener("click", function () {
+                    if (!window.Swal) {
+                        ogrenciProfiliSilForm.submit();
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Öğrenci profili silinsin mi?",
+                        text: "Öğrenci kurs kayıtları, ders ilerlemeleri, sınav kayıtları ve sertifikalar silinir.",
+                        showCancelButton: true,
+                        confirmButtonText: "Sil",
+                        cancelButtonText: "Vazgeç",
+                        confirmButtonColor: "#dc2626",
+                        cancelButtonColor: "#64748b",
+                        reverseButtons: true,
+                        focusCancel: true
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            ogrenciProfiliSilForm.submit();
+                        }
+                    });
+                });
+            }
+
+            const egitmenBasvuruModal = document.getElementById("egitmenBasvuruModal");
+            const egitmenBasvuruModalAc = document.getElementById("egitmenBasvuruModalAc");
+            const egitmenBasvuruModalKapat = document.getElementById("egitmenBasvuruModalKapat");
+
+            if (egitmenBasvuruModal && egitmenBasvuruModalAc) {
+                egitmenBasvuruModalAc.addEventListener("click", function () {
+                    egitmenBasvuruModal.showModal();
+                });
+            }
+
+            if (egitmenBasvuruModal && egitmenBasvuruModalKapat) {
+                egitmenBasvuruModalKapat.addEventListener("click", function () {
+                    egitmenBasvuruModal.close();
+                });
+            }
+
+            const egitmenBasvuruForm = document.getElementById("egitmenBasvuruForm");
+            const bransDropdown = document.getElementById("bransSecimDropdown");
+            const bransEkleBtn = document.getElementById("bransEkleBtn");
+            const seciliBranslarContainer = document.getElementById("seciliBranslarContainer");
+            const bransBosMesaj = document.getElementById("bransBosMesaj");
+            const bransHataMesaj = document.getElementById("bransHataMesaj");
+
+            function bransBosMesajGuncelle() {
+                if (!seciliBranslarContainer || !bransBosMesaj) {
+                    return;
+                }
+
+                const seciliBransSayisi = seciliBranslarContainer.querySelectorAll("[data-brans-hidden]").length;
+
+                if (seciliBransSayisi > 0) {
+                    bransBosMesaj.classList.add("hidden");
+                } else {
+                    bransBosMesaj.classList.remove("hidden");
+                }
+            }
+
+            function bransEkle() {
+                if (!bransDropdown || !seciliBranslarContainer) {
+                    return;
+                }
+
+                const kategoriId = bransDropdown.value;
+                const seciliOption = bransDropdown.options[bransDropdown.selectedIndex];
+
+                if (!kategoriId || !seciliOption) {
+                    return;
+                }
+
+                const zatenVarMi = seciliBranslarContainer.querySelector('[data-brans-hidden="' + kategoriId + '"]');
+
+                if (zatenVarMi) {
+                    bransDropdown.value = "";
+                    return;
+                }
+
+                const kategoriAdi = seciliOption.getAttribute("data-ad") || seciliOption.textContent.trim();
+                const chip = document.createElement("span");
+
+                chip.className = "inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700";
+                chip.setAttribute("data-brans-chip", kategoriId);
+                chip.innerHTML =
+                    '<span>' + kategoriAdi + '</span>' +
+                    '<button type="button" class="text-blue-400 hover:text-red-500" data-brans-sil="' + kategoriId + '">×</button>' +
+                    '<input type="hidden" name="seciliBransIdleri" value="' + kategoriId + '" data-brans-hidden="' + kategoriId + '" />';
+
+                seciliBranslarContainer.appendChild(chip);
+                bransDropdown.value = "";
+
+                if (bransHataMesaj) {
+                    bransHataMesaj.classList.add("hidden");
+                }
+
+                bransBosMesajGuncelle();
+            }
+
+            if (bransEkleBtn) {
+                bransEkleBtn.addEventListener("click", bransEkle);
+            }
+
+            if (bransDropdown) {
+                bransDropdown.addEventListener("keydown", function (event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        bransEkle();
+                    }
+                });
+            }
+
+            if (seciliBranslarContainer) {
+                seciliBranslarContainer.addEventListener("click", function (event) {
+                    const silBtn = event.target.closest("[data-brans-sil]");
+
+                    if (!silBtn) {
+                        return;
+                    }
+
+                    const kategoriId = silBtn.getAttribute("data-brans-sil");
+                    const chip = seciliBranslarContainer.querySelector('[data-brans-chip="' + kategoriId + '"]');
+
+                    if (chip) {
+                        chip.remove();
+                    }
+
+                    bransBosMesajGuncelle();
+                });
+            }
+
+            if (egitmenBasvuruForm) {
+                egitmenBasvuruForm.addEventListener("submit", function (event) {
+                    const seciliBransSayisi = egitmenBasvuruForm.querySelectorAll("[data-brans-hidden]").length;
+
+                    if (seciliBransSayisi <= 0) {
+                        event.preventDefault();
+
+                        if (bransHataMesaj) {
+                            bransHataMesaj.classList.remove("hidden");
+                        }
+
+                        uyariGoster(
+                            "error",
+                            "Branş seçilmedi",
+                            "En az bir branş seçmelisiniz."
+                        );
+                    }
+                });
+            }
+
+            bransBosMesajGuncelle();
+        });
+    </script>
+}

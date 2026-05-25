@@ -1,0 +1,271 @@
+﻿@model CoursVia.ViewModels.Ogrenci.OgrenciSinavSonucViewModel
+
+@{
+    ViewData["Title"] = "Sınav Sonucu";
+
+    int puan = Math.Clamp(Model.AlinanPuan, 0, 100);
+
+    string SonucKartClass()
+    {
+        return Model.GectiMi
+            ? "border-emerald-100 bg-emerald-50"
+            : "border-red-100 bg-red-50";
+    }
+
+    string SonucTextClass()
+    {
+        return Model.GectiMi
+            ? "text-emerald-700"
+            : "text-red-700";
+    }
+
+    string PuanBarClass()
+    {
+        if (Model.GectiMi)
+            return "bg-emerald-500";
+
+        if (puan >= 50)
+            return "bg-amber-500";
+
+        return "bg-red-500";
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_OgrenciSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-6xl space-y-5">
+
+                @if (TempData["OgrenciHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["OgrenciHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["OgrenciBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["OgrenciBasari"]</span>
+                    </div>
+                }
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                                Öğrenci Paneli
+                            </p>
+
+                            <h1 class="mt-1 text-2xl font-black text-slate-900">
+                                Sınav Sonucu
+                            </h1>
+                        </div>
+
+                        <a asp-controller="OgrenciSinav"
+                           asp-action="Index"
+                           class="btn btn-outline rounded-xl px-6">
+                            Sınavlarım
+                        </a>
+
+                    </div>
+
+                </section>
+
+                <!-- Sonuç Özeti -->
+                <section class="rounded-2xl border p-5 shadow-sm @SonucKartClass()">
+
+                    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
+
+                        <div class="min-w-0">
+
+                            <div class="flex flex-wrap items-center gap-2">
+
+                                <span class="rounded-full border bg-white px-3 py-1 text-xs font-black @SonucTextClass()">
+                                    @(Model.GectiMi ? "Başarılı" : "Başarısız")
+                                </span>
+
+                                @if (Model.KursTamamlandiMi)
+                                {
+                                    <span class="rounded-full border border-emerald-100 bg-white px-3 py-1 text-xs font-bold text-emerald-700">
+                                        Kurs Tamamlandı
+                                    </span>
+                                }
+
+                            </div>
+
+                            <h2 class="mt-3 text-2xl font-black text-slate-900">
+                                @Model.SinavAdi
+                            </h2>
+
+                            <p class="mt-1 text-sm font-semibold text-slate-600">
+                                @Model.KursAdi
+                            </p>
+
+                            <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+                                <div class="rounded-2xl border border-white/70 bg-white/80 p-4">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                        Geçme Notu
+                                    </p>
+
+                                    <p class="mt-1 text-2xl font-black text-slate-900">
+                                        @Model.GecmeNotu
+                                    </p>
+                                </div>
+
+                                <div class="rounded-2xl border border-white/70 bg-white/80 p-4">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                        Deneme
+                                    </p>
+
+                                    <p class="mt-1 text-2xl font-black text-slate-900">
+                                        @Model.GirisSayisi
+                                    </p>
+                                </div>
+
+                                <div class="rounded-2xl border border-white/70 bg-white/80 p-4">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                        Kalan Hak
+                                    </p>
+
+                                    <p class="mt-1 text-2xl font-black @(Model.KalanHak > 0 ? "text-amber-700" : "text-red-700")">
+                                        @Model.KalanHak
+                                    </p>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="rounded-2xl border border-white/70 bg-white p-5 text-center shadow-sm">
+
+                            <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                Alınan Puan
+                            </p>
+
+                            <p class="mt-2 text-5xl font-black @SonucTextClass()">
+                                @puan
+                            </p>
+
+                            <div class="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full @PuanBarClass() transition-all duration-500"
+                                     style="width:@puan%">
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- Detay Kartları -->
+                <section class="grid grid-cols-1 gap-4 md:grid-cols-3">
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Doğru Sayısı
+                        </p>
+
+                        <p class="mt-2 text-3xl font-black text-slate-900">
+                            @Model.DogruSayisi
+                        </p>
+
+                        <p class="mt-1 text-sm text-slate-500">
+                            @Model.ToplamSoruSayisi soru içinde
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Toplam Soru
+                        </p>
+
+                        <p class="mt-2 text-3xl font-black text-slate-900">
+                            @Model.ToplamSoruSayisi
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Başarı Oranı
+                        </p>
+
+                        <p class="mt-2 text-3xl font-black text-blue-700">
+                            %@puan
+                        </p>
+                    </div>
+
+                </section>
+
+                <!-- Durum -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                    <h2 class="text-base font-black text-slate-900">
+                        Durum
+                    </h2>
+
+                    @if (Model.GectiMi)
+                    {
+                        <div class="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+
+                            <h3 class="text-sm font-black text-emerald-800">
+                                Sınav başarıyla tamamlandı.
+                            </h3>
+
+                            @if (Model.SertifikaOlustuMu)
+                            {
+                                <p class="mt-1 text-sm leading-6 text-emerald-700">
+                                    Kursu tamamladınız. Sertifikanız başarıyla oluşturuldu.
+                                </p>
+                            }
+
+                        </div>
+                    }
+                    else if (Model.KalanHak > 0)
+                    {
+                        <div class="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+
+                            <h3 class="text-sm font-black text-amber-800">
+                                Sınav tekrar edilebilir.
+                            </h3>
+
+                            <p class="mt-1 text-sm leading-6 text-amber-700">
+                                Kalan sınav hakkınızı kullanarak yeniden deneyebilirsiniz.
+                            </p>
+
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mt-4 rounded-2xl border border-red-100 bg-red-50 p-4">
+
+                            <h3 class="text-sm font-black text-red-800">
+                                Sınav hakkı tamamlandı.
+                            </h3>
+
+                            <p class="mt-1 text-sm leading-6 text-red-700">
+                                Kursa yeniden kayıt olarak süreci baştan başlatabilirsiniz.
+                            </p>
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>

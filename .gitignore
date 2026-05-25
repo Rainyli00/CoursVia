@@ -1,0 +1,124 @@
+# =========================================================
+# Visual Studio / .NET
+# =========================================================
+.vs/
+.vscode/
+.idea/
+
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+*.user
+*.suo
+*.rsuser
+*.userosscache
+*.sln.docstates
+
+# Build / publish outputs
+publish/
+Publish/
+artifacts/
+TestResults/
+coverage/
+coverage.opencover.xml
+*.trx
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# =========================================================
+# ASP.NET config / secrets
+# =========================================================
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.Production.json
+**/appsettings.Staging.json
+**/secrets.json
+
+# Local database files
+*.mdf
+*.ldf
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads / generated user files
+**/wwwroot/uploads/
+**/wwwroot/temp/
+**/wwwroot/generated/
+
+# =========================================================
+# Node / Expo / React Native
+# =========================================================
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+build/
+
+.env
+.env.*
+!.env.example
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Metro / Expo cache
+.metro-cache/
+.expo-cache/
+
+# Expo / EAS local
+.eas/
+eas.json.local
+
+# =========================================================
+# AI / Python
+# =========================================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+.venv/
+venv/
+env/
+
+.ipynb_checkpoints/
+
+# AI model / large binary files
+*.pt
+*.pth
+*.onnx
+*.gguf
+*.safetensors
+*.ckpt
+*.bin
+*.h5
+*.pkl
+*.pickle
+
+# AI generated outputs / datasets if local
+CoursViaAI/outputs/
+CoursViaAI/checkpoints/
+CoursViaAI/runs/
+CoursViaAI/logs/
+
+# =========================================================
+# Logs
+# =========================================================
+*.log
+logs/
+Logs/
+
+# =========================================================
+# OS
+# =========================================================
+.DS_Store
+Thumbs.db
+desktop.ini

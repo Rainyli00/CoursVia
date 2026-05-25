@@ -1,0 +1,395 @@
+@model CoursVia.ViewModels.Egitmen.KursOlusturViewModel
+
+@{
+    ViewData["Title"] = "Kurs Oluştur";
+
+    bool kategoriVarMi = Model.Kategoriler.Any();
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
+
+        <partial name="_EgitmenSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-5xl space-y-6">
+
+                <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <p class="text-sm font-semibold text-blue-600">
+                        Kurs Yönetimi
+                    </p>
+
+                    <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900">
+                        Yeni Kurs Oluştur
+                    </h1>
+
+                    <p class="mt-2 text-sm leading-6 text-slate-500">
+                        Kursun temel bilgilerini girin. Kurs taslak olarak oluşturulacak,
+                        ardından bölüm, ders, sınav ve soru içeriklerini ekleyebileceksiniz.
+                    </p>
+                </div>
+
+                <form asp-controller="EgitmenKurs"
+                      asp-action="KursOlustur"
+                      method="post"
+                      enctype="multipart/form-data"
+                      id="kursOlusturForm"
+                      class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly"
+                         class="mb-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    </div>
+
+                    <div class="space-y-6">
+
+                        <div>
+                            <label asp-for="KursAdi"
+                                   class="mb-1 block text-sm font-bold text-slate-700">
+                                Kurs Adı
+                            </label>
+
+                            <input asp-for="KursAdi"
+                                   required
+                                   maxlength="150"
+                                   class="input input-bordered w-full rounded-xl border-slate-300 bg-white"
+                                   placeholder="Örn: ASP.NET Core ile Backend Geliştirme" />
+
+                            <span asp-validation-for="KursAdi"
+                                  class="mt-1 block text-sm text-red-600">
+                            </span>
+                        </div>
+
+                        <div>
+                            <label asp-for="Aciklama"
+                                   class="mb-1 block text-sm font-bold text-slate-700">
+                                Açıklama
+                            </label>
+
+                            <textarea asp-for="Aciklama"
+                                      rows="5"
+                                      class="textarea textarea-bordered w-full rounded-xl border-slate-300 bg-white"
+                                      placeholder="Kursun içeriğini, hedef kitlesini ve kazanımlarını açıklayın..."></textarea>
+
+                            <span asp-validation-for="Aciklama"
+                                  class="mt-1 block text-sm text-red-600">
+                            </span>
+                        </div>
+
+                        <div>
+                            <label class="mb-1 block text-sm font-bold text-slate-700">
+                                Kapak Görsel
+                            </label>
+
+                            <div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
+                                <div>
+                                    <label asp-for="KapakGorselUrl"
+                                           class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                                        Görsel URL
+                                    </label>
+
+                                    <input asp-for="KapakGorselUrl"
+                                           id="KapakGorselUrl"
+                                           class="input input-bordered w-full rounded-xl border-slate-300 bg-white"
+                                           placeholder="https://..." />
+
+                                    <span asp-validation-for="KapakGorselUrl"
+                                          class="mt-1 block text-sm text-red-600">
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <div class="h-px flex-1 bg-slate-200"></div>
+                                    <span class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                        veya
+                                    </span>
+                                    <div class="h-px flex-1 bg-slate-200"></div>
+                                </div>
+
+                                <div>
+                                    <label asp-for="KapakGorselDosya"
+                                           class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                                        Bilgisayardan Görsel Yükle
+                                    </label>
+
+                                    <input asp-for="KapakGorselDosya"
+                                           id="KapakGorselDosya"
+                                           type="file"
+                                           accept="image/jpeg,image/png,image/webp"
+                                           class="file-input file-input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                                    <p class="mt-1 text-xs text-slate-500">
+                                        URL girebilir veya JPG, PNG, WEBP formatında görsel yükleyebilirsiniz.
+                                    </p>
+
+                                    <span asp-validation-for="KapakGorselDosya"
+                                          class="mt-1 block text-sm text-red-600">
+                                    </span>
+                                </div>
+
+                                <p id="kapakGorselHata"
+                                   class="hidden text-sm font-semibold text-red-600">
+                                </p>
+
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="mb-3">
+                                <label class="block text-sm font-bold text-slate-700">
+                                    Kurs Kategorileri
+                                </label>
+
+                                <p class="mt-1 text-xs text-slate-500">
+                                    Sadece onaylı eğitmen branşlarınız arasından kategori seçebilirsiniz.
+                                </p>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
+                                @if (kategoriVarMi)
+                                {
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+
+                                        <select id="kategoriSelect"
+                                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+                                            <option value="">Kategori seçin</option>
+
+                                            @foreach (var kategori in Model.Kategoriler)
+                                            {
+                                                <option value="@kategori.KategoriId">
+                                                    @kategori.KategoriAdi
+                                                </option>
+                                            }
+                                        </select>
+
+                                        <button type="button"
+                                                id="kategoriEkleBtn"
+                                                class="btn btn-outline rounded-xl">
+                                            Ekle
+                                        </button>
+
+                                    </div>
+
+                                    <div id="seciliKategoriler"
+                                         class="mt-4 flex flex-wrap gap-2">
+
+                                        @foreach (var kategoriId in Model.SeciliKategoriIdleri)
+                                        {
+                                            var kategori = Model.Kategoriler.FirstOrDefault(x => x.KategoriId == kategoriId);
+
+                                            if (kategori != null)
+                                            {
+                                                <span class="kategori-chip inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700"
+                                                      data-id="@kategori.KategoriId">
+
+                                                    <span>@kategori.KategoriAdi</span>
+
+                                                    <button type="button"
+                                                            class="kategori-sil text-blue-500 hover:text-red-600">
+                                                        ×
+                                                    </button>
+
+                                                    <input type="hidden"
+                                                           name="SeciliKategoriIdleri"
+                                                           value="@kategori.KategoriId" />
+                                                </span>
+                                            }
+                                        }
+
+                                    </div>
+
+                                    <p id="kategoriBosMesaj"
+                                       class="mt-4 text-sm text-slate-500">
+                                        Henüz kategori seçilmedi.
+                                    </p>
+                                }
+                                else
+                                {
+                                    <div class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                                        <p class="text-sm font-semibold text-amber-700">
+                                            Kurs oluşturabilmek için onaylı eğitmen branşınız bulunmalıdır.
+                                        </p>
+
+                                        <p class="mt-1 text-xs leading-5 text-amber-700">
+                                            Branş bilginiz yoksa başvuru bilgilerinizin admin tarafından kontrol edilmesi gerekir.
+                                        </p>
+                                    </div>
+                                }
+
+                                <span asp-validation-for="SeciliKategoriIdleri"
+                                      class="mt-2 block text-sm text-red-600">
+                                </span>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end">
+
+                        <a asp-controller="EgitmenKurs"
+                           asp-action="Kurslarim"
+                           class="btn btn-outline rounded-xl">
+                            Vazgeç
+                        </a>
+
+                        <button type="submit"
+                                class="btn btn-primary rounded-xl"
+                                disabled="@(!kategoriVarMi)">
+                            Kurs Oluştur
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        const kategoriSelect = document.getElementById("kategoriSelect");
+        const kategoriEkleBtn = document.getElementById("kategoriEkleBtn");
+        const seciliKategoriler = document.getElementById("seciliKategoriler");
+        const kategoriBosMesaj = document.getElementById("kategoriBosMesaj");
+
+        function kategoriBosMesajGuncelle() {
+            if (!seciliKategoriler || !kategoriBosMesaj) {
+                return;
+            }
+
+            const seciliKategoriSayisi = seciliKategoriler.querySelectorAll(".kategori-chip").length;
+
+            kategoriBosMesaj.classList.toggle("hidden", seciliKategoriSayisi > 0);
+        }
+
+        function kategoriChipOlustur(kategoriId, kategoriAdi) {
+            const chip = document.createElement("span");
+            chip.className = "kategori-chip inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700";
+            chip.setAttribute("data-id", kategoriId);
+
+            const text = document.createElement("span");
+            text.textContent = kategoriAdi;
+
+            const silButton = document.createElement("button");
+            silButton.type = "button";
+            silButton.className = "kategori-sil text-blue-500 hover:text-red-600";
+            silButton.textContent = "×";
+
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = "SeciliKategoriIdleri";
+            hiddenInput.value = kategoriId;
+
+            chip.appendChild(text);
+            chip.appendChild(silButton);
+            chip.appendChild(hiddenInput);
+
+            return chip;
+        }
+
+        if (kategoriSelect && kategoriEkleBtn && seciliKategoriler) {
+            kategoriEkleBtn.addEventListener("click", function () {
+                const kategoriId = kategoriSelect.value;
+
+                if (!kategoriId) {
+                    return;
+                }
+
+                const kategoriAdi = kategoriSelect.options[kategoriSelect.selectedIndex].text.trim();
+
+                const zatenVarMi = seciliKategoriler.querySelector(`[data-id="${kategoriId}"]`);
+
+                if (zatenVarMi) {
+                    kategoriSelect.value = "";
+                    return;
+                }
+
+                const chip = kategoriChipOlustur(kategoriId, kategoriAdi);
+
+                seciliKategoriler.appendChild(chip);
+
+                kategoriSelect.value = "";
+                kategoriBosMesajGuncelle();
+            });
+
+            seciliKategoriler.addEventListener("click", function (e) {
+                if (e.target.classList.contains("kategori-sil")) {
+                    e.target.closest(".kategori-chip").remove();
+                    kategoriBosMesajGuncelle();
+                }
+            });
+
+            kategoriBosMesajGuncelle();
+        }
+
+        const kursOlusturForm = document.getElementById("kursOlusturForm");
+        const kapakGorselUrl = document.getElementById("KapakGorselUrl");
+        const kapakGorselDosya = document.getElementById("KapakGorselDosya");
+        const kapakGorselHata = document.getElementById("kapakGorselHata");
+
+        function kapakGorselHataGoster(mesaj) {
+            kapakGorselHata.textContent = mesaj;
+            kapakGorselHata.classList.remove("hidden");
+        }
+
+        function kapakGorselHataTemizle() {
+            kapakGorselHata.textContent = "";
+            kapakGorselHata.classList.add("hidden");
+        }
+
+        if (kursOlusturForm && kapakGorselUrl && kapakGorselDosya && kapakGorselHata) {
+            kursOlusturForm.addEventListener("submit", function (e) {
+                kapakGorselHataTemizle();
+
+                const urlGirildiMi = kapakGorselUrl.value.trim().length > 0;
+                const dosyaSecildiMi = kapakGorselDosya.files.length > 0;
+
+                if (!urlGirildiMi && !dosyaSecildiMi) {
+                    e.preventDefault();
+                    kapakGorselHataGoster("Kapak görseli için URL girmeli veya dosya yüklemelisiniz.");
+                    return;
+                }
+
+                if (dosyaSecildiMi) {
+                    const dosya = kapakGorselDosya.files[0];
+
+                    const izinliTipler = [
+                        "image/jpeg",
+                        "image/png",
+                        "image/webp"
+                    ];
+
+                    if (!izinliTipler.includes(dosya.type)) {
+                        e.preventDefault();
+                        kapakGorselHataGoster("Sadece JPG, PNG veya WEBP formatında görsel yükleyebilirsiniz.");
+                        return;
+                    }
+
+                    const maxBoyut = 5 * 1024 * 1024;
+
+                    if (dosya.size > maxBoyut) {
+                        e.preventDefault();
+                        kapakGorselHataGoster("Kapak görseli en fazla 5 MB olabilir.");
+                        return;
+                    }
+                }
+            });
+
+            kapakGorselUrl.addEventListener("input", kapakGorselHataTemizle);
+            kapakGorselDosya.addEventListener("change", kapakGorselHataTemizle);
+        }
+    </script>
+}

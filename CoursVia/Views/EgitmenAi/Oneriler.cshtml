@@ -1,0 +1,835 @@
+@model CoursVia.ViewModels.Ai.EgitmenAiOnerilerViewModel
+@using CoursVia.Services.Ai
+
+@{
+    ViewData["Title"] = "AI Öneriler";
+
+    var gecmisOnerilerJson = System.Text.Json.JsonSerializer.Serialize(
+        (Model.GecmisOneriler ?? new List<CoursVia.ViewModels.Ai.EgitmenGecmisOneriViewModel>())
+            .Select(o => new
+            {
+                oneriId = o.OneriId,
+                kursAdi = o.KursAdi,
+                oneriTipAdi = o.OneriTipAdi,
+                oneriMetni = o.OneriMetni,
+                olusturmaTarihi = o.OlusturmaTarihi.ToString("yyyy-MM-ddTHH:mm:ss"),
+                tarihText = o.OlusturmaTarihi.ToString(
+                    "dd MMMM yyyy • HH:mm",
+                    new System.Globalization.CultureInfo("tr-TR"))
+            })
+    );
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_EgitmenSidebar" />
+
+        <main class="min-w-0 px-5 py-6 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                <!-- Üst Başlık -->
+                <div class="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tight text-slate-900">
+                            AI Öneriler
+                        </h1>
+
+                        <p class="mt-1 text-sm text-slate-500">
+                            Kurslarını seçerek AI destekli içerik geliştirme önerisi oluşturabilir ve geçmiş önerilerini inceleyebilirsin.
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- ============================== -->
+                <!-- ANALİZ YAP BÖLÜMÜ              -->
+                <!-- ============================== -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="border-b border-slate-100 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 px-5 py-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+                                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-black text-slate-900">Yeni Analiz Oluştur</h2>
+                                <p class="text-xs font-medium text-slate-500">Kurs ve model seçerek AI analizi başlat</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.Kurslar == null || !Model.Kurslar.Any())
+                    {
+                        <div class="p-5">
+                            <div class="rounded-xl border border-yellow-100 bg-yellow-50 px-4 py-3">
+                                <p class="text-sm font-bold text-yellow-800">AI önerisi oluşturabileceğin kurs bulunamadı.</p>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="space-y-4 p-5">
+                            @Html.AntiForgeryToken()
+
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <!-- Kurs Seçimi -->
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                                        Kurs Seç
+                                    </label>
+                                    <select id="kursSecimi"
+                                            class="select select-bordered w-full rounded-xl border-slate-300 bg-slate-50 text-sm font-semibold">
+                                        <option value="" disabled selected>Bir kurs seçin...</option>
+                                        @foreach (var kurs in Model.Kurslar)
+                                        {
+                                            <option value="@kurs.KursId">@kurs.KursAdi</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <!-- Model Seçimi -->
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                                        AI Model
+                                    </label>
+                                    <select id="modelSecimi"
+                                            class="select select-bordered w-full rounded-xl border-slate-300 bg-slate-50 text-sm font-semibold">
+                                        <option value="Gemini">Gemini</option>
+                                        <option value="LocalGemma">Local Gemma</option>
+                                        <option value="MiniCoursVia">MiniCoursVia</option>
+                                        <option value="Hepsi">Üçünü Karşılaştır</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button id="analizBaslatBtn"
+                                    type="button"
+                                    class="btn btn-primary w-full rounded-xl py-3 text-sm font-bold sm:w-auto sm:px-8"
+                                    onclick="analizBaslat()">
+                                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
+                                </svg>
+                                Analiz Başlat
+                            </button>
+                        </div>
+                    }
+                </section>
+
+                <!-- Loading Bölümü -->
+                <section id="loadingBolumu" class="hidden">
+                    <div class="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-8 shadow-sm">
+                        <div class="flex flex-col items-center justify-center gap-4 text-center">
+                            <div class="relative">
+                                <div class="h-14 w-14 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <svg class="h-6 w-6 animate-pulse text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-black text-slate-800">AI Analiz Ediliyor...</h3>
+                                <p class="mt-1 text-sm font-medium text-slate-500">
+                                    Model çalışıyor, bu işlem birkaç saniye sürebilir.
+                                </p>
+                            </div>
+
+                            <div id="loadingSure" class="mt-2 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm ring-1 ring-inset ring-slate-200">
+                                Geçen süre: 0 sn
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Hata Bölümü -->
+                <section id="hataBolumu" class="hidden">
+                    <div class="rounded-2xl border border-red-100 bg-red-50 p-5 shadow-sm">
+                        <p id="hataMesaji" class="text-sm font-bold text-red-800"></p>
+                    </div>
+                </section>
+
+                <!-- Sonuçlar Bölümü -->
+                <section id="sonuclarBolumu" class="hidden space-y-4">
+
+                    <div class="flex items-center gap-2 px-1">
+                        <div class="h-1 w-1 rounded-full bg-emerald-500"></div>
+                        <h2 class="text-base font-black text-slate-900">Analiz Sonuçları</h2>
+                    </div>
+
+                    <div id="sonuclarContainer" class="grid grid-cols-1 gap-5"></div>
+
+                    <div class="px-2 text-xs font-semibold text-slate-400">
+                        AI çıktıları güvenlik filtresinden geçerek temizlendikten sonra öneri kayıtlarına eklenir.
+                    </div>
+                </section>
+
+                <!-- ============================== -->
+                <!-- GEÇMİŞ ÖNERİLER BÖLÜMÜ         -->
+                <!-- ============================== -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="border-b border-slate-100 px-5 py-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 text-white shadow-sm">
+                                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-black text-slate-900">Geçmiş Öneriler</h2>
+                                <p id="gecmisOneriSayisi" class="text-xs font-medium text-slate-500">
+                                    Toplam @(Model.GecmisOneriler?.Count ?? 0) öneri
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.GecmisOneriler != null && Model.GecmisOneriler.Any())
+                    {
+                        <!-- Arama + Sıralama Kontrolleri -->
+                        <div class="border-b border-slate-100 bg-slate-50/30 px-5 py-3">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <!-- Arama -->
+                                <div class="relative flex-1">
+                                    <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                    </svg>
+                                    <input id="oneriArama"
+                                           type="text"
+                                           placeholder="Kurs adı veya öneri içeriğinde ara..."
+                                           class="input input-bordered w-full rounded-xl border-slate-300 bg-white pl-10 text-sm font-medium"
+                                           oninput="gecmisOnerileriFiltrele()" />
+                                </div>
+
+                                <!-- Sıralama -->
+                                <select id="oneriSiralama"
+                                        class="select select-bordered rounded-xl border-slate-300 bg-white text-sm font-semibold sm:w-52"
+                                        onchange="gecmisOnerileriFiltrele()">
+                                    <option value="tarih-yeni">En Yeni</option>
+                                    <option value="tarih-eski">En Eski</option>
+                                    <option value="kurs-az">Kurs Adı (A-Z)</option>
+                                    <option value="kurs-za">Kurs Adı (Z-A)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Öneri Listesi -->
+                        <div id="gecmisOneriListesi" class="divide-y divide-slate-100"></div>
+
+                        <!-- Boş sonuç mesajı -->
+                        <div id="gecmisOneriBos" class="hidden p-8 text-center">
+                            <p class="text-sm font-bold text-slate-500">Aramanızla eşleşen öneri bulunamadı.</p>
+                        </div>
+
+                        <!-- Sayfalama -->
+                        <div id="sayfalamaKontrol" class="hidden flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p class="text-sm text-slate-500" id="sayfaBilgiText"></p>
+                            <div id="sayfalamaButonlari" class="flex flex-wrap items-center gap-2"></div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-5">
+                            <div class="flex flex-col items-center justify-center py-8 text-center">
+                                <svg class="mb-3 h-12 w-12 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                </svg>
+                                <p class="text-sm font-bold text-slate-500">Henüz bir AI önerisi oluşturulmamış.</p>
+                                <p class="mt-1 text-xs font-medium text-slate-400">Yukarıdan bir kurs seçerek ilk analizini başlat!</p>
+                            </div>
+                        </div>
+                    }
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+<form id="aiOneriSilTokenForm" class="hidden">
+    @Html.AntiForgeryToken()
+</form>
+
+<script id="gecmisOnerilerJson" type="application/json">
+    @Html.Raw(gecmisOnerilerJson)
+</script>
+
+@section Scripts {
+    <script>
+        let loadingInterval = null;
+
+        function escapeHtml(value) {
+            return (value || '')
+                .toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function uyariGoster(mesaj) {
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Seçim Gerekli',
+                    text: mesaj,
+                    confirmButtonText: 'Tamam',
+                    confirmButtonColor: '#2563eb'
+                });
+
+                return;
+            }
+
+            const hata = document.getElementById('hataBolumu');
+            const hataMesaji = document.getElementById('hataMesaji');
+
+            if (hata && hataMesaji) {
+                hataMesaji.textContent = mesaj;
+                hata.classList.remove('hidden');
+            }
+        }
+
+        function analizBaslat() {
+            const kursId = document.getElementById('kursSecimi').value;
+            const modelTipi = document.getElementById('modelSecimi').value;
+
+            if (!kursId) {
+                uyariGoster('Lütfen bir kurs seçin.');
+                return;
+            }
+
+            const btn = document.getElementById('analizBaslatBtn');
+            const loading = document.getElementById('loadingBolumu');
+            const hata = document.getElementById('hataBolumu');
+            const sonuclar = document.getElementById('sonuclarBolumu');
+            const sonuclarContainer = document.getElementById('sonuclarContainer');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.innerHTML = `
+                <svg class="mr-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Analiz Ediliyor...
+            `;
+
+            loading.classList.remove('hidden');
+            hata.classList.add('hidden');
+            sonuclar.classList.add('hidden');
+            sonuclarContainer.innerHTML = '';
+
+            let saniye = 0;
+            const sureBadge = document.getElementById('loadingSure');
+
+            loadingInterval = setInterval(() => {
+                saniye++;
+                sureBadge.textContent = `Geçen süre: ${saniye} sn`;
+            }, 1000);
+
+            const formData = new FormData();
+            formData.append('kursId', kursId);
+            formData.append('modelTipi', modelTipi);
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+
+            fetch('@Url.Action("KursAnaliziAjax", "EgitmenAi")', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    clearInterval(loadingInterval);
+                    loading.classList.add('hidden');
+
+                    btnSifirla(btn);
+
+                    if (!data.basarili) {
+                        hata.classList.remove('hidden');
+                        document.getElementById('hataMesaji').textContent = data.hata || 'Analiz sırasında bir hata oluştu.';
+                        return;
+                    }
+
+                    sonuclar.classList.remove('hidden');
+
+                    const gridClass = data.sonuclar.length > 1 ? 'xl:grid-cols-' + Math.min(data.sonuclar.length, 3) : '';
+                    sonuclarContainer.className = `grid grid-cols-1 gap-5 ${gridClass}`;
+
+                    data.sonuclar.forEach(sonuc => {
+                        sonuclarContainer.appendChild(sonucKartiOlustur(sonuc));
+                    });
+
+                    sonuclar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                })
+                .catch(err => {
+                    clearInterval(loadingInterval);
+                    loading.classList.add('hidden');
+
+                    btnSifirla(btn);
+
+                    hata.classList.remove('hidden');
+                    document.getElementById('hataMesaji').textContent = 'Bağlantı hatası oluştu. Lütfen tekrar deneyin.';
+
+                    console.error('AI Analiz Hatası:', err);
+                });
+        }
+
+        function btnSifirla(btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.innerHTML = `
+                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
+                </svg>
+                Analiz Başlat
+            `;
+        }
+
+        function modelBadgeClass(modelTipi) {
+            switch (modelTipi) {
+                case 'Gemini':
+                    return 'bg-indigo-50 text-indigo-700 ring-indigo-200';
+                case 'LocalGemma':
+                    return 'bg-purple-50 text-purple-700 ring-purple-200';
+                case 'MiniCoursVia':
+                    return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+                default:
+                    return 'bg-slate-100 text-slate-700 ring-slate-200';
+            }
+        }
+
+        function modelAdi(modelTipi) {
+            switch (modelTipi) {
+                case 'Gemini':
+                    return 'Gemini';
+                case 'LocalGemma':
+                    return 'Local Gemma';
+                case 'MiniCoursVia':
+                    return 'MiniCoursVia';
+                default:
+                    return modelTipi || 'AI Model';
+            }
+        }
+
+        function sonucKartiOlustur(sonuc) {
+            const article = document.createElement('article');
+            article.className = 'flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm animate-fade-in';
+
+            const durumBadge = sonuc.basariliMi
+                ? '<span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200/50">Başarılı</span>'
+                : '<span class="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700 ring-1 ring-inset ring-red-200/50">Hata</span>';
+
+            const filtreBadge = sonuc.guvenlikFiltresiUygulandiMi
+                ? '<span class="inline-flex rounded-full bg-yellow-50 px-2.5 py-1 text-[11px] font-bold text-yellow-700 ring-1 ring-inset ring-yellow-200/50">Temizlendi</span>'
+                : '';
+
+            let icerik = '';
+
+            if (sonuc.basariliMi) {
+                const temizCikti = escapeHtml(sonuc.cikti || '');
+                icerik = `<div class="prose prose-sm prose-slate max-w-none whitespace-pre-line leading-relaxed text-slate-700">${temizCikti}</div>`;
+            } else {
+                const hataMesaji = escapeHtml(sonuc.hataMesaji || 'AI modeli hata döndürdü.');
+
+                icerik = `
+                    <div class="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                        <p class="text-sm font-semibold text-red-800">${hataMesaji}</p>
+                    </div>
+                `;
+            }
+
+            article.innerHTML = `
+                <div class="border-b border-slate-100 bg-slate-50/50 px-5 py-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="mb-2 flex flex-wrap gap-2">
+                                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${modelBadgeClass(sonuc.modelTipi)}">
+                                    ${modelAdi(sonuc.modelTipi)}
+                                </span>
+                                ${durumBadge}
+                                ${filtreBadge}
+                            </div>
+                            <h3 class="text-base font-black text-slate-900">${escapeHtml(sonuc.modelAdi || '')}</h3>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Süre</div>
+                            <div class="mt-0.5 text-sm font-black text-slate-700">${escapeHtml(sonuc.sureText || '')}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 p-5">
+                    ${icerik}
+                </div>
+            `;
+
+            return article;
+        }
+
+        const SAYFA_BOYUTU = 5;
+        let gecmisOneriler = [];
+        let filtrelenmisOneriler = [];
+        let mevcutSayfa = 1;
+
+        function gecmisOnerileriYukle() {
+            const jsonElement = document.getElementById('gecmisOnerilerJson');
+
+            try {
+                gecmisOneriler = JSON.parse(jsonElement?.textContent || '[]');
+            } catch {
+                gecmisOneriler = [];
+            }
+
+            if (!Array.isArray(gecmisOneriler)) {
+                gecmisOneriler = [];
+            }
+
+            gecmisOnerileriFiltrele();
+        }
+
+        function gecmisOnerileriFiltrele() {
+            const aramaText = (document.getElementById('oneriArama')?.value || '').toLowerCase().trim();
+            const siralama = document.getElementById('oneriSiralama')?.value || 'tarih-yeni';
+
+            filtrelenmisOneriler = gecmisOneriler.filter(o => {
+                if (!aramaText) {
+                    return true;
+                }
+
+                return (o.kursAdi || '').toLowerCase().includes(aramaText) ||
+                       (o.oneriMetni || '').toLowerCase().includes(aramaText) ||
+                       (o.oneriTipAdi || '').toLowerCase().includes(aramaText);
+            });
+
+            filtrelenmisOneriler.sort((a, b) => {
+                switch (siralama) {
+                    case 'tarih-eski':
+                        return new Date(a.olusturmaTarihi) - new Date(b.olusturmaTarihi);
+                    case 'kurs-az':
+                        return (a.kursAdi || '').localeCompare((b.kursAdi || ''), 'tr');
+                    case 'kurs-za':
+                        return (b.kursAdi || '').localeCompare((a.kursAdi || ''), 'tr');
+                    default:
+                        return new Date(b.olusturmaTarihi) - new Date(a.olusturmaTarihi);
+                }
+            });
+
+            const toplamSayfa = Math.max(1, Math.ceil(filtrelenmisOneriler.length / SAYFA_BOYUTU));
+            mevcutSayfa = Math.max(1, Math.min(mevcutSayfa, toplamSayfa));
+            sayfayiGoster();
+        }
+
+        function sayfaDegistir(yon) {
+            const toplamSayfa = Math.ceil(filtrelenmisOneriler.length / SAYFA_BOYUTU);
+            mevcutSayfa = Math.max(1, Math.min(mevcutSayfa + yon, toplamSayfa));
+            sayfayiGoster();
+        }
+
+        function sayfayaGit(sayfa) {
+            mevcutSayfa = sayfa;
+            sayfayiGoster();
+        }
+
+        function sayfayiGoster() {
+            const liste = document.getElementById('gecmisOneriListesi');
+            const bos = document.getElementById('gecmisOneriBos');
+            const sayacEl = document.getElementById('gecmisOneriSayisi');
+            const sayfalamaKontrol = document.getElementById('sayfalamaKontrol');
+
+            if (!liste) {
+                return;
+            }
+
+            const toplam = filtrelenmisOneriler.length;
+            const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYUTU));
+
+            if (sayacEl) {
+                sayacEl.textContent = `${toplam} / ${gecmisOneriler.length} öneri`;
+            }
+
+            if (toplam === 0) {
+                liste.innerHTML = '';
+
+                if (bos) {
+                    const bosText = bos.querySelector('p');
+
+                    if (bosText) {
+                        bosText.textContent = gecmisOneriler.length === 0
+                            ? 'Henüz kayıtlı öneri bulunmuyor.'
+                            : 'Aramanızla eşleşen öneri bulunamadı.';
+                    }
+
+                    bos.classList.remove('hidden');
+                }
+
+                if (sayfalamaKontrol) {
+                    sayfalamaKontrol.classList.add('hidden');
+                    sayfalamaKontrol.classList.remove('flex');
+                }
+
+                return;
+            }
+
+            if (bos) {
+                bos.classList.add('hidden');
+            }
+
+            if (sayfalamaKontrol) {
+                if (toplamSayfa > 1) {
+                    sayfalamaKontrol.classList.remove('hidden');
+                    sayfalamaKontrol.classList.add('flex');
+                } else {
+                    sayfalamaKontrol.classList.add('hidden');
+                    sayfalamaKontrol.classList.remove('flex');
+                }
+            }
+
+            const baslangic = (mevcutSayfa - 1) * SAYFA_BOYUTU;
+            const bitis = Math.min(baslangic + SAYFA_BOYUTU, toplam);
+            const sayfaVerileri = filtrelenmisOneriler.slice(baslangic, bitis);
+
+            liste.innerHTML = sayfaVerileri.map(o => oneriSatiriOlustur(o)).join('');
+
+            const sayfaBilgi = document.getElementById('sayfaBilgiText');
+
+            if (sayfaBilgi) {
+                sayfaBilgi.innerHTML = `Sayfa <span class="font-bold text-slate-900">${mevcutSayfa}</span> / <span class="font-bold text-slate-900">${toplamSayfa}</span>`;
+            }
+
+            const btnContainer = document.getElementById('sayfalamaButonlari');
+
+            if (!btnContainer) {
+                return;
+            }
+
+            btnContainer.innerHTML = '';
+
+            const oncekiBtn = document.createElement('button');
+            oncekiBtn.textContent = 'Önceki';
+            oncekiBtn.className = mevcutSayfa <= 1
+                ? 'btn btn-outline btn-sm rounded-xl opacity-50'
+                : 'btn btn-outline btn-sm rounded-xl';
+            oncekiBtn.disabled = mevcutSayfa <= 1;
+            oncekiBtn.onclick = () => sayfaDegistir(-1);
+            btnContainer.appendChild(oncekiBtn);
+
+            let baslangicSayfa = Math.max(1, mevcutSayfa - 2);
+            let bitisSayfa = Math.min(toplamSayfa, mevcutSayfa + 2);
+
+            if (baslangicSayfa > 1) {
+                const btn = document.createElement('button');
+                btn.textContent = '1';
+                btn.className = 'btn btn-outline btn-sm rounded-xl';
+                btn.onclick = () => sayfayaGit(1);
+                btnContainer.appendChild(btn);
+
+                if (baslangicSayfa > 2) {
+                    const span = document.createElement('span');
+                    span.className = 'px-1 text-sm font-bold text-slate-400';
+                    span.textContent = '...';
+                    btnContainer.appendChild(span);
+                }
+            }
+
+            for (let i = baslangicSayfa; i <= bitisSayfa; i++) {
+                if (i === mevcutSayfa) {
+                    const span = document.createElement('span');
+                    span.className = 'btn btn-primary btn-sm rounded-xl';
+                    span.textContent = i;
+                    btnContainer.appendChild(span);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.textContent = i;
+                    btn.className = 'btn btn-outline btn-sm rounded-xl';
+                    btn.onclick = () => sayfayaGit(i);
+                    btnContainer.appendChild(btn);
+                }
+            }
+
+            if (bitisSayfa < toplamSayfa) {
+                if (bitisSayfa < toplamSayfa - 1) {
+                    const span = document.createElement('span');
+                    span.className = 'px-1 text-sm font-bold text-slate-400';
+                    span.textContent = '...';
+                    btnContainer.appendChild(span);
+                }
+
+                const btn = document.createElement('button');
+                btn.textContent = toplamSayfa;
+                btn.className = 'btn btn-outline btn-sm rounded-xl';
+                btn.onclick = () => sayfayaGit(toplamSayfa);
+                btnContainer.appendChild(btn);
+            }
+
+            const sonrakiBtn = document.createElement('button');
+            sonrakiBtn.textContent = 'Sonraki';
+            sonrakiBtn.className = mevcutSayfa >= toplamSayfa
+                ? 'btn btn-outline btn-sm rounded-xl opacity-50'
+                : 'btn btn-outline btn-sm rounded-xl';
+            sonrakiBtn.disabled = mevcutSayfa >= toplamSayfa;
+            sonrakiBtn.onclick = () => sayfaDegistir(1);
+            btnContainer.appendChild(sonrakiBtn);
+        }
+
+        function oneriSatiriOlustur(o) {
+            const oneriId = Number(o.oneriId || 0);
+            const oneriTipAdi = escapeHtml(o.oneriTipAdi || 'AI Önerisi');
+            const kursAdi = escapeHtml(o.kursAdi || 'Genel Öneri');
+            const tarihText = escapeHtml(o.tarihText || '');
+            const metinEscaped = escapeHtml(o.oneriMetni || '');
+
+            return `
+                <details class="group">
+                    <summary class="flex cursor-pointer items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-slate-50">
+                        <div class="min-w-0 flex-1">
+                            <div class="mb-1.5 flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 ring-1 ring-inset ring-blue-200/50">
+                                    ${oneriTipAdi}
+                                </span>
+                                <span class="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 ring-1 ring-inset ring-slate-500/10">
+                                    ${kursAdi}
+                                </span>
+                            </div>
+                            <div class="text-xs font-medium text-slate-400">${tarihText}</div>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <button type="button"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 hover:text-red-700"
+                                    title="Öneriyi sil"
+                                    aria-label="Öneriyi sil"
+                                    onclick="event.preventDefault(); event.stopPropagation(); oneriSil(${oneriId});">
+                                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21.75H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                            </button>
+
+                            <svg class="h-5 w-5 text-slate-400 transition-transform duration-200 group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </summary>
+                    <div class="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+                        <div class="prose prose-sm prose-slate max-w-none whitespace-pre-line leading-relaxed text-slate-700">${metinEscaped}</div>
+                    </div>
+                </details>
+            `;
+        }
+
+        function oneriSil(oneriId) {
+            if (!oneriId) {
+                return;
+            }
+
+            const sil = function () {
+                const formData = new FormData();
+                const token = document.querySelector('input[name="__RequestVerificationToken"]');
+
+                formData.append('oneriId', oneriId);
+
+                if (token) {
+                    formData.append('__RequestVerificationToken', token.value);
+                }
+
+                fetch('@Url.Action("OneriSil", "EgitmenAi")', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.json().then(data => ({
+                        ok: response.ok,
+                        data: data
+                    })))
+                    .then(result => {
+                        if (!result.ok || !result.data.basarili) {
+                            uyariGoster(result.data.mesaj || 'Öneri silinemedi.');
+                            return;
+                        }
+
+                        const sayfa = mevcutSayfa;
+                        gecmisOneriler = gecmisOneriler.filter(o => Number(o.oneriId) !== Number(oneriId));
+                        mevcutSayfa = sayfa;
+                        gecmisOnerileriFiltrele();
+
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Öneri Silindi',
+                                text: 'Seçili öneri geçmişten kaldırıldı.',
+                                timer: 1600,
+                                showConfirmButton: false
+                            });
+                        }
+                    })
+                    .catch(() => {
+                        uyariGoster('Öneri silinirken bağlantı hatası oluştu.');
+                    });
+            };
+
+            if (!window.Swal) {
+                sil();
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Öneri Silinsin mi?',
+                text: 'Bu öneri geçmişten kaldırılacak.',
+                showCancelButton: true,
+                confirmButtonText: 'Sil',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                reverseButtons: true,
+                focusCancel: true
+            }).then(result => {
+                if (result.isConfirmed) {
+                    sil();
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', gecmisOnerileriYukle);
+    </script>
+
+    <style>
+        @@keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.4s ease-out both;
+        }
+
+            .animate-fade-in:nth-child(2) {
+                animation-delay: 0.1s;
+            }
+
+            .animate-fade-in:nth-child(3) {
+                animation-delay: 0.2s;
+            }
+    </style>
+}

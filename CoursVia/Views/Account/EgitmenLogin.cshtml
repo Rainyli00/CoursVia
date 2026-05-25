@@ -1,0 +1,727 @@
+@{
+    ViewData["Title"] = "Eğitmen Girişi";
+
+    string activeTab = ViewBag.ActiveTab as string ?? "login";
+    var kategoriler = ViewBag.Kategoriler as List<CoursVia.Models.Kategori> ?? new List<CoursVia.Models.Kategori>();
+
+    bool epostaKontrolEdildi = ViewBag.EpostaKontrolEdildi as bool? ?? false;
+    string? basvuruEposta = ViewBag.BasvuruEposta as string;
+}
+
+<div class="min-h-[calc(100vh-130px)] flex items-center justify-center bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
+
+    <div id="pageShell"
+         class="w-full @(activeTab == "register" ? "max-w-5xl" : "max-w-md") transition-all duration-300">
+
+        <!-- Logo / Başlık -->
+        <div class="text-center mb-8">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     fill="none"
+                     viewBox="0 0 24 24"
+                     stroke-width="2"
+                     stroke="currentColor"
+                     class="w-8 h-8">
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M4.26 10.147a60.436 60.436 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+                </svg>
+            </div>
+
+            <h1 class="mt-6 text-4xl font-black text-blue-600 tracking-tight">
+                CoursVia
+            </h1>
+
+            <p class="mt-2 text-sm text-slate-600">
+                Eğitmen paneline giriş yap veya eğitmen başvurusu oluştur.
+            </p>
+        </div>
+
+        <!-- Kart -->
+        <div class="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+
+            <!-- Tab Başlıkları -->
+            <div class="grid grid-cols-2 border-b border-slate-200">
+                <button type="button"
+                        id="loginTabBtn"
+                        class="py-4 text-sm font-bold transition-colors">
+                    Eğitmen Girişi
+                </button>
+
+                <button type="button"
+                        id="registerTabBtn"
+                        class="py-4 text-sm font-bold transition-colors">
+                    Eğitmen Başvurusu
+                </button>
+            </div>
+
+            <div class="p-6 sm:p-8">
+
+                @if (ViewBag.Hata != null)
+                {
+                    <div class="flash-message mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 transition-all duration-500">
+                        <p class="text-sm font-medium text-red-700">
+                            @ViewBag.Hata
+                        </p>
+                    </div>
+                }
+
+                @if (TempData["Basari"] != null)
+                {
+                    <div class="flash-message mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 transition-all duration-500">
+                        <p class="text-sm font-medium text-emerald-700">
+                            @TempData["Basari"]
+                        </p>
+                    </div>
+                }
+
+                <!-- Login Form -->
+                <form id="loginForm"
+                      asp-controller="Account"
+                      asp-action="EgitmenLogin"
+                      method="post"
+                      class="mx-auto max-w-md space-y-5">
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">
+                            E-posta
+                        </label>
+
+                        <input type="email"
+                               name="eposta"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                               placeholder="egitmen@mail.com"
+                               autocomplete="email"
+                               required />
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-sm font-semibold text-slate-700">
+                                Şifre
+                            </label>
+
+                            <a asp-controller="Account"
+                               asp-action="ForgotPassword"
+                               class="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                                Şifremi unuttum
+                            </a>
+                        </div>
+
+                        <input type="password"
+                               name="sifre"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                               placeholder="••••••••"
+                               autocomplete="current-password"
+                               required />
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-primary w-full rounded-xl">
+                        Eğitmen Girişi Yap
+                    </button>
+
+                
+
+                    <p class="text-center text-sm text-slate-500">
+                        Öğrenci misin?
+                        <a asp-controller="Account"
+                           asp-action="OgrenciLogin"
+                           class="font-semibold text-blue-600 hover:text-blue-700">
+                            Öğrenci girişi yap
+                        </a>
+                    </p>
+                </form>
+
+                <!-- Başvuru Alanı -->
+                <div id="registerFormWrapper" class="hidden">
+
+                    @if (ViewBag.EgitmenYenidenBasvuruSifreSor == true)
+                    {
+                        <!-- Yeniden Başvuru Şifre Doğrulama Formu -->
+                        <form asp-controller="Account"
+                              asp-action="EgitmenYenidenBasvuruSifreKontrol"
+                              method="post"
+                              class="mx-auto max-w-md space-y-5">
+
+                            <input type="hidden" name="eposta" value="@basvuruEposta" />
+
+                            <div>
+                                <h2 class="text-xl font-black text-slate-900">
+                                    Reddedilen Başvuru Bulundu
+                                </h2>
+
+                                <p class="mt-1 text-sm text-slate-500">
+                                    <strong>@basvuruEposta</strong> adresine ait önceki eğitmen başvurunuz reddedilmiş.
+                                    Yeni bir başvuru göndermek için mevcut şifrenizi girin.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    Mevcut Şifreniz
+                                </label>
+
+                                <input type="password"
+                                       name="sifre"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-amber-500"
+                                       placeholder="••••••••"
+                                       required />
+                            </div>
+
+                            <button type="submit"
+                                    class="btn btn-primary w-full rounded-xl">
+                                Şifremi Doğrula ve Devam Et
+                            </button>
+
+                            <a asp-controller="Account"
+                               asp-action="EgitmenLogin"
+                               asp-route-tab="register"
+                               class="btn btn-ghost w-full rounded-xl">
+                                Farklı E-posta Kullan
+                            </a>
+                        </form>
+                    }
+                    else if (!epostaKontrolEdildi)
+                    {
+                        <!-- E-posta Kontrol Formu -->
+                        <form asp-controller="Account"
+                              asp-action="EgitmenBasvuruEpostaKontrol"
+                              method="post"
+                              class="mx-auto max-w-md space-y-5">
+
+                            <div>
+                                <h2 class="text-xl font-black text-slate-900">
+                                    Eğitmen Başvurusu
+                                </h2>
+
+                                <p class="mt-1 text-sm text-slate-500">
+                                    Önce e-posta adresinizi kontrol edelim. Kayıtlı hesabınız varsa başvuruyu öğrenci panelinizden yapmanız gerekir.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    E-posta
+                                </label>
+
+                                <input type="email"
+                                       name="eposta"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                       placeholder="ornek@mail.com"
+                                       autocomplete="email"
+                                       required />
+                            </div>
+
+                            <button type="submit"
+                                    class="btn btn-primary w-full rounded-xl">
+                                E-postayı Kontrol Et
+                            </button>
+
+                       
+                        </form>
+                    }
+                    else
+                    {
+                        <!-- Başvuru Formu -->
+                        <form id="registerForm"
+                              asp-controller="Account"
+                              asp-action="EgitmenRegister"
+                              method="post"
+                              class="space-y-6">
+
+                            <input type="hidden" name="eposta" value="@basvuruEposta" />
+
+                            @if (ViewBag.EgitmenYenidenBasvuru != true)
+                            {
+                                <!-- Kişisel Bilgiler -->
+                                <div>
+                                    <h2 class="text-xl font-black text-slate-900">
+                                        Kişisel Bilgiler
+                                    </h2>
+
+                                    <div class="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-blue-500">
+                                                    Başvuru e-postası
+                                                </p>
+
+                                                <p class="mt-1 text-sm font-bold text-blue-900">
+                                                    @basvuruEposta
+                                                </p>
+                                            </div>
+
+                                            <a asp-controller="Account"
+                                               asp-action="EgitmenLogin"
+                                               asp-route-tab="register"
+                                               class="btn btn-sm btn-outline btn-primary rounded-xl">
+                                                E-postayı Değiştir
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <p class="mt-3 text-sm text-slate-500">
+                                        Başvurun bu e-posta adresiyle oluşturulacak. Yanlış yazdıysan e-postayı değiştirip tekrar kontrol edebilirsin.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                            Ad
+                                        </label>
+
+                                        <input type="text"
+                                               name="ad"
+                                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                               placeholder="Adınız"
+                                               autocomplete="given-name"
+                                               required />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                            Soyad
+                                        </label>
+
+                                        <input type="text"
+                                               name="soyad"
+                                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                               placeholder="Soyadınız"
+                                               autocomplete="family-name"
+                                               required />
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                            Telefon
+                                        </label>
+
+                                        <div class="flex">
+                                            <span class="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-500 shadow-sm">
+                                                +90
+                                            </span>
+
+                                            <input type="tel"
+                                                   id="telefonInput"
+                                                   name="telefon"
+                                                   maxlength="13"
+                                                   class="input input-bordered w-full rounded-l-none rounded-r-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                                   placeholder="5XX XXX XX XX"
+                                                   autocomplete="tel"
+                                                   required />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                            Şifre
+                                        </label>
+
+                                        <input type="password"
+                                               id="registerPassword"
+                                               name="sifre"
+                                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                               placeholder="••••••••"
+                                               autocomplete="new-password"
+                                               required />
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                            Şifre Tekrar
+                                        </label>
+
+                                        <input type="password"
+                                               id="registerPasswordRepeat"
+                                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                               placeholder="••••••••"
+                                               autocomplete="new-password"
+                                               required />
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                                    <div class="flex items-start gap-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-blue-600 mt-0.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                        </svg>
+                                        <div>
+                                            <h3 class="text-sm font-bold text-blue-900">Başvuruyu Güncelle</h3>
+                                            <p class="mt-1 text-sm text-blue-800 leading-relaxed">
+                                                Eğitmen bilgilerini güncelleyip başvurunu tekrar gönderebilirsin.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Eğitmen Bilgileri -->
+                            <div class="pt-5 border-t border-slate-100">
+                                <h2 class="text-xl font-black text-slate-900">
+                                    Eğitmen Bilgileri
+                                </h2>
+
+                                <p class="mt-1 text-sm text-slate-500">
+                                    Uzmanlık alanın ve eğitim deneyimin hakkında bilgi ver.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    Uzmanlık Alanı
+                                </label>
+
+                                <input type="text"
+                                       name="uzmanlikAlani"
+                                       maxlength="300"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                       placeholder="Örn: ASP.NET Core, Matematik, İngilizce"
+                                       required />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    Biyografi
+                                </label>
+
+                                <textarea name="biyografi"
+                                      rows="4"
+                                      class="textarea textarea-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                      placeholder="Kendinizi, eğitim deneyiminizi ve uzmanlık alanınızı kısaca anlatın."
+                                      required></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    Deneyim Yılı
+                                </label>
+
+                                <input type="number"
+                                       name="deneyimYili"
+                                       min="0"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                       placeholder="Örn: 2"
+                                       required />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    Web Site / Portfolyo
+                                </label>
+
+                                <input type="url"
+                                       name="websiteUrl"
+                                       maxlength="250"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                       placeholder="https://..." />
+                            </div>
+
+                            <!-- Branş Seçimi -->
+                            <div class="pt-5 border-t border-slate-100">
+                                <h2 class="text-xl font-black text-slate-900">
+                                    Branş Seçimi
+                                </h2>
+
+                                <p class="mt-1 text-sm text-slate-500">
+                                    Eğitim verebileceğin kategorileri seç.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Branşlar
+                                </label>
+
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                    <select id="kategoriSelect"
+                                            class="select select-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500">
+                                        <option value="">Branş seçiniz</option>
+
+                                        @foreach (var kategori in kategoriler)
+                                        {
+                                            <option value="@kategori.KategoriId">
+                                                @kategori.KategoriAdi
+                                            </option>
+                                        }
+                                    </select>
+
+                                    <button type="button"
+                                            id="kategoriEkleBtn"
+                                            class="btn btn-outline btn-primary rounded-xl">
+                                        Ekle
+                                    </button>
+                                </div>
+
+                                <div id="secilenKategoriler"
+                                     class="mt-4 flex flex-wrap gap-2">
+                                </div>
+
+                                <p class="mt-3 text-xs text-slate-500">
+                                    Birden fazla branş seçebilirsin. En az bir branş seçmen gerekir.
+                                </p>
+                            </div>
+
+                            <button type="submit"
+                                    class="btn btn-primary w-full rounded-xl">
+                                Eğitmen Başvurusu Gönder
+                            </button>
+
+                        
+                        </form>
+                    }
+                </div>
+
+            </div>
+        </div>
+
+     
+     
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const activeTab = "@activeTab";
+
+        const pageShell = document.getElementById("pageShell");
+
+        const loginTabBtn = document.getElementById("loginTabBtn");
+        const registerTabBtn = document.getElementById("registerTabBtn");
+
+        const loginForm = document.getElementById("loginForm");
+        const registerFormWrapper = document.getElementById("registerFormWrapper");
+
+        const goRegisterBtn = document.getElementById("goRegisterBtn");
+        const goLoginBtn = document.getElementById("goLoginBtn");
+        const goLoginBtnFromEmailCheck = document.getElementById("goLoginBtnFromEmailCheck");
+
+        function setActiveTab(tab) {
+            if (tab === "register") {
+                pageShell.className = "w-full max-w-5xl transition-all duration-300";
+
+                registerFormWrapper.classList.remove("hidden");
+                loginForm.classList.add("hidden");
+
+                registerTabBtn.className = "py-4 text-sm font-bold transition-colors bg-blue-50 text-blue-700";
+                loginTabBtn.className = "py-4 text-sm font-bold transition-colors text-slate-500 hover:text-blue-700";
+            } else {
+                pageShell.className = "w-full max-w-md transition-all duration-300";
+
+                loginForm.classList.remove("hidden");
+                registerFormWrapper.classList.add("hidden");
+
+                loginTabBtn.className = "py-4 text-sm font-bold transition-colors bg-blue-50 text-blue-700";
+                registerTabBtn.className = "py-4 text-sm font-bold transition-colors text-slate-500 hover:text-blue-700";
+            }
+        }
+
+        loginTabBtn.addEventListener("click", function () {
+            setActiveTab("login");
+        });
+
+        registerTabBtn.addEventListener("click", function () {
+            setActiveTab("register");
+        });
+
+        if (goRegisterBtn) {
+            goRegisterBtn.addEventListener("click", function () {
+                setActiveTab("register");
+            });
+        }
+
+        if (goLoginBtn) {
+            goLoginBtn.addEventListener("click", function () {
+                setActiveTab("login");
+            });
+        }
+
+        if (goLoginBtnFromEmailCheck) {
+            goLoginBtnFromEmailCheck.addEventListener("click", function () {
+                setActiveTab("login");
+            });
+        }
+
+        setActiveTab(activeTab);
+
+        // TempData / ViewBag mesajlarını 3 saniye sonra gizle
+        const flashMessages = document.querySelectorAll(".flash-message");
+
+        if (flashMessages.length > 0) {
+            setTimeout(function () {
+                flashMessages.forEach(function (message) {
+                    message.classList.add("opacity-0", "translate-y-[-6px]");
+
+                    setTimeout(function () {
+                        message.remove();
+                    }, 500);
+                });
+            }, 3000);
+        }
+
+        // Telefon formatı: 5XX XXX XX XX
+        const telefonInput = document.getElementById("telefonInput");
+
+        function telefonFormatla(value) {
+            let digits = value.replace(/\D/g, "").substring(0, 10);
+
+            if (digits.length <= 3) {
+                return digits;
+            }
+
+            if (digits.length <= 6) {
+                return digits.substring(0, 3) + " " + digits.substring(3);
+            }
+
+            if (digits.length <= 8) {
+                return digits.substring(0, 3) + " " +
+                       digits.substring(3, 6) + " " +
+                       digits.substring(6);
+            }
+
+            return digits.substring(0, 3) + " " +
+                   digits.substring(3, 6) + " " +
+                   digits.substring(6, 8) + " " +
+                   digits.substring(8);
+        }
+
+        if (telefonInput) {
+            telefonInput.addEventListener("input", function () {
+                this.value = telefonFormatla(this.value);
+            });
+        }
+
+        // Şifre tekrar kontrolü
+        const registerFormElement = document.getElementById("registerForm");
+        const passwordInput = document.getElementById("registerPassword");
+        const passwordRepeatInput = document.getElementById("registerPasswordRepeat");
+
+        // Branş seçimi
+        const kategoriSelect = document.getElementById("kategoriSelect");
+        const kategoriEkleBtn = document.getElementById("kategoriEkleBtn");
+        const secilenKategorilerDiv = document.getElementById("secilenKategoriler");
+
+        let secilenKategoriler = [];
+
+        function kategorileriRenderEt() {
+            if (!secilenKategorilerDiv) return;
+
+            secilenKategorilerDiv.innerHTML = "";
+
+            secilenKategoriler.forEach(function (kategori) {
+                const badge = document.createElement("div");
+                badge.className = "inline-flex items-center gap-2 rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700";
+
+                badge.innerHTML = `
+                    <span>${kategori.text}</span>
+                    <button type="button"
+                            class="text-blue-500 hover:text-red-600"
+                            data-id="${kategori.id}">
+                        ×
+                    </button>
+                    <input type="hidden" name="kategoriIdleri" value="${kategori.id}" />
+                `;
+
+                secilenKategorilerDiv.appendChild(badge);
+            });
+        }
+
+        if (kategoriEkleBtn) {
+            kategoriEkleBtn.addEventListener("click", function () {
+                const selectedOption = kategoriSelect.options[kategoriSelect.selectedIndex];
+
+                if (!selectedOption || !selectedOption.value) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Branş Seçilmedi",
+                        text: "Lütfen eklemek için bir branş seçin.",
+                        confirmButtonText: "Tamam",
+                        confirmButtonColor: "#2563eb"
+                    });
+
+                    return;
+                }
+
+                const kategoriId = selectedOption.value;
+                const kategoriText = selectedOption.text;
+
+                const zatenVarMi = secilenKategoriler.some(x => x.id === kategoriId);
+
+                if (zatenVarMi) {
+                    Swal.fire({
+                        icon: "info",
+                        title: "Zaten Eklendi",
+                        text: "Bu branş zaten seçildi.",
+                        confirmButtonText: "Tamam",
+                        confirmButtonColor: "#2563eb"
+                    });
+
+                    return;
+                }
+
+                secilenKategoriler.push({
+                    id: kategoriId,
+                    text: kategoriText
+                });
+
+                kategoriSelect.value = "";
+                kategorileriRenderEt();
+            });
+        }
+
+        if (secilenKategorilerDiv) {
+            secilenKategorilerDiv.addEventListener("click", function (e) {
+                if (e.target.tagName === "BUTTON") {
+                    const id = e.target.getAttribute("data-id");
+
+                    secilenKategoriler = secilenKategoriler.filter(x => x.id !== id);
+
+                    kategorileriRenderEt();
+                }
+            });
+        }
+
+        if (registerFormElement) {
+            registerFormElement.addEventListener("submit", function (e) {
+                // Şifre kontrolünü sadece yeni başvurularda yap (yeniden başvuru modunda şifre alanları yok)
+                if (passwordInput && passwordRepeatInput) {
+                    if (passwordInput.value !== passwordRepeatInput.value) {
+                        e.preventDefault();
+
+                        Swal.fire({
+                            icon: "error",
+                            title: "Şifreler Eşleşmiyor",
+                            text: "Lütfen şifre ve şifre tekrar alanlarını aynı girin.",
+                            confirmButtonText: "Tamam",
+                            confirmButtonColor: "#2563eb"
+                        });
+
+                        return;
+                    }
+                }
+
+                if (secilenKategoriler.length === 0) {
+                    e.preventDefault();
+
+                    Swal.fire({
+                        icon: "error",
+                        title: "Branş Seçilmedi",
+                        text: "Lütfen başvuruyu tamamlamak için en az bir branş seçin.",
+                        confirmButtonText: "Tamam",
+                        confirmButtonColor: "#2563eb"
+                    });
+
+                    return;
+                }
+            });
+        }
+    </script>
+}

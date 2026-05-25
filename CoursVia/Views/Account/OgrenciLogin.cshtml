@@ -1,0 +1,433 @@
+@{
+    ViewData["Title"] = "Öğrenci Girişi";
+
+    string activeTab = ViewBag.ActiveTab as string ?? "login";
+    bool kayitEpostaKontrolEdildi = ViewBag.KayitEpostaKontrolEdildi as bool? ?? false;
+    bool mevcutEgitmenHesabi = ViewBag.MevcutEgitmenHesabi as bool? ?? false;
+    string kayitEposta = ViewBag.KayitEposta as string ?? "";
+    string loginEposta = ViewBag.LoginEposta as string ?? "";
+}
+
+<div class="min-h-[calc(100vh-130px)] flex items-center justify-center bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
+
+    <div class="w-full max-w-md">
+
+        <!-- Logo / Başlık -->
+        <div class="text-center mb-8">
+            <div
+                class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                     stroke="currentColor" class="w-8 h-8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M4.26 10.147a60.436 60.436 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+                </svg>
+            </div>
+
+            <h1 class="mt-6 text-4xl font-black text-blue-600 tracking-tight">
+                CoursVia
+            </h1>
+
+            <p class="mt-2 text-sm text-slate-600">
+                Öğren, ilerle ve hedeflerine ulaş.
+            </p>
+        </div>
+
+        <!-- Kart -->
+        <div class="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+
+            <!-- Tab Başlıkları -->
+            <div class="grid grid-cols-2 border-b border-slate-200">
+                <button type="button" id="loginTabBtn" class="py-4 text-sm font-bold transition-colors">
+                    Giriş Yap
+                </button>
+
+                <button type="button" id="registerTabBtn" class="py-4 text-sm font-bold transition-colors">
+                    Kayıt Ol
+                </button>
+            </div>
+
+            <div class="p-6 sm:p-8">
+
+                @if (ViewBag.Hata != null)
+                {
+                    <div
+                        class="flash-message mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 transition-all duration-500">
+                        <p class="text-sm font-medium text-red-700">
+                            @ViewBag.Hata
+                        </p>
+                    </div>
+                }
+
+                @if (TempData["Basari"] != null)
+                {
+                    <div
+                        class="flash-message mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 transition-all duration-500">
+                        <p class="text-sm font-medium text-emerald-700">
+                            @TempData["Basari"]
+                        </p>
+                    </div>
+                }
+
+                <!-- Login Form -->
+                <form id="loginForm" asp-controller="Account" asp-action="OgrenciLogin" method="post" class="space-y-5">
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">
+                            E-posta
+                        </label>
+
+                        <input type="email" name="eposta" value="@loginEposta"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                               placeholder="ornek@mail.com" autocomplete="email" required />
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-sm font-semibold text-slate-700">
+                                Şifre
+                            </label>
+
+                            <a asp-controller="Account" asp-action="ForgotPassword"
+                               class="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                                Şifremi unuttum
+                            </a>
+                        </div>
+
+                        <input type="password" name="sifre"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                               placeholder="••••••••" autocomplete="current-password" required />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full rounded-xl">
+                        Öğrenci Girişi Yap
+                    </button>
+
+                    <p class="text-center text-sm text-slate-500">
+                        Eğitmen misin?
+                        <a asp-controller="Account" asp-action="EgitmenLogin"
+                           class="font-semibold text-blue-600 hover:text-blue-700">
+                            Eğitmen girişi yap
+                        </a>
+                    </p>
+                </form>
+
+                @if (!kayitEpostaKontrolEdildi)
+                {
+                    <!-- Register Email Check Form -->
+                    <form id="registerForm" asp-controller="Account" asp-action="OgrenciKayitEpostaKontrol" method="post"
+                          class="hidden space-y-5">
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                E-posta
+                            </label>
+
+                            <input type="email" name="eposta"
+                                   class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                   placeholder="ornek@mail.com" autocomplete="email" required />
+
+                            <p class="mt-2 text-xs leading-5 text-slate-500">
+                                Önce e-posta adresini kontrol edelim.
+                            </p>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-full rounded-xl">
+                            Devam Et
+                        </button>
+
+                        <div class="pt-5 border-t border-slate-100">
+                            <p class="text-center text-sm text-slate-600">
+                                Bilgini paylaşmak ister misin?
+                                <a asp-controller="Account" asp-action="EgitmenLogin"
+                                   class="font-semibold text-blue-600 hover:text-blue-700">
+                                    Eğitmen başvurusu yap
+                                </a>
+                            </p>
+                        </div>
+                    </form>
+                }
+                else if (mevcutEgitmenHesabi)
+                {
+                    <!-- Existing Instructor Student Activation Form -->
+                    <form id="registerForm" asp-controller="Account" asp-action="OgrenciRolAktiflestir" method="post"
+                          class="hidden space-y-5">
+
+                        <input type="hidden" name="eposta" value="@kayitEposta" />
+
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                                        Sistemde hesap bulundu
+                                    </p>
+
+                                    <p class="mt-1 text-sm font-bold text-slate-900">
+                                        @kayitEposta
+                                    </p>
+                                </div>
+
+                                <a asp-controller="Account" asp-action="OgrenciLogin" asp-route-tab="register"
+                                   class="btn btn-sm btn-outline btn-primary rounded-xl">
+                                    E-Postayı Değiştir
+                                </a>
+                            </div>
+
+                            <p class="mt-2 text-xs leading-5 text-slate-600">
+                                Bu e-posta ile mevcut bir hesap bulundu. Şifreni doğruladığında bu hesaba öğrenci profili
+                                oluşturulacak.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                Şifre
+                            </label>
+
+                            <input type="password" id="existingAccountPassword" name="sifre"
+                                   class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                   placeholder="••••••••" autocomplete="current-password" required />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                Şifre Tekrar
+                            </label>
+
+                            <input type="password" id="existingAccountPasswordRepeat"
+                                   class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                   placeholder="••••••••" autocomplete="current-password" required />
+
+                            <p class="mt-2 text-xs leading-5 text-slate-500">
+                                Hesabın sana ait olduğunu doğrulamak için mevcut şifreni tekrar gir.
+                            </p>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-full rounded-xl">
+                            Öğrenci Kaydını Tamamla
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <!-- Register Form -->
+                    <form id="registerForm" asp-controller="Account" asp-action="OgrenciRegister" method="post"
+                          class="hidden space-y-5">
+
+                        <input type="hidden" name="eposta" value="@kayitEposta" />
+
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-500">
+                                        E-posta
+                                    </p>
+
+                                    <p class="mt-1 text-sm font-bold text-blue-900">
+                                        @kayitEposta
+                                    </p>
+                                </div>
+
+                                <a asp-controller="Account" asp-action="OgrenciLogin" asp-route-tab="register"
+                                   class="btn btn-sm btn-outline btn-primary rounded-xl">
+                                    E-Postayı Değiştir
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    Ad
+                                </label>
+
+                                <input type="text" name="ad"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                       placeholder="Adınız" autocomplete="given-name" required />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                    Soyad
+                                </label>
+
+                                <input type="text" name="soyad"
+                                       class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                       placeholder="Soyadınız" autocomplete="family-name" required />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                Telefon
+                            </label>
+
+                            <div class="flex">
+                                <span
+                                    class="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-500 shadow-sm">
+                                    +90
+                                </span>
+
+                                <input type="tel" id="telefonInput" name="telefon" maxlength="13"
+                                       class="input input-bordered w-full rounded-l-none rounded-r-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                       placeholder="5XX XXX XX XX" autocomplete="tel" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                Şifre
+                            </label>
+
+                            <input type="password" id="registerPassword" name="sifre"
+                                   class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                   placeholder="••••••••" autocomplete="new-password" required />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">
+                                Şifre Tekrar
+                            </label>
+
+                            <input type="password" id="registerPasswordRepeat"
+                                   class="input input-bordered w-full rounded-xl border-slate-300 bg-white shadow-sm focus:border-blue-500"
+                                   placeholder="••••••••" autocomplete="new-password" required />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-full rounded-xl">
+                            Öğrenci Hesabı Oluştur
+                        </button>
+                    </form>
+                }
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const activeTab = "@activeTab";
+
+        const loginTabBtn = document.getElementById("loginTabBtn");
+        const registerTabBtn = document.getElementById("registerTabBtn");
+
+        const loginForm = document.getElementById("loginForm");
+        const registerForm = document.getElementById("registerForm");
+
+        function setActiveTab(tab) {
+            if (tab === "register") {
+                registerForm.classList.remove("hidden");
+                loginForm.classList.add("hidden");
+
+                registerTabBtn.className = "py-4 text-sm font-bold transition-colors bg-blue-50 text-blue-700";
+                loginTabBtn.className = "py-4 text-sm font-bold transition-colors text-slate-500 hover:text-blue-700";
+            } else {
+                loginForm.classList.remove("hidden");
+                registerForm.classList.add("hidden");
+
+                loginTabBtn.className = "py-4 text-sm font-bold transition-colors bg-blue-50 text-blue-700";
+                registerTabBtn.className = "py-4 text-sm font-bold transition-colors text-slate-500 hover:text-blue-700";
+            }
+        }
+
+        loginTabBtn.addEventListener("click", function () {
+            setActiveTab("login");
+        });
+
+        registerTabBtn.addEventListener("click", function () {
+            setActiveTab("register");
+        });
+
+        setActiveTab(activeTab);
+
+        // TempData / ViewBag mesajlarını 3 saniye sonra gizle
+        const flashMessages = document.querySelectorAll(".flash-message");
+
+        if (flashMessages.length > 0) {
+            setTimeout(function () {
+                flashMessages.forEach(function (message) {
+                    message.classList.add("opacity-0", "translate-y-[-6px]");
+
+                    setTimeout(function () {
+                        message.remove();
+                    }, 500);
+                });
+            }, 3000);
+        }
+
+        // Telefon formatı: 5XX XXX XX XX
+        const telefonInput = document.getElementById("telefonInput");
+
+        function telefonFormatla(value) {
+            let digits = value.replace(/\D/g, "").substring(0, 10);
+
+            if (digits.length <= 3) {
+                return digits;
+            }
+
+            if (digits.length <= 6) {
+                return digits.substring(0, 3) + " " + digits.substring(3);
+            }
+
+            if (digits.length <= 8) {
+                return digits.substring(0, 3) + " " +
+                    digits.substring(3, 6) + " " +
+                    digits.substring(6);
+            }
+
+            return digits.substring(0, 3) + " " +
+                digits.substring(3, 6) + " " +
+                digits.substring(6, 8) + " " +
+                digits.substring(8);
+        }
+
+        if (telefonInput) {
+            telefonInput.addEventListener("input", function () {
+                this.value = telefonFormatla(this.value);
+            });
+        }
+
+        const registerFormElement = document.getElementById("registerForm");
+
+        const passwordInput = document.getElementById("registerPassword");
+        const passwordRepeatInput = document.getElementById("registerPasswordRepeat");
+
+        const existingAccountPasswordInput = document.getElementById("existingAccountPassword");
+        const existingAccountPasswordRepeatInput = document.getElementById("existingAccountPasswordRepeat");
+
+        if (registerFormElement) {
+            registerFormElement.addEventListener("submit", function (e) {
+                if (existingAccountPasswordInput && existingAccountPasswordRepeatInput) {
+                    if (existingAccountPasswordInput.value !== existingAccountPasswordRepeatInput.value) {
+                        e.preventDefault();
+
+                        Swal.fire({
+                            icon: "error",
+                            title: "Şifreler Eşleşmiyor",
+                            text: "Lütfen şifre ve şifre tekrar alanlarını aynı girin.",
+                            confirmButtonText: "Tamam",
+                            confirmButtonColor: "#2563eb"
+                        });
+                    }
+
+                    return;
+                }
+
+                if (passwordInput && passwordRepeatInput) {
+                    if (passwordInput.value !== passwordRepeatInput.value) {
+                        e.preventDefault();
+
+                        Swal.fire({
+                            icon: "error",
+                            title: "Şifreler Eşleşmiyor",
+                            text: "Lütfen şifre ve şifre tekrar alanlarını aynı girin.",
+                            confirmButtonText: "Tamam",
+                            confirmButtonColor: "#2563eb"
+                        });
+                    }
+                }
+            });
+        }
+    </script>
+}

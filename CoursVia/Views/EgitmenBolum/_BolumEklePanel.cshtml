@@ -1,0 +1,72 @@
+@model CoursVia.Models.Kurs
+
+@{
+    bool isEditable = Model.DurumId == 3 ||
+                      Model.DurumId == 5 ||
+                      Model.DurumId == 6 ||
+                      Model.DurumId == 7;
+}
+
+<div class="space-y-6">
+
+    <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
+        <h3 class="mb-4 text-lg font-black text-slate-900">
+            Yeni Bölüm Ekle
+        </h3>
+
+        @if (isEditable)
+        {
+            <form asp-controller="EgitmenBolum"
+                  asp-action="BolumEkle"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <input type="hidden"
+                       name="kursId"
+                       value="@Model.KursId" />
+
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-bold text-slate-700">
+                            Bölüm Adı
+                        </span>
+                    </label>
+
+                    <input type="text"
+                           name="bolumAdi"
+                           class="input input-bordered w-full rounded-xl border-slate-300 bg-white"
+                           placeholder="Örn: Giriş ve Kurulumlar"
+                           required />
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary w-full rounded-xl">
+                    Bölüm Oluştur
+                </button>
+
+            </form>
+        }
+        else
+        {
+            <div class="alert alert-warning rounded-xl border-orange-200 bg-orange-50 text-sm text-orange-800">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     class="h-5 w-5 shrink-0 stroke-current"
+                     fill="none"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+
+                <span>
+                    Kurs @Model.Durum.DurumAdi durumunda olduğu için içerik eklenemez/düzenlenemez.
+                </span>
+            </div>
+        }
+
+    </div>
+
+</div>

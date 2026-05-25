@@ -1,0 +1,658 @@
+﻿@model CoursVia.ViewModels.Ogrenci.OgrenciSinavlarimViewModel
+
+@{
+    ViewData["Title"] = "Sınavlarım";
+
+    int bulunanSinavSayisi = Model.ToplamKayit > 0
+        ? Model.ToplamKayit
+        : Model.Sinavlar.Count;
+
+    string DurumBadgeClass(string durumMetni, bool? gectiMi)
+    {
+        if (gectiMi == true || durumMetni == "Başarılı")
+            return "border-emerald-100 bg-emerald-50 text-emerald-700";
+
+        if (gectiMi == false)
+            return "border-red-100 bg-red-50 text-red-700";
+
+        if (durumMetni == "Devam ediyor")
+            return "border-blue-100 bg-blue-50 text-blue-700";
+
+        if (durumMetni == "Sınava hazır" || durumMetni == "Tekrar girilebilir")
+            return "border-indigo-100 bg-indigo-50 text-indigo-700";
+
+        if (durumMetni == "Hak doldu")
+            return "border-red-100 bg-red-50 text-red-700";
+
+        if (durumMetni == "Dersleri tamamla")
+            return "border-amber-100 bg-amber-50 text-amber-700";
+
+        if (durumMetni == "Kurs güncelleniyor")
+            return "border-amber-200 bg-amber-100 text-amber-800";
+
+        return "border-slate-200 bg-slate-50 text-slate-600";
+    }
+
+    string HakTextClass(int kalanHak)
+    {
+        if (kalanHak >= 2)
+            return "text-emerald-700";
+
+        if (kalanHak == 1)
+            return "text-amber-700";
+
+        return "text-red-700";
+    }
+}
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_OgrenciSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-6xl space-y-5">
+
+                @if (TempData["OgrenciHata"] != null)
+                {
+                    <div class="flash-message alert alert-error rounded-2xl shadow-sm transition-all duration-500">
+                        <span>@TempData["OgrenciHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["OgrenciBasari"] != null)
+                {
+                    <div class="flash-message alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-500">
+                        <span>@TempData["OgrenciBasari"]</span>
+                    </div>
+                }
+
+                <!-- Başlık -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider text-blue-600">
+                                Öğrenci Paneli
+                            </p>
+
+                            <h1 class="mt-1 text-2xl font-black text-slate-900">
+                                Sınavlarım
+                            </h1>
+
+                            <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                                Derslerini tamamladığın kursların sınavlarına buradan girebilir, sonuçlarını ve kalan haklarını takip edebilirsin.
+                            </p>
+                        </div>
+
+                        <a asp-controller="OgrenciKurs"
+                           asp-action="Kurslarim"
+                           class="btn btn-outline rounded-xl px-6">
+                            Kurslarım
+                        </a>
+
+                    </div>
+                </section>
+
+                <!-- Kompakt Özet Kartları -->
+                <section class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div class="flex items-center justify-between gap-4">
+
+                            <div>
+                                <p class="whitespace-nowrap text-xs font-black uppercase tracking-wide text-slate-500">
+                                    Toplam Sınav Sayısı
+                                </p>
+
+                                <p class="mt-2 text-3xl font-black text-slate-900">
+                                    @Model.ToplamSinavSayisi
+                                </p>
+                            </div>
+
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="2"
+                                     stroke="currentColor"
+                                     class="h-5 w-5">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M9 12.75 11.25 15 15 9.75M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12A2.25 2.25 0 0 1 17.25 20.25H6.75A2.25 2.25 0 0 1 4.5 18V6A2.25 2.25 0 0 1 6.75 3.75Z" />
+                                </svg>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div class="flex items-center justify-between gap-4">
+
+                            <div>
+                                <p class="whitespace-nowrap text-xs font-black uppercase tracking-wide text-slate-500">
+                                    Girilebilir Sınav Sayısı
+                                </p>
+
+                                <p class="mt-2 text-3xl font-black text-blue-700">
+                                    @Model.GirilebilirSinavSayisi
+                                </p>
+                            </div>
+
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="2"
+                                     stroke="currentColor"
+                                     class="h-5 w-5">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M12 6v6l4 2" />
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
+                                </svg>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div class="flex items-center justify-between gap-4">
+
+                            <div>
+                                <p class="whitespace-nowrap text-xs font-black uppercase tracking-wide text-slate-500">
+                                    Devam Eden Sınav Sayısı
+                                </p>
+
+                                <p class="mt-2 text-3xl font-black text-indigo-700">
+                                    @Model.DevamEdenSinavSayisi
+                                </p>
+                            </div>
+
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="2"
+                                     stroke="currentColor"
+                                     class="h-5 w-5">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                                </svg>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div class="flex items-center justify-between gap-4">
+
+                            <div>
+                                <p class="whitespace-nowrap text-xs font-black uppercase tracking-wide text-slate-500">
+                                    Başarılı Sınav Sayısı
+                                </p>
+
+                                <p class="mt-2 text-3xl font-black text-emerald-700">
+                                    @Model.GecilenSinavSayisi
+                                </p>
+                            </div>
+
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke-width="2"
+                                     stroke="currentColor"
+                                     class="h-5 w-5">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          d="M4.5 12.75 9 17.25 19.5 6.75" />
+                                </svg>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Filtre -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+
+                    <form asp-controller="OgrenciSinav"
+                          asp-action="Index"
+                          method="get"
+                          class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_260px_auto]">
+
+                        <input type="hidden" name="sayfa" value="1" />
+
+                        <input type="text"
+                               name="arama"
+                               value="@Model.Arama"
+                               placeholder="Kurs adı veya sınav adı ara"
+                               class="input input-bordered w-full rounded-xl border-slate-300 bg-white" />
+
+                        <select name="durum"
+                                class="select select-bordered w-full rounded-xl border-slate-300 bg-white">
+
+                            @if (Model.Durum == "tum")
+                            {
+                                <option value="tum" selected>Tüm sınavlar</option>
+                            }
+                            else
+                            {
+                                <option value="tum">Tüm sınavlar</option>
+                            }
+
+                            @if (Model.Durum == "devam")
+                            {
+                                <option value="devam" selected>Devam eden sınavlar</option>
+                            }
+                            else
+                            {
+                                <option value="devam">Devam eden sınavlar</option>
+                            }
+
+                            @if (Model.Durum == "basarili")
+                            {
+                                <option value="basarili" selected>Başarılı sınavlar</option>
+                            }
+                            else
+                            {
+                                <option value="basarili">Başarılı sınavlar</option>
+                            }
+
+                            @if (Model.Durum == "basarisiz")
+                            {
+                                <option value="basarisiz" selected>Başarısız sınavlar</option>
+                            }
+                            else
+                            {
+                                <option value="basarisiz">Başarısız sınavlar</option>
+                            }
+
+                        </select>
+
+                        <div class="flex gap-2 lg:justify-end">
+                            <button type="submit"
+                                    class="btn btn-primary rounded-xl px-6">
+                                Filtrele
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Arama) || Model.Durum != "tum")
+                            {
+                                <a asp-controller="OgrenciSinav"
+                                   asp-action="Index"
+                                   class="btn btn-outline rounded-xl">
+                                    Temizle
+                                </a>
+                            }
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- Liste -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="flex flex-col gap-1 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 class="text-base font-black text-slate-900">
+                                Sınav Listesi
+                            </h2>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                @bulunanSinavSayisi sınav bulundu
+                            </p>
+                        </div>
+                    </div>
+
+                    @if (Model.Sinavlar.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+
+                            @foreach (var sinav in Model.Sinavlar)
+                            {
+                                string kartClass = sinav.GuncelleniyorMu
+                                    ? "p-5 bg-amber-50/50 ring-1 ring-inset ring-amber-100"
+                                    : "p-5 transition hover:bg-slate-50";
+
+                                string kapakClass = sinav.GuncelleniyorMu
+                                    ? "h-24 w-32 rounded-2xl object-cover opacity-55 grayscale shadow-sm sm:w-36"
+                                    : "h-24 w-32 rounded-2xl object-cover shadow-sm sm:w-36";
+
+                                bool sonucGorulebilirMi =
+                                    (sinav.KursTamamlandiMi || sinav.SonucGectiMi == true) &&
+                                    sinav.SonSinavKatilimId.HasValue;
+
+                                <article class="@kartClass">
+
+                                    <div class="flex flex-col gap-4 md:flex-row md:items-stretch">
+
+                                        <!-- Kapak -->
+                                        <div class="relative shrink-0 self-start">
+                                            @if (!string.IsNullOrWhiteSpace(sinav.KapakGorselUrl))
+                                            {
+                                                <img src="@sinav.KapakGorselUrl"
+                                                     alt="@sinav.KursAdi"
+                                                     class="@kapakClass" />
+                                            }
+                                            else
+                                            {
+                                                <div class="flex h-24 w-32 items-center justify-center rounded-2xl @(sinav.GuncelleniyorMu ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-700") text-sm font-black sm:w-36">
+                                                    CoursVia
+                                                </div>
+                                            }
+
+                                            @if (sinav.GuncelleniyorMu)
+                                            {
+                                                <div class="absolute inset-0 flex items-center justify-center rounded-2xl bg-slate-950/35">
+                                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-amber-700 shadow-sm">
+                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                             fill="none"
+                                                             viewBox="0 0 24 24"
+                                                             stroke-width="2"
+                                                             stroke="currentColor"
+                                                             class="h-5 w-5">
+                                                            <path stroke-linecap="round"
+                                                                  stroke-linejoin="round"
+                                                                  d="M16.5 10.5V7.5a4.5 4.5 0 0 0-9 0v3m-.75 0h10.5A1.5 1.5 0 0 1 18.75 12v6A1.5 1.5 0 0 1 17.25 19.5H6.75A1.5 1.5 0 0 1 5.25 18v-6a1.5 1.5 0 0 1 1.5-1.5Z" />
+                                                        </svg>
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Bilgi -->
+                                        <div class="min-w-0 flex-1">
+
+                                            <div class="flex flex-wrap items-center gap-2">
+
+                                                <h3 class="line-clamp-1 text-base font-black text-slate-900">
+                                                    @sinav.KursAdi
+                                                </h3>
+
+                                                <span class="rounded-full border px-2.5 py-0.5 text-xs font-bold @DurumBadgeClass(sinav.DurumMetni, sinav.SonucGectiMi)">
+                                                    @sinav.DurumMetni
+                                                </span>
+
+                                            </div>
+
+                                            <p class="mt-1 text-sm font-semibold text-slate-500">
+                                                @sinav.SinavAdi
+                                            </p>
+
+                                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+
+                                                <span>
+                                                    Geçme notu: @sinav.GecmeNotu
+                                                </span>
+
+                                                @if (sinav.SonucGectiMi != true)
+                                                {
+                                                    <span class="text-slate-300">•</span>
+
+                                                    <span class="@HakTextClass(sinav.KalanHak)">
+                                                        Kalan hak: @sinav.KalanHak
+                                                    </span>
+                                                }
+
+                                                @if (sinav.SonPuan.HasValue)
+                                                {
+                                                    <span class="text-slate-300">•</span>
+
+                                                    <span>
+                                                        Son puan: @sinav.SonPuan
+                                                    </span>
+                                                }
+
+                                            </div>
+
+                                            @if (sinav.GuncelleniyorMu)
+                                            {
+                                                <div class="mt-4 max-w-2xl rounded-xl border border-amber-200 bg-white/80 px-4 py-3">
+                                                    <div class="flex gap-3">
+                                                        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                 fill="none"
+                                                                 viewBox="0 0 24 24"
+                                                                 stroke-width="2"
+                                                                 stroke="currentColor"
+                                                                 class="h-4 w-4">
+                                                                <path stroke-linecap="round"
+                                                                      stroke-linejoin="round"
+                                                                      d="M12 6v6l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                            </svg>
+                                                        </div>
+
+                                                        <div class="min-w-0">
+                                                            <p class="text-sm font-black text-amber-900">
+                                                                Kurs güncelleme modunda
+                                                            </p>
+
+                                                            <p class="mt-1 text-xs font-semibold leading-5 text-amber-800">
+                                                                Kurs erişime geçici olarak kapalı. Yayına alındığında sınav işlemlerine devam edebilirsiniz.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+
+                                        </div>
+
+                                        <!-- İşlem -->
+                                        <div class="flex shrink-0 flex-row items-center gap-2 md:w-44 md:flex-col md:justify-center">
+
+                                            @if (sonucGorulebilirMi)
+                                            {
+                                                <a asp-controller="OgrenciSinav"
+                                                   asp-action="Sonuc"
+                                                   asp-route-id="@sinav.SonSinavKatilimId!.Value"
+                                                   class="btn btn-primary btn-sm w-full rounded-xl">
+                                                    Sonucu Gör
+                                                </a>
+                                            }
+                                            else if (sinav.GuncelleniyorMu)
+                                            {
+                                                <button type="button"
+                                                        class="btn btn-disabled btn-sm w-full rounded-xl border-amber-200 bg-amber-100 text-amber-800"
+                                                        disabled>
+                                                    Erişime Kapalı
+                                                </button>
+                                            }
+                                            else if (sinav.DevamEdenSinavKatilimId.HasValue)
+                                            {
+                                                <a asp-controller="OgrenciSinav"
+                                                   asp-action="SinavGiris"
+                                                   asp-route-id="@sinav.DevamEdenSinavKatilimId.Value"
+                                                   class="btn btn-primary btn-sm w-full rounded-xl">
+                                                    Sınava Devam Et
+                                                </a>
+                                            }
+                                            else if (sinav.KursTamamlandiMi || sinav.SonucGectiMi == true)
+                                            {
+                                                if (sinav.SonSinavKatilimId.HasValue)
+                                                {
+                                                    <a asp-controller="OgrenciSinav"
+                                                       asp-action="Sonuc"
+                                                       asp-route-id="@sinav.SonSinavKatilimId.Value"
+                                                       class="btn btn-primary btn-sm w-full rounded-xl">
+                                                        Sonucu Gör
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button"
+                                                            class="btn btn-sm w-full rounded-xl border-slate-200 bg-slate-100 text-slate-400"
+                                                            disabled>
+                                                        Tamamlandı
+                                                    </button>
+                                                }
+                                            }
+                                            else if (sinav.SinavaGirebilirMi)
+                                            {
+                                                <form asp-controller="OgrenciSinav"
+                                                      asp-action="Baslat"
+                                                      asp-route-kursId="@sinav.KursId"
+                                                      method="post"
+                                                      class="w-full">
+
+                                                    @Html.AntiForgeryToken()
+
+                                                    <button type="submit"
+                                                            class="btn btn-primary btn-sm w-full rounded-xl">
+                                                        @(sinav.GirisSayisi == 0 ? "Sınava Başla" : "Tekrar Gir")
+                                                    </button>
+
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <button type="button"
+                                                        class="btn btn-sm w-full rounded-xl border-slate-200 bg-slate-100 text-slate-400"
+                                                        disabled>
+                                                    Sınav Kilitli
+                                                </button>
+                                            }
+
+                                            @if (sinav.SonSinavKatilimId.HasValue && sinav.SonucGectiMi != true)
+                                            {
+                                                <a asp-controller="OgrenciSinav"
+                                                   asp-action="Sonuc"
+                                                   asp-route-id="@sinav.SonSinavKatilimId.Value"
+                                                   class="btn btn-outline btn-sm w-full rounded-xl">
+                                                    Sonuç
+                                                </a>
+                                            }
+
+                                        </div>
+
+                                    </div>
+
+                                </article>
+                            }
+
+                        </div>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Sayfa
+                                    <span class="font-bold text-slate-900">@Model.Sayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.ToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.OncekiSayfaVar)
+                                    {
+                                        <a asp-controller="OgrenciSinav"
+                                           asp-action="Index"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="@(Model.Sayfa - 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @for (int i = 1; i <= Model.ToplamSayfa; i++)
+                                    {
+                                        if (i == Model.Sayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="OgrenciSinav"
+                                               asp-action="Index"
+                                               asp-route-arama="@Model.Arama"
+                                               asp-route-durum="@Model.Durum"
+                                               asp-route-sayfa="@i"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (Model.SonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="OgrenciSinav"
+                                           asp-action="Index"
+                                           asp-route-arama="@Model.Arama"
+                                           asp-route-durum="@Model.Durum"
+                                           asp-route-sayfa="@(Model.Sayfa + 1)"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline btn-sm rounded-xl opacity-50"
+                                                disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-14 text-center">
+
+                            <h3 class="text-base font-black text-slate-900">
+                                Sınav bulunamadı
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Arama veya filtreye uygun sınav bulunmuyor.
+                            </p>
+
+                            <div class="mt-5 flex justify-center gap-2">
+                                <a asp-controller="OgrenciSinav"
+                                   asp-action="Index"
+                                   class="btn btn-outline rounded-xl px-6">
+                                    Filtreleri Temizle
+                                </a>
+
+                                <a asp-controller="OgrenciKurs"
+                                   asp-action="Kesfet"
+                                   class="btn btn-primary rounded-xl px-6">
+                                    Kurs Keşfet
+                                </a>
+                            </div>
+
+                        </div>
+                    }
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>

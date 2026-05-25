@@ -1,0 +1,55 @@
+<dialog id="videoIzleModal" class="modal">
+
+    <div class="modal-box w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 p-0 shadow-2xl">
+
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 z-50 text-white hover:bg-white/10"
+                    onclick="stopVideo()">
+                ×
+            </button>
+        </form>
+
+        <div class="border-b border-slate-800 bg-slate-950 px-5 py-4">
+            <p class="text-xs font-black uppercase tracking-wide text-blue-300">
+                Video Ön İzleme
+            </p>
+
+            <h3 class="mt-1 text-lg font-black text-white" id="videoModalTitle">
+                Ders Önizleme
+            </h3>
+        </div>
+
+        <div class="relative aspect-video w-full bg-black [&_.plyr]:h-full [&_.plyr]:w-full"
+             id="videoContainer">
+        </div>
+
+        <div id="videoModalBilgiPanel"
+             class="hidden border-t border-slate-800 bg-slate-950 p-5">
+            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <section id="videoModalAciklamaWrapper"
+                         class="hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                    <p class="mb-2 text-xs font-black uppercase tracking-wide text-slate-400">
+                        Açıklama
+                    </p>
+
+                    <p id="videoModalAciklama" class="text-sm leading-6 text-slate-200"></p>
+                </section>
+
+                <section id="videoModalMateryalWrapper"
+                         class="hidden rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                    <p class="mb-3 text-xs font-black uppercase tracking-wide text-slate-400">
+                        Materyaller
+                    </p>
+
+                    <div id="videoModalMateryaller" class="grid gap-2"></div>
+                </section>
+            </div>
+        </div>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop bg-slate-950/80">
+        <button onclick="stopVideo()">close</button>
+    </form>
+
+</dialog>

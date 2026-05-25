@@ -1,0 +1,1345 @@
+@model CoursVia.ViewModels.Admin.AdminKursDetayViewModel
+
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Kurs Detayı";
+
+    int ortalamaPuanYuvarlak = Model.OrtalamaPuan <= 0
+        ? 0
+        : Math.Clamp((int)Math.Round(Model.OrtalamaPuan), 1, 5);
+
+    int yorumIlkSayfa = Math.Max(1, Model.YorumSayfa - 2);
+    int yorumSonSayfa = Math.Min(Model.YorumToplamSayfa, Model.YorumSayfa + 2);
+
+    int toplamDers = Model.Bolumler.Sum(x => x.Dersler.Count);
+
+    int toplamMateryal = Model.Bolumler
+        .Sum(x => x.Dersler.Sum(d => d.Materyaller.Count));
+
+    string DurumBadgeClass(int durumId)
+    {
+        return durumId switch
+        {
+            2 => "border-slate-200 bg-slate-50 text-slate-600",
+            3 => "border-indigo-100 bg-indigo-50 text-indigo-700",
+            4 => "border-blue-100 bg-blue-50 text-blue-700",
+            5 => "border-emerald-100 bg-emerald-50 text-emerald-700",
+            6 => "border-red-100 bg-red-50 text-red-700",
+            7 => "border-amber-100 bg-amber-50 text-amber-700",
+            _ => "border-slate-200 bg-slate-50 text-slate-600"
+        };
+    }
+
+}
+
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+<div class="min-h-[calc(100vh-130px)] bg-slate-50">
+
+    <div class="grid min-h-[calc(100vh-130px)] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        <partial name="_AdminSidebar" />
+
+        <main class="min-w-0 px-5 py-7 sm:px-7 lg:px-10">
+
+            <div class="mx-auto max-w-7xl space-y-5">
+
+                @if (TempData["AdminHata"] != null)
+                {
+                    <div class="flash-message transition-all duration-500 ease-in-out alert alert-error rounded-2xl shadow-sm">
+                        <span>@TempData["AdminHata"]</span>
+                    </div>
+                }
+
+                @if (TempData["AdminBasari"] != null)
+                {
+                    <div class="flash-message transition-all duration-500 ease-in-out alert rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm">
+                        <span>@TempData["AdminBasari"]</span>
+                    </div>
+                }
+
+                <!-- Üst Bilgi -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="grid gap-5 p-5 lg:grid-cols-[260px_minmax(0,1fr)_auto] lg:items-center">
+
+                        @if (!string.IsNullOrWhiteSpace(Model.KapakGorselUrl))
+                        {
+                            <img src="@Model.KapakGorselUrl" alt="@Model.KursAdi"
+                                 class="h-40 w-full rounded-xl object-cover lg:h-36" />
+                        }
+                        else
+                        {
+                            <div
+                                class="flex h-40 w-full items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-400 lg:h-36">
+                                Kapak görseli yok
+                            </div>
+                        }
+
+                        <div class="min-w-0">
+
+                            <div class="flex flex-wrap items-center gap-2">
+
+                                <span
+                                    class="rounded-full border px-3 py-1 text-xs font-bold @DurumBadgeClass(Model.DurumId)">
+                                    @Model.DurumAdi
+                                </span>
+
+                                @if (Model.Kategoriler.Any())
+                                {
+                                    @foreach (var kategori in Model.Kategoriler)
+                                    {
+                                        <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                                            @kategori
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                                        Kategori yok
+                                    </span>
+                                }
+
+                            </div>
+
+                            <h1 class="mt-3 text-2xl font-black text-slate-900">
+                                @Model.KursAdi
+                            </h1>
+
+                            <p class="mt-1 text-sm font-semibold text-slate-500">
+                                @Model.EgitmenAdSoyad · @Model.EgitmenEposta
+                            </p>
+
+                            <p class="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                                @(string.IsNullOrWhiteSpace(Model.Aciklama) ? "Bu kurs için açıklama girilmemiş." :
+                                Model.Aciklama)
+                            </p>
+
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 lg:justify-end">
+
+                            <a asp-controller="AdminKurs" asp-action="Kurslar"
+                               class="btn btn-sm btn-outline rounded-xl">
+                                Listeye Dön
+                            </a>
+
+                            <button type="button"
+                                    onclick="document.getElementById('kategoriDuzenleModal').showModal()"
+                                    class="btn btn-sm btn-outline rounded-xl">
+                                Kategori
+                            </button>
+
+                            @if (Model.DuzenlemeyeGonderilebilir)
+                            {
+                                <button type="button"
+                                        onclick="document.getElementById('duzenlemeyeGonderModal').showModal()"
+                                        class="btn btn-sm rounded-xl border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100">
+                                    Düzenlemeye Gönder
+                                </button>
+                            }
+
+                            @if (Model.PasifeAlinabilir)
+                            {
+                                <button type="button" onclick="document.getElementById('pasifeAlModal').showModal()"
+                                        class="btn btn-sm rounded-xl border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200">
+                                    Pasife Al
+                                </button>
+                            }
+
+                            @if (Model.YayinaAlinabilir)
+                            {
+                                <button type="button" onclick="document.getElementById('yayinaAlModal').showModal()"
+                                        class="btn btn-success btn-sm rounded-xl text-white">
+                                    Yayına Al
+                                </button>
+                            }
+
+                            <button type="button" onclick="document.getElementById('kursSilModal').showModal()"
+                                    class="btn btn-error btn-sm rounded-xl text-white">
+                                Sil
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- Sayılar -->
+                <section class="grid grid-cols-1 gap-3 md:grid-cols-3">
+
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Bölüm
+                        </p>
+
+                        <p class="mt-2 text-2xl font-black text-slate-900">
+                            @Model.Bolumler.Count
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Ders
+                        </p>
+
+                        <p class="mt-2 text-2xl font-black text-slate-900">
+                            @toplamDers
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Materyal
+                        </p>
+
+                        <p class="mt-2 text-2xl font-black text-slate-900">
+                            @toplamMateryal
+                        </p>
+                    </div>
+
+                </section>
+
+                <!-- Öğrenci Durumu -->
+                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div>
+                            <h2 class="text-base font-black text-slate-900">
+                                Öğrenci Durumu
+                            </h2>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Bu kursa ait öğrenci kayıtlarının genel özeti.
+                            </p>
+                        </div>
+
+                        <a asp-controller="AdminKurs"
+                           asp-action="Ogrenciler"
+                           asp-route-id="@Model.KursId"
+                           class="btn btn-primary rounded-xl px-6">
+                            Öğrencileri Gör
+                        </a>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">
+                                Kayıtlı Öğrenci
+                            </p>
+
+                            <p class="mt-2 text-2xl font-black text-slate-900">
+                                @Model.KayitliOgrenciSayisi
+                            </p>
+                        </div>
+
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                            <p class="text-xs font-bold uppercase tracking-wide text-blue-700">
+                                Devam Eden
+                            </p>
+
+                            <p class="mt-2 text-2xl font-black text-blue-800">
+                                @Model.DevamEdenOgrenciSayisi
+                            </p>
+                        </div>
+
+                        <div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                            <p class="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                                Tamamlayan
+                            </p>
+
+                            <p class="mt-2 text-2xl font-black text-emerald-800">
+                                @Model.TamamlayanOgrenciSayisi
+                            </p>
+                        </div>
+
+                        <div class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
+                            <p class="text-xs font-bold uppercase tracking-wide text-red-700">
+                                Pasif Kayıt
+                            </p>
+
+                            <p class="mt-2 text-2xl font-black text-red-800">
+                                @Model.PasifKayitSayisi
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Ders İçeriği -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="border-b border-slate-100 px-5 py-4">
+                        <h2 class="text-base font-black text-slate-900">
+                            Ders İçeriği
+                        </h2>
+                    </div>
+
+                    @if (Model.Bolumler.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+
+                            @foreach (var bolum in Model.Bolumler.OrderBy(x => x.SiraNo))
+                            {
+                                <div>
+
+                                    <button type="button"
+                                            class="btn-admin-bolum-toggle flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+                                            data-target="admin-bolum-@bolum.BolumId" aria-controls="admin-bolum-@bolum.BolumId"
+                                            aria-expanded="false">
+
+                                        <span class="flex min-w-0 flex-wrap items-center gap-2">
+
+                                            <span class="text-sm font-black text-slate-400">
+                                                Bölüm @bolum.SiraNo
+                                            </span>
+
+                                            <span class="text-base font-black text-slate-900">
+                                                @bolum.BolumAdi
+                                            </span>
+
+                                            <span
+                                                class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
+                                                @bolum.Dersler.Count ders
+                                            </span>
+
+                                        </span>
+
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             class="admin-bolum-chevron h-4 w-4 shrink-0 text-slate-400 transition-transform"
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M19 9l-7 7-7-7" />
+                                        </svg>
+
+                                    </button>
+
+                                    @if (bolum.Dersler.Any())
+                                    {
+                                        <div id="admin-bolum-@bolum.BolumId"
+                                             class="hidden border-t border-slate-100 bg-slate-50/60">
+
+                                            <div class="divide-y divide-slate-200/70">
+
+                                                @foreach (var ders in bolum.Dersler.OrderBy(x => x.SiraNo))
+                                                {
+                                                    string materyallerJson = JsonSerializer.Serialize(ders.Materyaller.Select(m => new
+                                                    {
+                                                        baslik = m.Baslik,
+                                                        materyalUrl = m.MateryalUrl,
+                                                        tip = m.MateryalTipAdi
+                                                    }));
+
+                                                    <div class="px-5 py-3">
+
+                                                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+                                                            <div class="min-w-0 flex-1">
+
+                                                                <div class="flex flex-wrap items-center gap-2">
+
+                                                                    <span
+                                                                        class="rounded-lg bg-white px-2 py-0.5 text-xs font-black text-slate-500 ring-1 ring-slate-200">
+                                                                        @ders.SiraNo
+                                                                    </span>
+
+                                                                    <p class="text-sm font-black text-slate-800">
+                                                                        @ders.DersAdi
+                                                                    </p>
+
+                                                                    @if (ders.SistemDersiMi)
+                                                                    {
+                                                                        <span
+                                                                            class="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-white">
+                                                                            Sistem Dersi
+                                                                        </span>
+                                                                    }
+
+                                                                    @if (ders.Materyaller.Any())
+                                                                    {
+                                                                        <span
+                                                                            class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                                                                            @ders.Materyaller.Count materyal
+                                                                        </span>
+                                                                    }
+
+                                                                </div>
+
+                                                                @if (!string.IsNullOrWhiteSpace(ders.Aciklama))
+                                                                {
+                                                                    <p class="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">
+                                                                        @ders.Aciklama
+                                                                    </p>
+                                                                }
+
+                                                            </div>
+
+                                                            <div class="flex shrink-0 justify-start md:justify-end">
+
+                                                                @if (!string.IsNullOrWhiteSpace(ders.VideoUrl) ||
+                                                ders.Materyaller.Any())
+                                                                {
+                                                                    <button type="button"
+                                                                            class="btn-video-izle btn btn-xs min-w-[90px] whitespace-nowrap rounded-lg border-slate-900 bg-slate-900 px-3 text-white hover:bg-slate-800"
+                                                                            data-video-url="@ders.VideoUrl" data-ders-adi="@ders.DersAdi"
+                                                                            data-aciklama="@ders.Aciklama" data-materyaller="@materyallerJson">
+                                                                        @(string.IsNullOrWhiteSpace(ders.VideoUrl) ? "Materyaller" :
+                                                    "Önizle")
+                                                                    </button>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span
+                                                                        class="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+                                                                        Video yok
+                                                                    </span>
+                                                                }
+
+                                                            </div>
+
+                                                        </div>
+
+                                                    </div>
+                                                }
+
+                                            </div>
+
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="border-t border-slate-100 bg-slate-50/60 px-5 py-4">
+                                            <p class="text-sm font-semibold text-slate-500">
+                                                Bu bölümde ders bulunmuyor.
+                                            </p>
+                                        </div>
+                                    }
+
+                                </div>
+                            }
+
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                            Bölüm yok.
+                        </div>
+                    }
+
+                </section>
+
+                <!-- Sınav -->
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div class="border-b border-slate-100 px-5 py-4">
+                        <h2 class="text-base font-black text-slate-900">
+                            Sınav ve Sorular
+                        </h2>
+                    </div>
+
+                    @if (Model.Sinav == null)
+                    {
+                        <div class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                            Sınav hazırlanmamış.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="grid grid-cols-2 gap-3 border-b border-slate-100 p-5 lg:grid-cols-5">
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Sınav
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.SinavAdi
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Geçme Notu
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.GecmeNotu
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Süre
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.SureDakika dk
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Çıkacak Soru
+                                </p>
+
+                                <p class="mt-1 font-black text-slate-900">
+                                    @Model.Sinav.SoruSayisi
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Aktif Soru
+                                </p>
+
+                                <p
+                                    class="mt-1 font-black @(Model.Sinav.AktifSoruSayisi >= Model.Sinav.SoruSayisi ? "text-emerald-700" : "text-red-700")">
+                                    @Model.Sinav.AktifSoruSayisi
+                                </p>
+                            </div>
+
+                        </div>
+
+                        @if (Model.Sinav.Sorular.Any())
+                        {
+                            <div class="divide-y divide-slate-100">
+
+                                @{
+                                    int soruNo = 0;
+                                }
+
+                                @foreach (var soru in Model.Sinav.Sorular)
+                                {
+                                    soruNo++;
+
+                                    <article>
+
+                                        <button type="button"
+                                                class="btn-admin-soru-toggle flex w-full items-start justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+                                                data-target="admin-soru-@soru.SoruId" aria-controls="admin-soru-@soru.SoruId"
+                                                aria-expanded="false">
+
+                                            <span class="min-w-0 flex-1">
+
+                                                <span class="flex flex-wrap items-center gap-2">
+
+                                                    <span
+                                                        class="rounded-full px-2.5 py-0.5 text-xs font-bold @(soru.AktifMi ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")">
+                                                        @(soru.AktifMi ? "Aktif" : "Pasif")
+                                                    </span>
+
+                                                    <span
+                                                        class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+                                                        Soru @soruNo
+                                                    </span>
+
+                                                    <span class="text-xs font-semibold text-slate-500">
+                                                        @soru.Secenekler.Count seçenek
+                                                    </span>
+
+                                                </span>
+
+                                                <span class="mt-2 block text-sm font-semibold leading-6 text-slate-800">
+                                                    @soru.SoruMetni
+                                                </span>
+
+                                            </span>
+
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="admin-soru-chevron mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform"
+                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7" />
+                                            </svg>
+
+                                        </button>
+
+                                        <div id="admin-soru-@soru.SoruId"
+                                             class="hidden border-t border-slate-100 bg-slate-50/60 px-5 py-4">
+
+                                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+
+                                                <p class="text-sm font-black leading-6 text-slate-900">
+                                                    @soru.SoruMetni
+                                                </p>
+
+                                                @if (soru.Secenekler.Any())
+                                                {
+                                                    <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+
+                                                        @foreach (var secenek in soru.Secenekler)
+                                                        {
+                                                            string secenekCss = secenek.AktifMi
+                                                                ? (secenek.DogruMu ? "border-emerald-200 bg-emerald-50 text-emerald-800" :
+                        "border-slate-200 bg-white text-slate-700")
+                                                                : "border-slate-200 bg-slate-50 text-slate-400 opacity-60";
+
+                                                            <div
+                                                                class="flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm @secenekCss">
+
+                                                                <p class="min-w-0 flex-1 text-sm font-semibold leading-6">
+                                                                    @secenek.SecenekMetni
+                                                                </p>
+
+                                                                <div class="flex shrink-0 flex-col items-end gap-1">
+                                                                    @if (!secenek.AktifMi)
+                                                                    {
+                                                                        <span
+                                                                            class="rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
+                                                                            Pasif
+                                                                        </span>
+                                                                    }
+                                                                    @if (secenek.DogruMu)
+                                                                    {
+                                                                        <span
+                                                                            class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+                                                                            Doğru cevap
+                                                                        </span>
+                                                                    }
+                                                                </div>
+
+                                                            </div>
+                                                        }
+
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <p class="mt-3 text-sm font-semibold text-slate-400">
+                                                        Bu soruda seçenek yok.
+                                                    </p>
+                                                }
+
+                                            </div>
+
+                                        </div>
+
+                                    </article>
+                                }
+
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+                                Soru yok.
+                            </div>
+                        }
+                    }
+
+                </section>
+
+                <!-- Değerlendirmeler -->
+                <section id="degerlendirmeler"
+                         class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    <div
+                        class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+
+                        <div>
+                            <h2 class="text-lg font-black text-slate-900">
+                                Yorumlar ve Puanlar
+                            </h2>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Öğrencilerin kurs için bıraktığı değerlendirmeler.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 sm:w-auto">
+
+                            <div class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                                <p class="text-xs font-bold uppercase tracking-wide text-amber-700">
+                                    Ortalama Puan
+                                </p>
+
+                                <div class="mt-1 flex items-center gap-3">
+                                    <span class="text-2xl font-black text-amber-600">
+                                        @(Model.OrtalamaPuan > 0 ? Model.OrtalamaPuan.ToString("0.0") : "0.0")
+                                    </span>
+
+                                    <div class="rating rating-sm">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            if (ortalamaPuanYuvarlak == i)
+                                            {
+                                                <input type="radio" name="adminOrtalamaPuan"
+                                                       class="mask mask-star-2 bg-amber-400" checked disabled />
+                                            }
+                                            else
+                                            {
+                                                <input type="radio" name="adminOrtalamaPuan"
+                                                       class="mask mask-star-2 bg-amber-400" disabled />
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                    Yorum
+                                </p>
+
+                                <p class="mt-1 text-2xl font-black text-slate-900">
+                                    @Model.DegerlendirmeSayisi
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    @if (Model.Degerlendirmeler.Any())
+                    {
+                        <div class="divide-y divide-slate-100">
+
+                            @foreach (var yorum in Model.Degerlendirmeler)
+                            {
+                                int yorumPuani = Math.Clamp(yorum.Puan, 1, 5);
+                                string yorumRatingName = $"adminYorumPuan_{yorum.DegerlendirmeId}";
+
+                                <article class="px-5 py-4">
+
+                                    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+
+                                        <div class="min-w-0">
+
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <h3 class="text-sm font-black text-slate-900">
+                                                    @yorum.OgrenciAdSoyad
+                                                </h3>
+
+                                                <span class="text-xs font-semibold text-slate-400">
+                                                    @yorum.DegerlendirmeTarihi.ToString("dd.MM.yyyy HH:mm")
+                                                </span>
+                                            </div>
+
+                                            @if (!string.IsNullOrWhiteSpace(yorum.YorumMetni))
+                                            {
+                                                <p class="mt-2 text-sm leading-6 text-slate-600">
+                                                    “@yorum.YorumMetni”
+                                                </p>
+                                            }
+                                            else
+                                            {
+                                                <p class="mt-2 text-sm font-semibold text-slate-400">
+                                                    Yorum metni yok.
+                                                </p>
+                                            }
+
+                                        </div>
+
+                                        <div class="shrink-0 md:text-right">
+
+                                            <div class="rating rating-sm">
+                                                @for (int i = 1; i <= 5; i++)
+                                                {
+                                                    if (yorumPuani == i)
+                                                    {
+                                                        <input type="radio" name="@yorumRatingName"
+                                                               class="mask mask-star-2 bg-amber-400" checked disabled />
+                                                    }
+                                                    else
+                                                    {
+                                                        <input type="radio" name="@yorumRatingName"
+                                                               class="mask mask-star-2 bg-amber-400" disabled />
+                                                    }
+                                                }
+                                            </div>
+
+                                            <p class="mt-1 text-xs font-bold text-amber-700">
+                                                @yorum.Puan / 5
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+                                </article>
+                            }
+
+                        </div>
+
+                        @if (Model.YorumToplamSayfa > 1)
+                        {
+                            <div
+                                class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+
+                                <p class="text-sm text-slate-500">
+                                    Yorum sayfası
+                                    <span class="font-bold text-slate-900">@Model.YorumSayfa</span>
+                                    /
+                                    <span class="font-bold text-slate-900">@Model.YorumToplamSayfa</span>
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2">
+
+                                    @if (Model.YorumOncekiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminKurs" asp-action="Detay" asp-route-id="@Model.KursId"
+                                           asp-route-yorumSayfa="@(Model.YorumSayfa - 1)" asp-fragment="degerlendirmeler"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Önceki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-outline btn-sm rounded-xl opacity-50" disabled>
+                                            Önceki
+                                        </button>
+                                    }
+
+                                    @if (yorumIlkSayfa > 1)
+                                    {
+                                        <a asp-controller="AdminKurs" asp-action="Detay" asp-route-id="@Model.KursId"
+                                           asp-route-yorumSayfa="1" asp-fragment="degerlendirmeler"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            1
+                                        </a>
+
+                                        @if (yorumIlkSayfa > 2)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+                                    }
+
+                                    @for (int i = yorumIlkSayfa; i <= yorumSonSayfa; i++)
+                                    {
+                                        if (i == Model.YorumSayfa)
+                                        {
+                                            <span class="btn btn-primary btn-sm rounded-xl">
+                                                @i
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="AdminKurs" asp-action="Detay" asp-route-id="@Model.KursId"
+                                               asp-route-yorumSayfa="@i" asp-fragment="degerlendirmeler"
+                                               class="btn btn-outline btn-sm rounded-xl">
+                                                @i
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (yorumSonSayfa < Model.YorumToplamSayfa)
+                                    {
+                                        @if (yorumSonSayfa < Model.YorumToplamSayfa - 1)
+                                        {
+                                            <span class="px-1 text-sm font-bold text-slate-400">
+                                                ...
+                                            </span>
+                                        }
+
+                                        <a asp-controller="AdminKurs" asp-action="Detay" asp-route-id="@Model.KursId"
+                                           asp-route-yorumSayfa="@Model.YorumToplamSayfa" asp-fragment="degerlendirmeler"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            @Model.YorumToplamSayfa
+                                        </a>
+                                    }
+
+                                    @if (Model.YorumSonrakiSayfaVar)
+                                    {
+                                        <a asp-controller="AdminKurs" asp-action="Detay" asp-route-id="@Model.KursId"
+                                           asp-route-yorumSayfa="@(Model.YorumSayfa + 1)" asp-fragment="degerlendirmeler"
+                                           class="btn btn-outline btn-sm rounded-xl">
+                                            Sonraki
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-outline btn-sm rounded-xl opacity-50" disabled>
+                                            Sonraki
+                                        </button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="px-6 py-12 text-center">
+                            <h3 class="text-base font-black text-slate-900">
+                                Henüz yorum yok
+                            </h3>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                Bu kurs için öğrenci değerlendirmesi bulunmuyor.
+                            </p>
+                        </div>
+                    }
+
+                </section>
+
+                <partial name="~/Views/EgitmenDers/_VideoIzleModal.cshtml" />
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+<!-- Düzenlemeye Gönder Modal -->
+<dialog id="duzenlemeyeGonderModal" class="modal">
+
+    <div class="modal-box max-w-lg rounded-2xl bg-white">
+
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                ✕
+            </button>
+        </form>
+
+        <h3 class="text-lg font-black text-slate-900">
+            Kurs düzenlemeye gönderilsin mi?
+        </h3>
+
+        <p class="mt-2 text-sm leading-6 text-slate-500">
+            Kurs eğitmene geri gönderilecek ve durumu <strong>Düzeltme İsteniyor</strong> olacaktır.
+        </p>
+
+        <form asp-controller="AdminKurs" asp-action="DuzenlemeyeGonder" asp-route-id="@Model.KursId" method="post"
+              class="mt-5 space-y-4">
+
+            @Html.AntiForgeryToken()
+
+            <div>
+                <label class="mb-1 block text-sm font-bold text-slate-600">
+                    Sebep
+                </label>
+
+                <textarea name="aciklama" rows="4" required
+                          class="textarea textarea-bordered w-full rounded-xl border-slate-300 bg-white"
+                          placeholder="Eğitmene iletilecek düzenleme sebebini yazın."></textarea>
+            </div>
+
+            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+                <button type="button" onclick="document.getElementById('duzenlemeyeGonderModal').close()"
+                        class="btn btn-outline rounded-xl">
+                    Vazgeç
+                </button>
+
+                <button type="submit"
+                        class="btn rounded-xl border-amber-200 bg-amber-50 px-6 text-amber-700 hover:border-amber-300 hover:bg-amber-100">
+                    Gönder
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>Kapat</button>
+    </form>
+
+</dialog>
+
+<!-- Pasife Al Modal -->
+<dialog id="pasifeAlModal" class="modal">
+
+    <div class="modal-box max-w-md rounded-2xl bg-white">
+
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                ✕
+            </button>
+        </form>
+
+        <h3 class="text-lg font-black text-slate-900">
+            Kurs pasife alınsın mı?
+        </h3>
+
+        <p class="mt-2 text-sm leading-6 text-slate-500">
+            <strong>@Model.KursAdi</strong> kursu pasif duruma alınacaktır.
+        </p>
+
+        <form asp-controller="AdminKurs" asp-action="PasifeAl" asp-route-id="@Model.KursId" method="post"
+              class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+            @Html.AntiForgeryToken()
+
+            <button type="button" onclick="document.getElementById('pasifeAlModal').close()"
+                    class="btn btn-outline rounded-xl">
+                Vazgeç
+            </button>
+
+            <button type="submit"
+                    class="btn rounded-xl border-slate-200 bg-slate-100 px-6 text-slate-700 hover:bg-slate-200">
+                Pasife Al
+            </button>
+
+        </form>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>Kapat</button>
+    </form>
+
+</dialog>
+
+<!-- Yayına Al Modal -->
+<dialog id="yayinaAlModal" class="modal">
+
+    <div class="modal-box max-w-md rounded-2xl bg-white">
+
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                ✕
+            </button>
+        </form>
+
+        <h3 class="text-lg font-black text-slate-900">
+            Kurs yayına alınsın mı?
+        </h3>
+
+        <p class="mt-2 text-sm leading-6 text-slate-500">
+            <strong>@Model.KursAdi</strong> kursu öğrenciler için yayına alınacaktır.
+        </p>
+
+        <form asp-controller="AdminKurs" asp-action="YayinaAl" asp-route-id="@Model.KursId" method="post"
+              class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+            @Html.AntiForgeryToken()
+
+            <button type="button" onclick="document.getElementById('yayinaAlModal').close()"
+                    class="btn btn-outline rounded-xl">
+                Vazgeç
+            </button>
+
+            <button type="submit" class="btn btn-success rounded-xl px-6 text-white">
+                Yayına Al
+            </button>
+
+        </form>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>Kapat</button>
+    </form>
+
+</dialog>
+
+<!-- Sil Modal -->
+<dialog id="kursSilModal" class="modal">
+
+    <div class="modal-box max-w-lg rounded-2xl bg-white">
+
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">
+                ✕
+            </button>
+        </form>
+
+        <h3 class="text-lg font-black text-slate-900">
+            Kurs silinsin mi?
+        </h3>
+
+        <p class="mt-2 text-sm leading-6 text-slate-500">
+            <strong>@Model.KursAdi</strong> kursu silinecek.
+        </p>
+
+        <div class="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+            <p class="text-sm font-semibold leading-6 text-red-700">
+                Bu işlem geri alınamaz. Kurs ve Kursa bağlı tüm kayıtlar kalıcı olarak silinir.
+            </p>
+        </div>
+
+        <form asp-controller="AdminKurs" asp-action="Sil" asp-route-id="@Model.KursId" method="post"
+              class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+            @Html.AntiForgeryToken()
+
+            <button type="button" onclick="document.getElementById('kursSilModal').close()"
+                    class="btn btn-outline rounded-xl">
+                Vazgeç
+            </button>
+
+            <button type="submit" class="btn btn-error rounded-xl px-6 text-white">
+                Sil
+            </button>
+
+        </form>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>Kapat</button>
+    </form>
+
+</dialog>
+
+<!-- Kategori Düzenle Modal -->
+<dialog id="kategoriDuzenleModal" class="modal">
+    <div class="modal-box max-w-md rounded-2xl bg-white">
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">✕</button>
+        </form>
+        <h3 class="text-lg font-black text-slate-900">Kategori Düzenle</h3>
+        <p class="mt-1 text-sm text-slate-500">
+            <strong>@Model.KursAdi</strong> kursunun kategorilerini seçin.
+        </p>
+        <form asp-controller="AdminKurs" asp-action="KategoriDuzenle" method="post" class="mt-5">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="kursId" value="@Model.KursId" />
+            
+            <input type="hidden" name="returnUrl" value="/AdminKurs/Detay/@Model.KursId" />
+
+            <div class="max-h-[300px] overflow-y-auto rounded-xl border border-slate-200 p-3">
+                <div class="flex flex-col gap-2">
+                    @foreach (var kat in Model.KategoriSecenekleri)
+                    {
+                        <label class="flex cursor-pointer items-center gap-3 rounded-lg hover:bg-slate-50 p-2">
+                            <input type="checkbox" name="seciliKategoriler" value="@kat.KategoriId"
+                                   class="checkbox checkbox-sm checkbox-primary rounded"
+                            @(Model.KategoriIdleri.Contains(kat.KategoriId) ? "checked" : "") />
+                            <span class="text-sm font-semibold text-slate-700">@kat.KategoriAdi</span>
+                        </label>
+                    }
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('kategoriDuzenleModal').close()"
+                        class="btn btn-outline rounded-xl">Vazgeç</button>
+                <button type="submit" class="btn btn-primary rounded-xl px-6">Kaydet</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>Kapat</button>
+    </form>
+</dialog>
+
+@section Scripts {
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        let plyrInstance = null;
+
+        function materyalleriOku(value) {
+        if (!value) {
+        return [];
+        }
+
+        try {
+        return JSON.parse(value);
+        }
+        catch {
+        return [];
+        }
+        }
+
+        function youtubeIdBul(url) {
+        if (url.includes("youtu.be/")) {
+        return url.split("youtu.be/")[1].split("?")[0].split("&")[0];
+        }
+
+        if (url.includes("embed/")) {
+        return url.split("embed/")[1].split("?")[0].split("&")[0];
+        }
+
+        if (url.includes("v=")) {
+        return url.split("v=")[1].split("&")[0];
+        }
+
+        return "";
+        }
+
+        function vimeoIdBul(url) {
+        if (!url.includes("vimeo.com/")) {
+        return "";
+        }
+
+        return url.split("vimeo.com/")[1].split("?")[0].split("&")[0];
+        }
+
+        function materyalLinkiOlustur(materyal) {
+        const link = document.createElement("a");
+        link.href = materyal.materyalUrl || "#";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.className = "flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-blue-400 hover:text-white";
+
+        const baslik = document.createElement("span");
+        baslik.className = "min-w-0 truncate";
+        baslik.textContent = materyal.baslik || "Materyal";
+
+        const tip = document.createElement("span");
+        tip.className = "shrink-0 rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-slate-300";
+        tip.textContent = materyal.tip || "Dosya";
+
+        link.appendChild(baslik);
+        link.appendChild(tip);
+
+        return link;
+        }
+
+        function playerTemizle() {
+        const videoContainer = document.getElementById("videoContainer");
+
+        if (plyrInstance) {
+        plyrInstance.destroy();
+        plyrInstance = null;
+        }
+
+        if (videoContainer) {
+        videoContainer.innerHTML = "";
+        }
+        }
+
+        window.stopVideo = playerTemizle;
+
+        document.querySelectorAll(".btn-video-izle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+        const url = this.dataset.videoUrl || "";
+        const title = this.dataset.dersAdi || "Ders Önizleme";
+        const aciklama = this.dataset.aciklama || "";
+        const materyaller = materyalleriOku(this.dataset.materyaller);
+
+        const videoModalTitle = document.getElementById("videoModalTitle");
+        const videoContainer = document.getElementById("videoContainer");
+        const videoIzleModal = document.getElementById("videoIzleModal");
+        const videoModalBilgiPanel = document.getElementById("videoModalBilgiPanel");
+        const videoModalAciklamaWrapper = document.getElementById("videoModalAciklamaWrapper");
+        const videoModalAciklama = document.getElementById("videoModalAciklama");
+        const videoModalMateryalWrapper = document.getElementById("videoModalMateryalWrapper");
+        const videoModalMateryaller = document.getElementById("videoModalMateryaller");
+
+        if (!videoModalTitle || !videoContainer || !videoIzleModal) {
+        return;
+        }
+
+        playerTemizle();
+
+        videoModalTitle.textContent = title;
+
+        if (videoModalAciklamaWrapper && videoModalAciklama) {
+        const aciklamaVarMi = aciklama.trim().length > 0;
+        videoModalAciklamaWrapper.classList.toggle("hidden", !aciklamaVarMi);
+        videoModalAciklama.textContent = aciklama;
+        }
+
+        if (videoModalMateryalWrapper && videoModalMateryaller) {
+        videoModalMateryaller.innerHTML = "";
+        videoModalMateryalWrapper.classList.toggle("hidden", materyaller.length === 0);
+
+        materyaller.forEach(function (materyal) {
+        videoModalMateryaller.appendChild(materyalLinkiOlustur(materyal));
+        });
+        }
+
+        if (videoModalBilgiPanel) {
+        videoModalBilgiPanel.classList.toggle("hidden", aciklama.trim().length === 0 && materyaller.length === 0);
+        }
+
+        if (!url.trim()) {
+        videoContainer.innerHTML = `
+        <div class="flex h-full min-h-[260px] items-center justify-center px-6 text-center">
+        <p class="text-sm font-bold text-slate-300">Bu ders için video bulunmuyor.</p>
+        </div>
+        `;
+        }
+        else if (url.includes("youtube.com") || url.includes("youtu.be")) {
+        const videoId = youtubeIdBul(url);
+
+        videoContainer.innerHTML = `
+        <div id="plyr-player"
+        data-plyr-provider="youtube"
+        data-plyr-embed-id="${videoId}">
+        </div>
+        `;
+        }
+        else if (url.includes("vimeo.com")) {
+        const videoId = vimeoIdBul(url);
+
+        videoContainer.innerHTML = `
+        <div id="plyr-player"
+        data-plyr-provider="vimeo"
+        data-plyr-embed-id="${videoId}">
+        </div>
+        `;
+        }
+        else {
+        const videoType = url.toLowerCase().endsWith(".webm")
+        ? "video/webm"
+        : "video/mp4";
+
+        videoContainer.innerHTML = `
+        <video id="plyr-player" playsinline controls>
+        <source src="${url}" type="${videoType}">
+        </video>
+        `;
+        }
+
+        videoIzleModal.showModal();
+
+        if (url.trim() && window.Plyr) {
+        plyrInstance = new Plyr("#plyr-player", {
+        autoplay: true,
+        ratio: "16:9"
+        });
+        }
+        });
+        });
+
+        document.querySelectorAll(".btn-admin-bolum-toggle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+        const target = document.getElementById(this.dataset.target);
+
+        if (!target) {
+        return;
+        }
+
+        const acikMi = !target.classList.contains("hidden");
+        target.classList.toggle("hidden", acikMi);
+        this.setAttribute("aria-expanded", (!acikMi).toString());
+
+        const chevron = this.querySelector(".admin-bolum-chevron");
+
+        if (chevron) {
+        chevron.classList.toggle("rotate-180", !acikMi);
+        }
+        });
+        });
+
+        document.querySelectorAll(".btn-admin-soru-toggle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+        const target = document.getElementById(this.dataset.target);
+
+        if (!target) {
+        return;
+        }
+
+        const acikMi = !target.classList.contains("hidden");
+        target.classList.toggle("hidden", acikMi);
+        this.setAttribute("aria-expanded", (!acikMi).toString());
+
+        const chevron = this.querySelector(".admin-soru-chevron");
+
+        if (chevron) {
+        chevron.classList.toggle("rotate-180", !acikMi);
+        }
+        });
+        });
+
+        const videoIzleModal = document.getElementById("videoIzleModal");
+
+        if (videoIzleModal) {
+        videoIzleModal.addEventListener("close", playerTemizle);
+        }
+        });
+    </script>
+}

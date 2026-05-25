@@ -1,0 +1,148 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Erişim Reddedildi";
+
+    var aktifRol = User.FindFirst("AktifRol")?.Value;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - CoursVia</title>
+
+    <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
+</head>
+
+<body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-200 selection:text-blue-900">
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+
+        <div class="w-full max-w-lg">
+
+            <!-- Kart -->
+            <div class="rounded-3xl border border-slate-200/60 bg-white/80 backdrop-blur-xl shadow-2xl shadow-slate-200/50 overflow-hidden relative">
+
+                <!-- Üst kırmızı şerit -->
+                <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-500 to-rose-500"></div>
+
+                <div class="p-8 sm:p-10 text-center">
+
+                    <!-- İkon -->
+                    <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-red-50 text-red-500 mb-6 rotate-3 hover:rotate-0 transition-transform duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2.5"
+                             stroke="currentColor"
+                             class="h-10 w-10">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    </div>
+
+                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
+                        Erişim Reddedildi
+                    </h1>
+
+                    <p class="text-base leading-relaxed text-slate-600 mb-8">
+                        Bu sayfayı görüntülemek için gerekli yetkiye sahip değilsiniz.
+                        Lütfen hesabınızın rolünü kontrol edin veya yetkili olduğunuz bir panele geçiş yapın.
+                    </p>
+
+                    <div class="flex flex-col gap-3">
+
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            @if (aktifRol == "Admin" && User.IsInRole("Admin"))
+                            {
+                                <a asp-controller="Account"
+                                   asp-action="PanelDegistir"
+                                   asp-route-rol="Admin"
+                                   class="inline-flex items-center justify-center w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:shadow-blue-600/40 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                                    Admin Paneline Dön
+                                </a>
+                            }
+                            else if (aktifRol == "Eğitmen" && User.IsInRole("Eğitmen"))
+                            {
+                                <a asp-controller="Account"
+                                   asp-action="PanelDegistir"
+                                   asp-route-rol="Eğitmen"
+                                   class="inline-flex items-center justify-center w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:shadow-blue-600/40 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                                    Eğitmen Paneline Dön
+                                </a>
+                            }
+                            else if (aktifRol == "Öğrenci" && User.IsInRole("Öğrenci"))
+                            {
+                                <a asp-controller="Account"
+                                   asp-action="PanelDegistir"
+                                   asp-route-rol="Öğrenci"
+                                   class="inline-flex items-center justify-center w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:shadow-blue-600/40 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                                    Öğrenme Alanıma Dön
+                                </a>
+                            }
+                            else if (User.IsInRole("Admin"))
+                            {
+                                <a asp-controller="Account"
+                                   asp-action="PanelDegistir"
+                                   asp-route-rol="Admin"
+                                   class="inline-flex items-center justify-center w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:shadow-blue-600/40 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                                    Admin Paneline Dön
+                                </a>
+                            }
+                            else if (User.IsInRole("Eğitmen"))
+                            {
+                                <a asp-controller="Account"
+                                   asp-action="PanelDegistir"
+                                   asp-route-rol="Eğitmen"
+                                   class="inline-flex items-center justify-center w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:shadow-blue-600/40 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                                    Eğitmen Paneline Dön
+                                </a>
+                            }
+                            else if (User.IsInRole("Öğrenci"))
+                            {
+                                <a asp-controller="Account"
+                                   asp-action="PanelDegistir"
+                                   asp-route-rol="Öğrenci"
+                                   class="inline-flex items-center justify-center w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:shadow-blue-600/40 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                                    Öğrenme Alanıma Dön
+                                </a>
+                            }
+
+                            <a asp-controller="Account"
+                               asp-action="Logout"
+                               class="inline-flex items-center justify-center w-full rounded-xl border-2 border-slate-200 bg-transparent px-4 py-3.5 text-sm font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50">
+                                Çıkış Yap
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Account"
+                               asp-action="OgrenciLogin"
+                               class="inline-flex items-center justify-center w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:shadow-blue-600/40 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
+                                Giriş Yap
+                            </a>
+
+                            <a asp-controller="Home"
+                               asp-action="Index"
+                               class="inline-flex items-center justify-center w-full rounded-xl border-2 border-slate-200 bg-transparent px-4 py-3.5 text-sm font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50">
+                                Ana Sayfaya Dön
+                            </a>
+                        }
+
+                    </div>
+                </div>
+            </div>
+
+            <p class="mt-8 text-center text-sm font-medium text-slate-400">
+                &copy; @DateTime.Now.Year CoursVia. Tüm hakları saklıdır.
+            </p>
+
+        </div>
+    </div>
+
+</body>
+</html>

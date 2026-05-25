@@ -1,0 +1,102 @@
+@model CoursVia.ViewModels.Sertifika.SertifikaDogrulamaViewModel
+@{
+    ViewData["Title"] = "Sertifika Doğrulama";
+}
+
+<div class="bg-slate-50 py-16 sm:py-24">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+            <h1 class="text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">
+                Sertifika Doğrulama
+            </h1>
+            <p class="mt-4 text-lg font-medium text-slate-500">
+                CoursVia platformundan aldığınız sertifikaların geçerliliğini buradan kontrol edebilirsiniz.
+            </p>
+        </div>
+
+        <div class="mt-12 rounded-3xl bg-white p-8 shadow-xl shadow-slate-200/50 sm:p-12">
+            <form asp-controller="SertifikaDogrulama" asp-action="Sorgula" method="post" class="flex flex-col gap-4 sm:flex-row">
+                <div class="flex-1">
+                    <label for="SertifikaKodu" class="sr-only">Sertifika Kodu</label>
+                    <input type="text"
+                           asp-for="SertifikaKodu"
+                           placeholder="Örn: CRSV-1234-5678"
+                           class="input input-bordered w-full rounded-2xl border-slate-300 bg-slate-50 px-5 text-lg font-bold tracking-wider uppercase text-slate-700 placeholder:normal-case placeholder:font-medium placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10" />
+                </div>
+                <button type="submit" class="btn btn-primary rounded-2xl px-8 text-lg shrink-0">
+                    Sorgula
+                </button>
+            </form>
+
+            @if (Model.SorgulandiMi)
+            {
+                <div class="mt-10 border-t border-slate-100 pt-10">
+                    @if (Model.GecerliMi)
+                    {
+                        <div class="rounded-2xl border-2 border-emerald-100 bg-emerald-50/50 p-6 sm:p-8">
+                            <div class="flex flex-col sm:flex-row items-start gap-4">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="h-6 w-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-xl font-black text-emerald-800">
+                                        Geçerli Sertifika
+                                    </h3>
+                                    <p class="mt-1 text-sm font-semibold text-emerald-600/80">
+                                        Bu sertifika kodu sistemimizde kayıtlıdır ve geçerliliği onaylanmıştır.
+                                    </p>
+                                    
+                                    <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 bg-white rounded-xl p-5 border border-emerald-100">
+                                        <div>
+                                            <p class="text-xs font-bold uppercase tracking-wider text-emerald-500">Öğrenci</p>
+                                            <p class="mt-1 text-lg font-bold text-slate-800 break-words">@Model.OgrenciAdSoyad</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold uppercase tracking-wider text-emerald-500">Verilme Tarihi</p>
+                                            <p class="mt-1 text-lg font-bold text-slate-800">@Model.VerilmeTarihi?.ToString("dd MMMM yyyy")</p>
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <p class="text-xs font-bold uppercase tracking-wider text-emerald-500">Kurs / Eğitim</p>
+                                            <p class="mt-1 text-lg font-bold text-slate-800 break-words">@Model.KursAdi</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-6 flex justify-end">
+                                        <a asp-controller="SertifikaDogrulama" asp-action="Indir" asp-route-kod="@Model.SertifikaKodu" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow-emerald-600/20">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                            </svg>
+                                            Sertifikayı İndir (PDF)
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rounded-2xl border-2 border-red-100 bg-red-50/50 p-6 sm:p-8">
+                            <div class="flex flex-col sm:flex-row items-start gap-4">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="h-6 w-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-xl font-black text-red-800">
+                                        Sertifika Bulunamadı
+                                    </h3>
+                                    <p class="mt-1 text-sm font-semibold text-red-600/80">
+                                        Girdiğiniz <strong class="text-red-700">@Model.SertifikaKodu</strong> koduna ait geçerli bir sertifika bulunamadı. Lütfen kodu kontrol edip tekrar deneyin.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>

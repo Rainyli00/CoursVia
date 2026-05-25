@@ -1,0 +1,61 @@
+@model CoursVia.Models.Kurs
+
+<dialog id="bolumDuzenleModal" class="modal">
+    <div class="modal-box w-full max-w-lg rounded-3xl bg-white p-0 shadow-2xl">
+        <div class="border-b border-slate-200 px-6 py-5">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 text-slate-500">
+                    x
+                </button>
+            </form>
+
+            <p class="text-xs font-black uppercase tracking-wide text-blue-600">
+                Bölüm Yönetimi
+            </p>
+
+            <h3 class="mt-1 text-2xl font-black text-slate-950">
+                Bölüm Adını Düzenle
+            </h3>
+        </div>
+
+        <form asp-controller="EgitmenBolum"
+              asp-action="BolumDuzenle"
+              method="post"
+              class="p-6">
+
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" name="bolumId" id="bolumDuzenleBolumId" />
+
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text font-bold text-slate-700">Bölüm Adı</span>
+                </label>
+
+                <input type="text"
+                       name="bolumAdi"
+                       id="bolumDuzenleBolumAdi"
+                       maxlength="100"
+                       class="input input-bordered rounded-xl border-slate-300 bg-white"
+                       required />
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-end">
+                <button type="button"
+                        class="btn btn-ghost rounded-xl text-slate-500"
+                        onclick="bolumDuzenleModal.close()">
+                    İptal
+                </button>
+
+                <button type="submit"
+                        class="btn btn-primary rounded-xl px-8">
+                    Güncelle
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
