@@ -11,6 +11,8 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Admin panelinde kurs listeleme, detay görüntüleme, kategori düzenleme,
+// kurs durumu değiştirme ve kurs silme işlemlerini yönetir.
 [Authorize(Roles = "Admin")]
 public class AdminKursController : Controller
 {
@@ -31,13 +33,13 @@ public class AdminKursController : Controller
         _bildirimService = bildirimService;
     }
 
-    
     [HttpGet]
+    // Admin kurs yönetimi ekranında kursları arama, durum, kategori ve sayfalama ile listeler.
     public async Task<IActionResult> Kurslar(
-    string? arama,
-    string durum = "tum",
-    int? kategoriId = null,
-    int sayfa = 1)
+        string? arama,
+        string durum = "tum",
+        int? kategoriId = null,
+        int sayfa = 1)
     {
         const int sayfaBasinaKayit = 10;
 
@@ -49,6 +51,7 @@ public class AdminKursController : Controller
             ? "tum"
             : durum.Trim().ToLower();
 
+        // Geçersiz durum filtresi gelirse varsayılan olarak tüm kurslar listelenir.
         if (durum != "tum" &&
             durum != "pasif" &&
             durum != "taslak" &&
@@ -74,6 +77,7 @@ public class AdminKursController : Controller
             .AsNoTracking()
             .AsQueryable();
 
+        // Kurs adı, açıklama ve eğitmen bilgilerine göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -84,6 +88,7 @@ public class AdminKursController : Controller
                 x.Egitmen.Eposta.Contains(arama));
         }
 
+        // Kurslar durumlarına göre filtrelenir.
         query = durum switch
         {
             "pasif" => query.Where(x => x.DurumId == 2),
@@ -95,6 +100,7 @@ public class AdminKursController : Controller
             _ => query
         };
 
+        // Kategori filtresi seçildiyse sadece o kategoriye bağlı kurslar listelenir.
         if (kategoriId.HasValue)
         {
             query = query.Where(x =>
@@ -115,6 +121,7 @@ public class AdminKursController : Controller
             sayfa = toplamSayfa;
         }
 
+        // Kurs bilgileri liste ekranında kullanılacak ViewModel'e dönüştürülür.
         var kurslar = await query
             .AsSplitQuery()
             .OrderByDescending(x => x.OlusturmaTarihi)
@@ -157,6 +164,7 @@ public class AdminKursController : Controller
             })
             .ToListAsync();
 
+        // Kurs kategori filtresi için kategori seçenekleri hazırlanır.
         var kategoriSecenekleri = await _context.Kategoriler
             .AsNoTracking()
             .OrderBy(x => x.KategoriAdi)
@@ -216,6 +224,7 @@ public class AdminKursController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Adminin kursa ait kategori ilişkilerini güncellemesini sağlar.
     public async Task<IActionResult> KategoriDuzenle(int kursId, List<int> seciliKategoriler, string? returnUrl = null)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -230,8 +239,10 @@ public class AdminKursController : Controller
             return RedirectToAction(nameof(Kurslar));
         }
 
+        // Eski kategori bağlantıları silinip yeni seçilen kategoriler tekrar eklenir.
         _context.KursKategorileri.RemoveRange(kursKategori.KursKategorileri);
 
+        // Kategori seçilmişse yeni kategori bağlantıları oluşturulur.
         if (seciliKategoriler != null && seciliKategoriler.Any())
         {
             foreach (var katId in seciliKategoriler)
@@ -243,7 +254,7 @@ public class AdminKursController : Controller
                 });
             }
         }
-
+        // Kursun güncellenme tarihi admin tarafından kategori düzenlendiği için güncellenir.
         kursKategori.GuncellemeTarihi = DateTime.Now;
 
         await _adminLogService.KaydetAsync(
@@ -264,6 +275,7 @@ public class AdminKursController : Controller
     }
 
     [HttpGet]
+    // Adminin kursa ait detayları, bölümleri, dersleri, sınavı, yorumları ve öğrenci özetlerini görmesini sağlar.
     public async Task<IActionResult> Detay(int id, int yorumSayfa = 1)
     {
         const int yorumSayfaBasinaKayit = 5;
@@ -317,6 +329,7 @@ public class AdminKursController : Controller
             ? Math.Round(await degerlendirmeQuery.AverageAsync(x => x.Puan), 1)
             : 0;
 
+        // Kurs değerlendirmeleri ayrı sayfalama ile getirilir.
         var degerlendirmeler = await degerlendirmeQuery
             .OrderByDescending(x => x.DegerlendirmeTarihi)
             .Skip((yorumSayfa - 1) * yorumSayfaBasinaKayit)
@@ -331,6 +344,7 @@ public class AdminKursController : Controller
             })
             .ToListAsync();
 
+        // Kursa kayıtlı öğrencilerin genel ilerleme durumları hesaplanır.
         var kursKayitOzetleri = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x => x.KursId == kurs.KursId)
@@ -356,6 +370,7 @@ public class AdminKursController : Controller
                 KursSayisi = x.KursKategorileri.Count
             })
             .ToListAsync();
+
         var model = new AdminKursDetayViewModel
         {
             KursId = kurs.KursId,
@@ -414,7 +429,6 @@ public class AdminKursController : Controller
                         .ToList()
                 })
                 .ToList(),
-
 
             Sinav = kurs.Sinav == null
                 ? null
@@ -477,6 +491,7 @@ public class AdminKursController : Controller
     }
 
     [HttpGet]
+    // Belirli bir kursa kayıtlı öğrencileri ilerleme ve sınav durumlarıyla listeler.
     public async Task<IActionResult> Ogrenciler(
         int id,
         string? arama,
@@ -547,6 +562,7 @@ public class AdminKursController : Controller
             .AsNoTracking()
             .Where(x => x.KursId == id);
 
+        // Öğrenci ad, soyad veya e-posta bilgisine göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -555,6 +571,7 @@ public class AdminKursController : Controller
                 x.Kullanici.Eposta.Contains(arama));
         }
 
+        // Kurs kayıtları devam eden, tamamlayan veya pasif durumuna göre filtrelenir.
         query = durum switch
         {
             "devam" => query.Where(x => x.AktifMi && !x.TamamlandiMi),
@@ -605,6 +622,7 @@ public class AdminKursController : Controller
             .Select(x => x.KursKayitId)
             .ToList();
 
+        // Listedeki öğrencilerin sınav bilgileri tek sorguda alınır.
         var sinavKatilimlari = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x => kursKayitIdleri.Contains(x.KursKayitId))
@@ -631,6 +649,7 @@ public class AdminKursController : Controller
                 x => x.Key,
                 x => x.Count());
 
+        // Her öğrenci için ilerleme yüzdesi ve son sınav durumu hesaplanır.
         foreach (var ogrenci in ogrenciler)
         {
             ogrenci.ToplamDersSayisi = toplamDersSayisi;
@@ -681,6 +700,7 @@ public class AdminKursController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Kursu eğitmene düzeltme için geri gönderir.
     public async Task<IActionResult> DuzenlemeyeGonder(int id, string? aciklama)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -705,6 +725,7 @@ public class AdminKursController : Controller
             return RedirectToAction(nameof(Kurslar));
         }
 
+        // Pasif kurs düzenlemeye gönderilmez; pasif kurs ayrı bir durum olarak yönetilir.
         if (kurs.DurumId == 2)
         {
             TempData["AdminHata"] = "Pasif kurs düzenlemeye gönderilemez.";
@@ -729,25 +750,23 @@ public class AdminKursController : Controller
             IslemTarihi = DateTime.Now
         });
 
-
+        // Eğitmene kursun düzeltmeye gönderildiği bildirilir.
         await _bildirimService.BildirimOlusturAsync(
-        kurs.EgitmenId,
-        "Uyarı",
-        "Kursunuz için düzeltme istendi",
-        $"\"{kurs.KursAdi}\" adlı kursunuz için düzeltme istendi. Lütfen kurs içeriğini kontrol edin. Sebep: {aciklama}");
+            kurs.EgitmenId,
+            "Uyarı",
+            "Kursunuz için düzeltme istendi",
+            $"\"{kurs.KursAdi}\" adlı kursunuz için düzeltme istendi. Lütfen kurs içeriğini kontrol edin. Sebep: {aciklama}");
 
+        // Kursu devam eden öğrenciler de geçici güncelleme durumu hakkında bilgilendirilir.
         await DevamEdenOgrencilereKursBildirimGonderAsync(
             kurs.KursId,
             "Kurs güncelleniyor",
             $"\"{kurs.KursAdi}\" adlı kurs şu anda güncellenmektedir. Güncelleme tamamlandığında kursa tekrar devam edebilirsiniz.");
 
-
         await _adminLogService.KaydetAsync(
             adminId,
             AdminLogService.KursIslemleri,
             $"{kurs.KursAdi} adlı kurs düzenleme için eğitmene gönderildi. Sebep: {aciklama}");
-
-        
 
         await _context.SaveChangesAsync();
 
@@ -758,6 +777,7 @@ public class AdminKursController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Kursu pasif duruma alır.
     public async Task<IActionResult> PasifeAl(int id)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -777,6 +797,7 @@ public class AdminKursController : Controller
             return RedirectToAction(nameof(Detay), new { id });
         }
 
+        // Pasif kurs yeni öğrenci kayıtlarına kapatılır; mevcut kayıtlar sistemde korunur.
         kurs.DurumId = 2;
         kurs.GuncellemeTarihi = DateTime.Now;
 
@@ -794,6 +815,7 @@ public class AdminKursController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Pasif veya güncellenmiş kursu tekrar yayına alır.
     public async Task<IActionResult> YayinaAl(int id)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -830,6 +852,7 @@ public class AdminKursController : Controller
             AdminLogService.KursIslemleri,
             $"{kurs.KursAdi} adlı kurs admin tarafından yayına alındı.");
 
+        // Kurs tekrar erişime açıldığında devam eden öğrencilere bildirim gönderilir.
         await DevamEdenOgrencilereKursBildirimGonderAsync(
             kurs.KursId,
             "Kurs tekrar yayında",
@@ -844,6 +867,7 @@ public class AdminKursController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Kursu ve kursa bağlı tüm verileri kalıcı olarak siler.
     public async Task<IActionResult> Sil(int id)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -860,11 +884,20 @@ public class AdminKursController : Controller
         string kursAdi = kurs.KursAdi;
         string? kapakGorselUrl = kurs.KapakGorselUrl;
 
+        // Kursa bağlı materyal ve kapak görseli dosyaları sonradan fiziksel olarak silinmek üzere listeye alınır.
         var silinecekDosyaUrlListesi = await _context.DersMateryalleri
             .AsNoTracking()
             .Where(x => x.Ders.KursId == id)
             .Select(x => x.MateryalUrl)
             .ToListAsync();
+
+        var silinecekVideoUrlListesi = await _context.Dersler
+    .AsNoTracking()
+    .Where(x => x.KursId == id)
+    .Select(x => x.VideoUrl)
+    .ToListAsync();
+
+silinecekDosyaUrlListesi.AddRange(silinecekVideoUrlListesi);
 
         if (!string.IsNullOrWhiteSpace(kapakGorselUrl))
         {
@@ -881,6 +914,7 @@ public class AdminKursController : Controller
 
         try
         {
+            // Önce kursa bağlı ilişkili veriler silinir, ardından kurs kaydı kaldırılır.
             await KursaBagliVerileriSilAsync(id);
 
             _context.Kurslar.Remove(kurs);
@@ -893,6 +927,7 @@ public class AdminKursController : Controller
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // DB silme işlemi başarılı olduktan sonra kullanılmayan fiziksel dosyalar temizlenir.
             foreach (var dosyaUrl in silinecekDosyaUrlListesi)
             {
                 bool baskaKayittaKullaniliyorMu = await DosyaUrlBaskaKayittaKullaniliyorMuAsync(dosyaUrl);
@@ -916,6 +951,7 @@ public class AdminKursController : Controller
         }
     }
 
+    // Kursa bağlı öğrenci kayıtları, sınavlar, dersler, materyaller, yorumlar ve diğer ilişkili verileri siler.
     private async Task KursaBagliVerileriSilAsync(int kursId)
     {
         var kursKayitIdleri = await _context.KursKayitlari
@@ -1034,6 +1070,7 @@ public class AdminKursController : Controller
         _context.KursKategorileri.RemoveRange(kursKategorileri);
     }
 
+    // Kursu devam eden öğrencilere toplu bildirim gönderir.
     private async Task DevamEdenOgrencilereKursBildirimGonderAsync(
         int kursId,
         string baslik,
@@ -1059,6 +1096,7 @@ public class AdminKursController : Controller
         }
     }
 
+    // Dosya URL'sinin başka bir kayıtta kullanılıp kullanılmadığını kontrol eder.
     private async Task<bool> DosyaUrlBaskaKayittaKullaniliyorMuAsync(string dosyaUrl)
     {
         if (string.IsNullOrWhiteSpace(dosyaUrl))
@@ -1077,6 +1115,16 @@ public class AdminKursController : Controller
             return true;
         }
 
+        // Aynı video dosyası başka bir derste kullanılıyorsa fiziksel dosya silinmez.
+        bool videodaKullaniliyorMu = await _context.Dersler
+            .AsNoTracking()
+            .AnyAsync(x => x.VideoUrl == dosyaUrl);
+
+        if (videodaKullaniliyorMu)
+        {
+            return true;
+        }
+
         bool kapaktaKullaniliyorMu = await _context.Kurslar
             .AsNoTracking()
             .AnyAsync(x => x.KapakGorselUrl == dosyaUrl);
@@ -1084,6 +1132,7 @@ public class AdminKursController : Controller
         return kapaktaKullaniliyorMu;
     }
 
+    // wwwroot içindeki lokal dosyayı güvenli şekilde siler.
     private void LocalDosyayiSil(string? dosyaUrl)
     {
         if (string.IsNullOrWhiteSpace(dosyaUrl))
@@ -1093,6 +1142,7 @@ public class AdminKursController : Controller
 
         dosyaUrl = dosyaUrl.Trim();
 
+        // Harici URL'ler fiziksel dosya olmadığı için silinmez.
         if (dosyaUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             dosyaUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
@@ -1120,6 +1170,7 @@ public class AdminKursController : Controller
         string tamYol = Path.GetFullPath(Path.Combine(webRootPath, temizYol));
         string guvenliRoot = Path.GetFullPath(webRootPath);
 
+        // Dosya silme işleminin wwwroot dışına çıkması engellenir.
         bool wwwrootIcindeMi =
             tamYol.StartsWith(guvenliRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(tamYol, guvenliRoot, StringComparison.OrdinalIgnoreCase);
@@ -1139,7 +1190,8 @@ public class AdminKursController : Controller
         catch
         {
             // Dosya silinemezse DB işlemi geri alınmaz.
+
+          
         }
     }
-
 }

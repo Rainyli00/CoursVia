@@ -26,6 +26,7 @@ public class MobileOgrenciDashboardController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Öğrencinin aktif kursları için ders ve ilerleme özetleri tek seferde alınır.
         var kursOzetleri = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -54,6 +55,7 @@ public class MobileOgrenciDashboardController : MobileOgrenciBaseController
 
         int ortalamaIlerlemeYuzdesi = 0;
 
+        // Genel ilerleme, her kursun tamamlanma yüzdesinin ortalaması olarak hesaplanır.
         if (kursOzetleri.Any())
         {
             var ilerlemeler = kursOzetleri.Select(x =>
@@ -69,6 +71,7 @@ public class MobileOgrenciDashboardController : MobileOgrenciBaseController
             ortalamaIlerlemeYuzdesi = (int)Math.Round(ilerlemeler.Average());
         }
 
+        // Dashboard sayaçları öğrencinin kendi kayıtları üzerinden hesaplanır.
         int sertifikaSayisi = await _context.Sertifikalar
             .AsNoTracking()
             .CountAsync(x => x.KullaniciId == kullaniciId);
@@ -79,6 +82,7 @@ public class MobileOgrenciDashboardController : MobileOgrenciBaseController
                 x.KullaniciId == kullaniciId &&
                 !x.OkunduMu);
 
+        // Ana ekranda göstermek için öğrencinin en son kayıt olduğu 5 kurs döndürülür.
         var sonKurslar = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -118,6 +122,7 @@ public class MobileOgrenciDashboardController : MobileOgrenciBaseController
 
         foreach (var kurs in sonKurslar)
         {
+            // DTO içinde görünen ad ve ilerleme yüzdesi son dokunuş olarak düzenlenir.
             kurs.EgitmenAdSoyad = kurs.EgitmenAdSoyad.Trim();
 
             kurs.IlerlemeYuzdesi = kurs.ToplamDersSayisi == 0

@@ -19,18 +19,22 @@ import type {
 // Admin dashboard ekranı.
 // Mobil admin V1 için sade özet sayaçları ve son admin loglarını gösterir.
 export default function AdminDashboardScreen() {
+    // Dashboard cevabı özet sayaçlar ve son loglar için tek state'te tutulur.
     const [dashboard, setDashboard] = useState<MobileAdminDashboardResponse | null>(
         null
     );
 
+    // İlk yükleme, pull-to-refresh ve hata ekranı ayrı ayrı yönetilir.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Ekran açıldığında admin dashboard özeti yüklenir.
     useEffect(() => {
         dashboardGetir();
     }, []);
 
+    // Dashboard bilgisini getirir; refresh sırasında tam ekran loading yerine yenileme göstergesi kullanılır.
     async function dashboardGetir(refreshMi = false) {
         try {
             if (refreshMi) {
@@ -126,6 +130,7 @@ export default function AdminDashboardScreen() {
     );
 }
 
+// Dashboard ilk açılış yüklenme ekranı.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -135,6 +140,7 @@ function LoadingState() {
     );
 }
 
+// Dashboard alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -155,6 +161,7 @@ function ErrorState({
     );
 }
 
+// Dashboard sayaçlarını göstermek için kullanılan küçük kart.
 function SummaryCard({ title, value }: { title: string; value: number }) {
     return (
         <View style={styles.summaryCard}>
@@ -164,6 +171,7 @@ function SummaryCard({ title, value }: { title: string; value: number }) {
     );
 }
 
+// Dashboard'da gösterilen kısa admin log kartı.
 function LogKart({ log }: { log: MobileAdminLogItem }) {
     return (
         <View style={styles.logCard}>
@@ -196,6 +204,7 @@ function LogKart({ log }: { log: MobileAdminLogItem }) {
     );
 }
 
+// Geçerli tarihse Türkçe kısa tarih formatına çevirir.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 

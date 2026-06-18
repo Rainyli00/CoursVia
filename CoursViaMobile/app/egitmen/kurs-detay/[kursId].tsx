@@ -27,14 +27,17 @@ export default function EgitmenKursDetayScreen() {
         kursId?: string | string[];
     }>();
 
+    // Kurs detay cevabı tek state'te tutulur; üst özet, sınav, yorum ve dersler buradan okunur.
     const [detay, setDetay] = useState<MobileEgitmenKursDetayResponse | null>(
         null
     );
 
+    // İlk yükleme, pull-to-refresh ve hata ekranı ayrı ayrı yönetilir.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Expo Router parametresi string gelebileceği için güvenli sayıya çevrilir.
     const kursId = useMemo(() => {
         const rawValue = Array.isArray(params.kursId)
             ? params.kursId[0]
@@ -45,6 +48,7 @@ export default function EgitmenKursDetayScreen() {
         return Number.isFinite(id) && id > 0 ? id : null;
     }, [params.kursId]);
 
+    // Geçerli kursId varsa detay yüklenir, yoksa kullanıcıya hata ekranı gösterilir.
     useEffect(() => {
         if (!kursId) {
             setYukleniyor(false);
@@ -55,6 +59,7 @@ export default function EgitmenKursDetayScreen() {
         kursDetayGetir();
     }, [kursId]);
 
+    // Kurs detayını API'den alır; refresh sırasında tam ekran loading göstermez.
     async function kursDetayGetir(refreshMi = false) {
         if (!kursId) {
             return;
@@ -250,6 +255,7 @@ export default function EgitmenKursDetayScreen() {
     );
 }
 
+// Detay verisi gelene kadar gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -259,6 +265,7 @@ function LoadingState() {
     );
 }
 
+// Detay alınamazsa tekrar deneme ve geri dönme aksiyonlarını gösterir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -283,6 +290,7 @@ function ErrorState({
     );
 }
 
+// Hero alanındaki küçük kurs metrik kartı.
 function InfoCard({ title, value }: { title: string; value: string }) {
     return (
         <View style={styles.infoCard}>
@@ -292,6 +300,7 @@ function InfoCard({ title, value }: { title: string; value: string }) {
     );
 }
 
+// Sınav alanındaki soru, süre ve geçme notu kartları.
 function ExamInfoCard({ title, value }: { title: string; value: string }) {
     return (
         <View style={styles.examInfoCard}>
@@ -301,6 +310,7 @@ function ExamInfoCard({ title, value }: { title: string; value: string }) {
     );
 }
 
+// Kursa gelen son değerlendirme yorumunu gösterir.
 function YorumKart({ yorum }: { yorum: MobileEgitmenKursYorumItem }) {
     return (
         <View style={styles.commentCard}>
@@ -331,6 +341,7 @@ function YorumKart({ yorum }: { yorum: MobileEgitmenKursYorumItem }) {
     );
 }
 
+// Kurs içeriğindeki tek bölüm ve altındaki ders listesini gösterir.
 function BolumKart({ bolum }: { bolum: MobileEgitmenBolumItem }) {
     return (
         <View style={styles.sectionCard}>
@@ -363,6 +374,7 @@ function BolumKart({ bolum }: { bolum: MobileEgitmenBolumItem }) {
     );
 }
 
+// Dersin aktiflik durumunu ve materyal özetini gösteren satır.
 function DersSatiri({ ders }: { ders: MobileEgitmenDersItem }) {
     return (
         <View style={styles.lessonCard}>
@@ -416,6 +428,7 @@ function DersSatiri({ ders }: { ders: MobileEgitmenDersItem }) {
     );
 }
 
+// Yorum veya bölüm bulunmadığında küçük boş durum kartı.
 function SmallEmptyState({ text }: { text: string }) {
     return (
         <View style={styles.smallEmptyCard}>
@@ -424,6 +437,7 @@ function SmallEmptyState({ text }: { text: string }) {
     );
 }
 
+// Geçerli tarihse Türkçe kısa tarih formatına çevirir.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 

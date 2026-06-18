@@ -6,6 +6,8 @@ from tokenizers.pre_tokenizers import Whitespace
 import config
 
 
+# Prompt formatındaki görev ve alan etiketleri özel token olarak korunur.
+# Böylece tokenizer bu kontrol etiketlerini parçalamadan öğrenir.
 SPECIAL_TOKENS = [
     "<|endoftext|>",
     "[PAD]",
@@ -25,6 +27,7 @@ SPECIAL_TOKENS = [
 
 
 def train_tokenizer():
+    # Tokenizer eğitimi için önce sentetik train verisinin üretilmiş olması gerekir.
     if not config.TRAIN_FILE.exists():
         raise FileNotFoundError(
             f"Önce data_generator.py çalıştırılmalı. Bulunamadı: {config.TRAIN_FILE}"
@@ -32,9 +35,11 @@ def train_tokenizer():
 
     print("Tokenizer eğitiliyor...")
 
+    # MiniCoursVia için BPE tokenizer kullanılır.
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
     tokenizer.pre_tokenizer = Whitespace()
 
+    # Vocab boyutu config'ten gelir; özel tokenlar mutlaka vocab içinde yer alır.
     trainer = BpeTrainer(
         vocab_size=config.VOCAB_SIZE,
         min_frequency=2,
@@ -42,6 +47,7 @@ def train_tokenizer():
         show_progress=True,
     )
 
+    # Train ve validation dosyaları tokenizer'a birlikte gösterilir.
     tokenizer.train(
         files=[
             str(config.TRAIN_FILE),
@@ -50,6 +56,7 @@ def train_tokenizer():
         trainer=trainer,
     )
 
+    # Eğitilmiş tokenizer model klasörüne JSON olarak kaydedilir.
     tokenizer.save(str(config.TOKENIZER_FILE))
 
     print(f"Tokenizer kaydedildi: {config.TOKENIZER_FILE}")

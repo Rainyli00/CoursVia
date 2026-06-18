@@ -33,6 +33,7 @@ export default function BildirimlerScreen({
     menuItems,
     activeMenuKey,
 }: BildirimlerScreenProps) {
+    // Liste ve filtre state'leri backend'deki sayfalı bildirim cevabını yansıtır.
     const [bildirimler, setBildirimler] = useState<MobileBildirimItem[]>([]);
     const [durum, setDurum] = useState<MobileBildirimDurum>("tum");
     const [sayfa, setSayfa] = useState(1);
@@ -41,19 +42,23 @@ export default function BildirimlerScreen({
     const [toplamSayfa, setToplamSayfa] = useState(1);
     const [okunmamisBildirimSayisi, setOkunmamisBildirimSayisi] = useState(0);
 
+    // İlk yükleme, yenileme ve hata halleri ayrı UI göstergileri için tutulur.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Tekil bildirim işleminde sadece ilgili kartın butonları kilitlenir.
     const [islemdekiBildirimId, setIslemdekiBildirimId] = useState<number | null>(
         null
     );
     const [tumunuOkunduYapiliyor, setTumunuOkunduYapiliyor] = useState(false);
 
+    // Ekran açıldığında ilk bildirim sayfası yüklenir.
     useEffect(() => {
         bildirimleriGetir();
     }, []);
 
+    // Özet kartları için okunan sayı backend'den gelen toplam ve okunmamış sayıdan hesaplanır.
     const ozet = useMemo(() => {
         const okunanSayisi = Math.max(toplamKayit - okunmamisBildirimSayisi, 0);
 
@@ -64,6 +69,7 @@ export default function BildirimlerScreen({
         };
     }, [toplamKayit, okunmamisBildirimSayisi]);
 
+    // Listeyi API'den getirir; filtre veya sayfa değişimlerinde override ile çağrılır.
     async function bildirimleriGetir(
         refreshMi = false,
         override?: {
@@ -116,6 +122,7 @@ export default function BildirimlerScreen({
         }
     }
 
+    // Filtre değişince liste yeni filtreyle ilk sayfadan başlar.
     function durumDegistir(yeniDurum: MobileBildirimDurum) {
         if (yeniDurum === durum) {
             return;
@@ -130,6 +137,7 @@ export default function BildirimlerScreen({
         });
     }
 
+    // Sayfa sınırları dışına çıkılmasını ve gereksiz tekrar isteklerini engeller.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -143,6 +151,7 @@ export default function BildirimlerScreen({
         });
     }
 
+    // Zaten okundu olan bildirim için API çağrısı yapılmaz.
     async function okunduYap(bildirim: MobileBildirimItem) {
         if (bildirim.okunduMu) {
             return;
@@ -175,6 +184,7 @@ export default function BildirimlerScreen({
         }
     }
 
+    // Okunmuş bildirimi tekrar okunmamış durumuna alır ve rozet sayısını günceller.
     async function okunmadiYap(bildirim: MobileBildirimItem) {
         if (!bildirim.okunduMu) {
             return;
@@ -207,6 +217,7 @@ export default function BildirimlerScreen({
         }
     }
 
+    // Okunmamış bildirim yoksa toplu işlem yerine bilgilendirme gösterilir.
     async function tumunuOkunduYap() {
         if (okunmamisBildirimSayisi <= 0) {
             Alert.alert("Bilgi", "Okunmamış bildirimin bulunmuyor.");
@@ -240,6 +251,7 @@ export default function BildirimlerScreen({
         }
     }
 
+    // Silme işlemi kullanıcı onayı olmadan başlatılmaz.
     function silOnayiAl(bildirim: MobileBildirimItem) {
         Alert.alert(
             "Bildirim Sil",
@@ -258,6 +270,7 @@ export default function BildirimlerScreen({
         );
     }
 
+    // Silme sonrası mevcut filtre ve sayfayla liste yeniden çekilir.
     async function bildirimSil(bildirim: MobileBildirimItem) {
         try {
             setIslemdekiBildirimId(bildirim.bildirimId);
@@ -392,6 +405,7 @@ export default function BildirimlerScreen({
     );
 }
 
+// Ortak tam ekran yüklenme görünümü.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -401,6 +415,7 @@ function LoadingState() {
     );
 }
 
+// İlk yükleme hatasında tekrar deneme aksiyonunu gösterir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -420,6 +435,7 @@ function ErrorState({
     );
 }
 
+// Özet sayaç kartı.
 function SummaryCard({
     title,
     value,
@@ -435,6 +451,7 @@ function SummaryCard({
     );
 }
 
+// Bildirim durum filtrelerinde kullanılan pill buton.
 function FilterButton({
     title,
     active,
@@ -465,6 +482,7 @@ function FilterButton({
     );
 }
 
+// Tek bildirim kartının okundu/okunmadı ve silme aksiyonlarını gösterir.
 function BildirimKart({
     bildirim,
     islemde,
@@ -573,6 +591,7 @@ function BildirimKart({
     );
 }
 
+// Bildirim tipi adına göre kartta gösterilecek kısa sembolü seçer.
 function bildirimTipIkonuGetir(tipAdi: string) {
     const tip = tipAdi.toLowerCase();
 
@@ -587,6 +606,7 @@ function bildirimTipIkonuGetir(tipAdi: string) {
     return "i";
 }
 
+// Geçerli tarihse Türkçe kısa tarih/saat formatına çevirir.
 function tarihSaatFormatla(value: string) {
     const tarih = new Date(value);
 
@@ -602,7 +622,8 @@ function tarihSaatFormatla(value: string) {
         minute: "2-digit",
     });
 }
-
+// Tek sayfalama kontrolü; önceki/sonraki butonları ve sayfa bilgisini gösterir.
+// Alt sayfalama kontrolü; sınırdaki butonları pasif hale getirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -661,6 +682,7 @@ function PaginationControls({
     );
 }
 
+// Aktif filtreye göre boş liste mesajını özelleştirir.
 function EmptyState({ durum }: { durum: MobileBildirimDurum }) {
     const mesaj =
         durum === "okunmamis"

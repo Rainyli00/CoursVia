@@ -73,6 +73,7 @@ export type MobileOgrenciDashboardKurs = {
 };
 
 // GET /api/mobile/ogrenci/dashboard endpointinden dönen cevap tipi.
+// Dashboard özet sayaçları ve devam edilebilir son kursları birlikte taşır.
 export type MobileOgrenciDashboardResponse = {
     basarili: boolean;
     mesaj: string;
@@ -209,6 +210,7 @@ export type MobileOgrenciKursDetayResponse = {
 };
 
 // POST işlemlerinde ortak dönebilecek basit cevap tipi.
+// Kayıt olma, ders tamamlama gibi sadece sonuç/mesaj dönen işlemler için kullanılır.
 export type MobileOgrenciIslemResponse = {
     basarili: boolean;
     mesaj: string;
@@ -330,6 +332,7 @@ export type MobileOgrenciKesfetDetayResponse = {
 };
 
 // Sınavlarım ekranında gösterilecek sınav durum kartı tipi.
+// Sınava girme hakkı, son sonuç ve ders tamamlama durumu aynı kartta gösterilir.
 export type MobileOgrenciSinavItem = {
     kursKayitId: number;
     kursId: number;

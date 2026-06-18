@@ -31,6 +31,7 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Arama ve sayfalama değerleri sorguya girmeden normalize edilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -38,6 +39,7 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Öğrencinin yalnızca aktif kurs kayıtları sınav listesine dahil edilir.
         var query = _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -46,6 +48,7 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama kurs, eğitmen ve varsa sınav adı üzerinden yapılır.
             query = query.Where(x =>
                 x.Kurs.KursAdi.Contains(arama) ||
                 x.Kurs.Egitmen.Ad.Contains(arama) ||
@@ -61,6 +64,7 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
             sayfa = toplamSayfa;
         }
 
+        // Kurs ve sınav özetleri alınır; sınav hakkı hesabı aşağıda katılımlarla yapılır.
         var kursKayitlari = await query
             .OrderByDescending(x => x.KayitTarihi)
             .Skip((sayfa - 1) * sayfaBasinaKayit)
@@ -96,6 +100,7 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
             .Select(x => x.KursKayitId)
             .ToList();
 
+        // Sayfadaki kurs kayıtlarına ait tüm sınav girişleri tek sorguyla çekilir.
         var sinavKatilimlari = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x => kursKayitIdleri.Contains(x.KursKayitId))
@@ -114,6 +119,7 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
 
         foreach (var kayit in kursKayitlari)
         {
+            // Her kurs için öğrencinin sınav geçmişi ve son giriş bilgisi ayrıştırılır.
             var buKursaAitKatilimlar = sinavKatilimlari
                 .Where(x => x.KursKayitId == kayit.KursKayitId)
                 .OrderByDescending(x => x.BaslamaTarihi)
@@ -125,6 +131,7 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
                 kayit.ToplamDersSayisi > 0 &&
                 kayit.TamamlananDersSayisi >= kayit.ToplamDersSayisi;
 
+            // Başarısız ve tamamlanmış denemeler maksimum sınav hakkından düşülür.
             int basarisizDenemeSayisi = buKursaAitKatilimlar
                 .Count(x =>
                     x.BitisTarihi != null &&
@@ -135,12 +142,14 @@ public class MobileOgrenciSinavlarimController : MobileOgrenciBaseController
             bool devamEdenSinavVar = buKursaAitKatilimlar.Any(x =>
                 x.BitisTarihi == null);
 
+            // Başarılı olan öğrencinin yeniden sınava girmesine gerek olmadığı için hak 0 gösterilir.
             int kalanHak = basariliMi
                 ? 0
                 : Math.Max(0, MaksimumSinavHakki - basarisizDenemeSayisi);
 
             string durumMetni;
 
+            // Mobil ekranda tek bir durum etiketi gösterilebilmesi için öncelikli karar sırası uygulanır.
             if (kayit.DurumId == 7 && !basariliMi)
             {
                 durumMetni = "Güncelleniyor";

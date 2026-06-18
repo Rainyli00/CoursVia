@@ -1,6 +1,7 @@
 import AiOnerilerScreen from "@/app/_shared/AiOnerilerScreen";
 import { EGITMEN_MENU_ITEMS } from "@/app/_shared/panelMenus";
 
+// Eğitmen tarafı AI öneriler sayfası ortak liste ekranını rol menüsüyle açar.
 export default function EgitmenAiOnerilerPage() {
     return (
         <AiOnerilerScreen

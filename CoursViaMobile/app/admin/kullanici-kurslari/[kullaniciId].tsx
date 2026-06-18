@@ -26,12 +26,15 @@ export default function AdminKullaniciKurslariScreen() {
         kullaniciId?: string | string[];
     }>();
 
+    // Kullanıcının kayıtlı kurs listesi ve başlıkta gösterilecek ad bilgisi.
     const [kurslar, setKurslar] = useState<MobileAdminKullaniciKursItem[]>([]);
     const [adSoyad, setAdSoyad] = useState("");
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış aktif filtredir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -42,6 +45,7 @@ export default function AdminKullaniciKurslariScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Expo Router parametresi string gelebileceği için güvenli sayıya çevrilir.
     const kullaniciId = useMemo(() => {
         const rawValue = Array.isArray(params.kullaniciId)
             ? params.kullaniciId[0]
@@ -52,6 +56,7 @@ export default function AdminKullaniciKurslariScreen() {
         return Number.isFinite(id) && id > 0 ? id : null;
     }, [params.kullaniciId]);
 
+    // Geçerli kullanıcı id varsa kayıtlı kurslar yüklenir, yoksa hata ekranı gösterilir.
     useEffect(() => {
         if (!kullaniciId) {
             setYukleniyor(false);
@@ -65,6 +70,7 @@ export default function AdminKullaniciKurslariScreen() {
         });
     }, [kullaniciId]);
 
+    // Kullanıcının kayıtlı kurslarını API'den getirir; override arama/sayfa için kullanılır.
     async function kurslariGetir(
         refreshMi = false,
         override?: {
@@ -124,6 +130,7 @@ export default function AdminKullaniciKurslariScreen() {
         }
     }
 
+    // Arama uygulandığında liste ilk sayfadan yeniden yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -138,6 +145,7 @@ export default function AdminKullaniciKurslariScreen() {
         });
     }
 
+    // Arama filtresini temizleyip listeyi varsayılana döndürür.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -151,6 +159,7 @@ export default function AdminKullaniciKurslariScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -264,6 +273,7 @@ export default function AdminKullaniciKurslariScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -273,6 +283,7 @@ function LoadingState() {
     );
 }
 
+// Liste alınamazsa tekrar deneme ve geri dönme aksiyonlarını gösterir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -297,6 +308,7 @@ function ErrorState({
     );
 }
 
+// Kullanıcının kayıtlı olduğu kursu özetler; tıklandığında kurs detayına gider.
 function KursKart({ kurs }: { kurs: MobileAdminKullaniciKursItem }) {
     return (
         <Pressable
@@ -361,6 +373,7 @@ function KursKart({ kurs }: { kurs: MobileAdminKullaniciKursItem }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -419,6 +432,7 @@ function PaginationControls({
     );
 }
 
+// Kullanıcının kayıtlı kursu yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>
@@ -430,6 +444,7 @@ function EmptyState() {
     );
 }
 
+// Geçerli tarihse Türkçe kısa tarih formatına çevirir.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 

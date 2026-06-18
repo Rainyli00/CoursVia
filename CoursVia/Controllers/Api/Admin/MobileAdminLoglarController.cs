@@ -30,6 +30,7 @@ public class MobileAdminLoglarController : MobileAdminBaseController
         [FromQuery] int sayfa = 1,
         [FromQuery] int sayfaBasinaKayit = 10)
     {
+        // Arama, kategori, sıralama ve sayfalama parametreleri güvenli varsayılanlara çekilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -52,11 +53,15 @@ public class MobileAdminLoglarController : MobileAdminBaseController
 
         var kategoriler = LogKategorileriGetir();
 
+        // Tanınmayan kategori gelirse tüm loglar gösterilir.
         if (!kategoriler.Any(x => x.Kategori == kategori))
         {
             kategori = "tum";
         }
 
+        // Log listesi tüm admin logları üzerinden başlar; filtreler aşağıda kademeli uygulanır.
+        // AsNoTracking ile performans artırılır, çünkü loglar değiştirilmeyecek.
+        // AsQueryable ile sorgu kademeli olarak filtrelenebilir hale getirilir.
         var query = _context.AdminLoglari
             .AsNoTracking()
             .AsQueryable();
@@ -65,6 +70,7 @@ public class MobileAdminLoglarController : MobileAdminBaseController
         {
             string aramaDegeri = arama;
 
+            // Arama admin bilgisi, işlem tipi, açıklama ve IP adresi alanlarında yapılır.
             query = query.Where(x =>
                 (x.Admin == null ? "" : x.Admin.Ad).Contains(aramaDegeri) ||
                 (x.Admin == null ? "" : x.Admin.Soyad).Contains(aramaDegeri) ||
@@ -74,6 +80,7 @@ public class MobileAdminLoglarController : MobileAdminBaseController
                 (x.IpAdresi ?? "").Contains(aramaDegeri));
         }
 
+        // Kategori filtresi işlem tipi ve açıklama metinleri üzerinden pratik olarak ayrıştırılır.
         query = kategori switch
         {
             "kullanici" => query.Where(x =>
@@ -115,6 +122,7 @@ public class MobileAdminLoglarController : MobileAdminBaseController
             _ => query
         };
 
+        // Mobil ekranda yeni/eski dışında sıralama desteklenmez.
         query = sirala == "eski"
             ? query.OrderBy(x => x.IslemTarihi)
             : query.OrderByDescending(x => x.IslemTarihi);
@@ -127,6 +135,7 @@ public class MobileAdminLoglarController : MobileAdminBaseController
             sayfa = toplamSayfa;
         }
 
+        // Sayfalı log verisi önce ham alanlarla çekilir, sonra null güvenli DTO'ya çevrilir.
         var logHamListe = await query
             .Skip((sayfa - 1) * sayfaBasinaKayit)
             .Take(sayfaBasinaKayit)
@@ -184,9 +193,11 @@ public class MobileAdminLoglarController : MobileAdminBaseController
             Loglar = loglar
         });
     }
+
     // Log kategorilerini döndürür.
     private static List<MobileAdminLogKategoriResponse> LogKategorileriGetir()
     {
+        // Mobil filtre sekmelerinde kullanılacak sabit kategori anahtarları.
         return new List<MobileAdminLogKategoriResponse>
         {
             new()

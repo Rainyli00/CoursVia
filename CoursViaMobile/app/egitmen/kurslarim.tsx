@@ -27,16 +27,20 @@ import type {
 // Eğitmen kurslarım ekranı.
 // Arama, durum filtresi, kategori filtresi, sıralama, sayfalama ve kursu taslağa alma işlemi destekler.
 export default function EgitmenKurslarimScreen() {
+    // Liste verisi ve filtre dropdownlarında kullanılacak kategori seçenekleri.
     const [kurslar, setKurslar] = useState<MobileEgitmenKursItem[]>([]);
     const [kategoriler, setKategoriler] = useState<MobileEgitmenKategoriSecenek[]>([]);
 
+    // aramaInput ekrandaki yazıyı, arama ise API'ye uygulanmış filtreyi temsil eder.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Aktif durum, kategori ve sıralama filtreleri.
     const [durumId, setDurumId] = useState<number | null>(null);
     const [kategoriId, setKategoriId] = useState<number | null>(null);
     const [sirala, setSirala] = useState("guncel");
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -47,14 +51,17 @@ export default function EgitmenKurslarimScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Taslağa alma sırasında sadece işlem yapılan kursun butonu kilitlenir.
     const [taslagaAlinanKursId, setTaslagaAlinanKursId] = useState<number | null>(
         null
     );
 
+    // Ekran açıldığında ilk kurs listesi varsayılan filtrelerle alınır.
     useEffect(() => {
         kurslariGetir();
     }, []);
 
+    // Üst özet kartları mevcut sayfadaki kurs durumlarından hesaplanır.
     const ozet = useMemo(() => {
         const yayindaki = kurslar.filter((x) => x.durumId === 5).length;
         const bekleyen = kurslar.filter((x) => x.durumId === 4).length;
@@ -68,6 +75,7 @@ export default function EgitmenKurslarimScreen() {
         };
     }, [kurslar, toplamKayit]);
 
+    // Kurs listesini çeker; override ile state güncellenmeden yeni filtrelerle istek yapılabilir.
     async function kurslariGetir(
         refreshMi = false,
         override?: {
@@ -141,6 +149,7 @@ export default function EgitmenKurslarimScreen() {
         }
     }
 
+    // Arama uygulandığında liste ilk sayfadan yeniden yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -158,6 +167,7 @@ export default function EgitmenKurslarimScreen() {
         });
     }
 
+    // Tüm filtreleri varsayılan hale getirip listeyi baştan çeker.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -177,6 +187,7 @@ export default function EgitmenKurslarimScreen() {
         });
     }
 
+    // Durum filtresi değişince aktif arama korunur ve sayfa bire döner.
     function durumSec(yeniDurumId: number | null) {
         Keyboard.dismiss();
 
@@ -195,6 +206,7 @@ export default function EgitmenKurslarimScreen() {
         });
     }
 
+    // Kategori değişimi de yeni liste anlamına geldiği için sayfa sıfırlanır.
     function kategoriSec(yeniKategoriId: number | null) {
         Keyboard.dismiss();
 
@@ -213,6 +225,7 @@ export default function EgitmenKurslarimScreen() {
         });
     }
 
+    // Sıralama değiştiğinde mevcut arama/filtrelerle ilk sayfa yeniden yüklenir.
     function siralamaSec(yeniSirala: string) {
         Keyboard.dismiss();
 
@@ -231,6 +244,7 @@ export default function EgitmenKurslarimScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -247,10 +261,12 @@ export default function EgitmenKurslarimScreen() {
         });
     }
 
+    // Kurs kartından detay sayfasına geçiş yapar.
     function kursDetayAc(kursId: number) {
         router.push(`/egitmen/kurs-detay/${kursId}` as any);
     }
 
+    // Kursu taslağa almak yayındaki akışı etkilediği için işlemden önce onay alınır.
     function taslagaAlOnayiAl(kurs: MobileEgitmenKursItem) {
         if (kurs.durumId === 3) {
             Alert.alert("Bilgi", "Bu kurs zaten taslak durumunda.");
@@ -274,6 +290,7 @@ export default function EgitmenKurslarimScreen() {
         );
     }
 
+    // Taslağa alma başarılı olursa mevcut filtrelerle liste yenilenir.
     async function taslagaAl(kursId: number) {
         try {
             setTaslagaAlinanKursId(kursId);
@@ -380,6 +397,7 @@ export default function EgitmenKurslarimScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -389,6 +407,7 @@ function LoadingState() {
     );
 }
 
+// Liste alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -408,6 +427,7 @@ function ErrorState({
     );
 }
 
+// Üstteki özet sayaç kartı.
 function SummaryCard({
     title,
     value,
@@ -423,6 +443,7 @@ function SummaryCard({
     );
 }
 
+// Arama, durum, kategori ve sıralama kontrollerini tek yerde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -517,6 +538,7 @@ function FilterPanel({
     );
 }
 
+// Kurs durum seçeneklerini modal dropdown olarak gösterir.
 function DurumDropdown({
     durumId,
     durumSec,
@@ -539,6 +561,7 @@ function DurumDropdown({
     const seciliDurum = durumlar.find((x) => x.value === durumId);
     const seciliMetin = seciliDurum?.label ?? "Tüm Durumlar";
 
+    // Seçim yapıldığında modal kapanır ve üst component listeyi yeniler.
     function sec(value: number | null) {
         setModalAcik(false);
         durumSec(value);
@@ -587,6 +610,7 @@ function DurumDropdown({
     );
 }
 
+// Backend'den gelen kategori seçenekleriyle kurs listesi filtrelenir.
 function KategoriDropdown({
     kategoriler,
     kategoriId,
@@ -603,6 +627,7 @@ function KategoriDropdown({
         ? seciliKategori.kategoriAdi
         : "Tüm Kategoriler";
 
+    // null değeri tüm kategoriler filtresini temsil eder.
     function sec(value: number | null) {
         setModalAcik(false);
         kategoriSec(value);
@@ -657,6 +682,7 @@ function KategoriDropdown({
     );
 }
 
+// Backend'in desteklediği sıralama değerlerini kullanıcı dostu etiketlerle gösterir.
 function SiralamaDropdown({
     sirala,
     siralamaSec,
@@ -682,6 +708,7 @@ function SiralamaDropdown({
     const seciliSiralama = siralamalar.find((x) => x.value === sirala);
     const seciliMetin = seciliSiralama?.label ?? "Güncel";
 
+    // Seçilen value doğrudan API'nin beklediği sirala parametresidir.
     function sec(value: string) {
         setModalAcik(false);
         siralamaSec(value);
@@ -724,6 +751,7 @@ function SiralamaDropdown({
     );
 }
 
+// Dropdown seçimlerini ortak modal içinde gösterir.
 function SelectionModal({
     visible,
     title,
@@ -767,6 +795,7 @@ function SelectionModal({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -800,6 +829,7 @@ function DropdownItem({
     );
 }
 
+// Kurs kartı; detay geçişi ve taslağa alma aksiyonunu birlikte sunar.
 function KursKart({
     kurs,
     kursDetayAc,
@@ -914,6 +944,7 @@ function KursKart({
     );
 }
 
+// Kurs kartındaki küçük metrik kutusu.
 function InfoPill({ label, value }: { label: string; value: string }) {
     return (
         <View style={styles.infoPill}>
@@ -923,6 +954,7 @@ function InfoPill({ label, value }: { label: string; value: string }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -981,6 +1013,7 @@ function PaginationControls({
     );
 }
 
+// Arama veya filtrelere uygun kurs yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

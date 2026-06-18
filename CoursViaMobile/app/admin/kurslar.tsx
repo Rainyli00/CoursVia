@@ -33,6 +33,7 @@ type SiralamaValue =
     | "ogrenci-cok"
     | "ogrenci-az";
 
+// API'nin desteklediği admin kurs sıralama değerleri kullanıcı etiketleriyle tutulur.
 const SIRALAMA_SECENEKLERI: { label: string; value: SiralamaValue }[] = [
     { label: "Güncel", value: "guncel" },
     { label: "Eski", value: "eski" },
@@ -48,17 +49,21 @@ const SIRALAMA_SECENEKLERI: { label: string; value: SiralamaValue }[] = [
 // Arama, durum filtresi, kategori filtresi, sıralama ve sayfalama destekler.
 // Mobilde kurs onay/red yoktur, sadece görüntüleme vardır.
 export default function AdminKurslarScreen() {
+    // Liste verisi ve filtre dropdownlarında kullanılacak durum/kategori seçenekleri.
     const [kurslar, setKurslar] = useState<MobileAdminKursItem[]>([]);
     const [durumlar, setDurumlar] = useState<MobileAdminSecenek[]>([]);
     const [kategoriler, setKategoriler] = useState<MobileAdminSecenek[]>([]);
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış aktif filtredir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Aktif filtre ve sıralama değerleri.
     const [durumId, setDurumId] = useState<number | null>(null);
     const [kategoriId, setKategoriId] = useState<number | null>(null);
     const [sirala, setSirala] = useState<SiralamaValue>("guncel");
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -69,6 +74,7 @@ export default function AdminKurslarScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Ekran açıldığında varsayılan filtrelerle ilk kurs listesi çekilir.
     useEffect(() => {
         kurslariGetir(false, {
             arama: null,
@@ -79,6 +85,7 @@ export default function AdminKurslarScreen() {
         });
     }, []);
 
+    // Kurs listesini API'den çeker; override ile filtre state'i güncellenmeden istek yapılabilir.
     async function kurslariGetir(
         refreshMi = false,
         override?: {
@@ -153,6 +160,7 @@ export default function AdminKurslarScreen() {
         }
     }
 
+    // Arama uygulandığında liste ilk sayfadan yeniden yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -170,6 +178,7 @@ export default function AdminKurslarScreen() {
         });
     }
 
+    // Tüm filtre ve sıralamayı varsayılana döndürür.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -189,6 +198,7 @@ export default function AdminKurslarScreen() {
         });
     }
 
+    // Durum filtresi değişince aktif arama korunur ve sayfa bire döner.
     function durumSec(yeniDurumId: number | null) {
         Keyboard.dismiss();
 
@@ -207,6 +217,7 @@ export default function AdminKurslarScreen() {
         });
     }
 
+    // Kategori değişince mevcut arama/durum korunarak liste baştan yüklenir.
     function kategoriSec(yeniKategoriId: number | null) {
         Keyboard.dismiss();
 
@@ -225,6 +236,7 @@ export default function AdminKurslarScreen() {
         });
     }
 
+    // Sıralama değişince mevcut filtrelerle ilk sayfa yeniden çekilir.
     function siralamaSec(yeniSirala: SiralamaValue) {
         Keyboard.dismiss();
 
@@ -243,6 +255,7 @@ export default function AdminKurslarScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -324,6 +337,7 @@ export default function AdminKurslarScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -333,6 +347,7 @@ function LoadingState() {
     );
 }
 
+// Liste alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -352,6 +367,7 @@ function ErrorState({
     );
 }
 
+// Arama, durum, kategori ve sıralama kontrollerini tek panelde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -452,6 +468,7 @@ function FilterPanel({
     );
 }
 
+// Kurs durum seçeneklerini modal dropdown olarak gösterir.
 function DurumDropdown({
     durumlar,
     durumId,
@@ -466,6 +483,7 @@ function DurumDropdown({
     const seciliDurum = durumlar.find((x) => x.id === durumId);
     const seciliMetin = seciliDurum ? seciliDurum.ad : "Tüm Durumlar";
 
+    // null seçimi tüm durumlar filtresine döner.
     function sec(value: number | null) {
         setModalAcik(false);
         durumSec(value);
@@ -520,6 +538,7 @@ function DurumDropdown({
     );
 }
 
+// Kurs kategori seçeneklerini modal dropdown olarak gösterir.
 function KategoriDropdown({
     kategoriler,
     kategoriId,
@@ -534,6 +553,7 @@ function KategoriDropdown({
     const seciliKategori = kategoriler.find((x) => x.id === kategoriId);
     const seciliMetin = seciliKategori ? seciliKategori.ad : "Tüm Kategoriler";
 
+    // null seçimi tüm kategoriler filtresine döner.
     function sec(value: number | null) {
         setModalAcik(false);
         kategoriSec(value);
@@ -588,6 +608,7 @@ function KategoriDropdown({
     );
 }
 
+// Admin kurs sıralama seçeneklerini modal dropdown olarak gösterir.
 function SiralamaDropdown({
     sirala,
     siralamaSec,
@@ -601,6 +622,7 @@ function SiralamaDropdown({
         SIRALAMA_SECENEKLERI.find((x) => x.value === sirala) ??
         SIRALAMA_SECENEKLERI[0];
 
+    // Seçilen value doğrudan API'nin beklediği sirala parametresidir.
     function sec(value: SiralamaValue) {
         setModalAcik(false);
         siralamaSec(value);
@@ -646,6 +668,7 @@ function SiralamaDropdown({
     );
 }
 
+// Dropdown seçimlerini ortak modal içinde gösterir.
 function SelectionModal({
     visible,
     title,
@@ -686,6 +709,7 @@ function SelectionModal({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -719,6 +743,7 @@ function DropdownItem({
     );
 }
 
+// Admin kurs özet kartı; tıklandığında kurs detayına gider.
 function KursKart({ kurs }: { kurs: MobileAdminKursItem }) {
     return (
         <Pressable
@@ -784,6 +809,7 @@ function KursKart({ kurs }: { kurs: MobileAdminKursItem }) {
     );
 }
 
+// Kurs kartındaki küçük metrik kutusu.
 function MiniStat({ title, value }: { title: string; value: number | string }) {
     return (
         <View style={styles.miniStat}>
@@ -793,6 +819,7 @@ function MiniStat({ title, value }: { title: string; value: number | string }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -851,6 +878,7 @@ function PaginationControls({
     );
 }
 
+// Arama veya filtrelere uygun kurs yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

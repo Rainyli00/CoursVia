@@ -1,11 +1,13 @@
 // Admin mobil ekranlarında kullanılacak TypeScript tipleri.
-// Backend'den gelen admin API JSON cevaplarını burada tanımlıyoruz.
+// Backend'den gelen admin API JSON cevaplarını burada tanımladım.
 
+// Select/dropdown filtrelerinde kullanılan ortak id-ad seçeneği.
 export type MobileAdminSecenek = {
     id: number;
     ad: string;
 };
 
+// Admin onay, red, durum değiştirme gibi basit işlem cevapları.
 export type MobileAdminIslemResponse = {
     basarili: boolean;
     mesaj: string;
@@ -44,6 +46,7 @@ export type MobileAdminKullaniciItem = {
     onlineMi: boolean;
 };
 
+// Kullanıcılar ekranı, detay ekranı ve detaydan açılan kurslar ekranında roller ve durumlar için ortak tipler.
 export type MobileAdminKullanicilarResponse = {
     basarili: boolean;
     mesaj: string;
@@ -192,6 +195,7 @@ export type MobileAdminKurslarResponse = {
     kurslar: MobileAdminKursItem[];
 };
 
+// Kurs detayında bölüm -> ders -> materyal ağacının en küçük parçası.
 export type MobileAdminKursDersMateryalItem = {
     materyalId: number;
     baslik: string;
@@ -319,6 +323,7 @@ export type MobileAdminEgitmenBasvuruDetayResponse = {
     aciklama: string | null;
 };
 
+// Başvuru onay/red kararında admin açıklaması opsiyonel gönderilir.
 export type MobileAdminEgitmenBasvuruKararRequest = {
     aciklama?: string | null;
 };

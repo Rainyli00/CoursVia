@@ -17,6 +17,7 @@ export type MobileLoginRequest = {
 };
 
 // POST /api/mobile/auth/login endpointinden dönen cevap tipi.
+// Login başarısızsa token ve kullanıcı alanları null gelebilir.
 export type MobileLoginResponse = {
     basarili: boolean;
     mesaj: string;
@@ -36,6 +37,7 @@ export type MobileRefreshTokenRequest = {
 };
 
 // POST /api/mobile/auth/refresh endpointinden dönen cevap tipi.
+// Yeni access token ile birlikte refresh token da yenilenir.
 export type MobileRefreshTokenResponse = {
     basarili: boolean;
     mesaj: string;

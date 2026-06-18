@@ -58,7 +58,7 @@ export default function OgrenciSertifikalarimScreen() {
         sertifikalariGetir();
     }, []);
 
-    // GET /api/mobile/ogrenci/sertifikalarim
+    // Sertifika listesini API'den çeker; override ile arama/sayfa state'e yazılmadan kullanılabilir.
     async function sertifikalariGetir(
         refreshMi = false,
         override?: {
@@ -140,7 +140,7 @@ export default function OgrenciSertifikalarimScreen() {
         });
     }
 
-    // Sayfa değiştirir.
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -371,7 +371,7 @@ function tarihFormatla(value: string) {
     return tarih.toLocaleDateString("tr-TR");
 }
 
-// Sayfalama butonları.
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,

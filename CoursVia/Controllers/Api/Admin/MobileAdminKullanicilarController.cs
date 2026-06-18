@@ -21,7 +21,6 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
 
     // Admin mobil kullanıcı listesini döndürür.
     // Arama, rol filtresi, aktif/pasif durum filtresi ve sayfalama destekler.
-    // GET /api/mobile/admin/kullanicilar?arama=mehmet&rolId=3&durumId=1&sayfa=1&sayfaBasinaKayit=10
     [HttpGet]
     public async Task<ActionResult<MobileAdminKullanicilarResponse>> Kullanicilar(
         [FromQuery] string? arama,
@@ -30,6 +29,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
         [FromQuery] int sayfa = 1,
         [FromQuery] int sayfaBasinaKayit = 10)
     {
+        // Arama, rol, durum ve sayfalama değerleri sorgudan önce normalize edilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -47,6 +47,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Mobil filtre seçenekleri için rol ve durum listeleri birlikte döndürülür.
         var roller = await _context.Roller
             .AsNoTracking()
             .OrderBy(x => x.RolId)
@@ -70,12 +71,14 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
             })
             .ToListAsync();
 
+        // Kullanıcı listesi tüm kullanıcılardan başlar; filtreler aşağıda uygulanır.
         var query = _context.Kullanicilar
             .AsNoTracking()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama ad, soyad ve e-posta alanları üzerinden yapılır.
             query = query.Where(x =>
                 x.Ad.Contains(arama) ||
                 x.Soyad.Contains(arama) ||
@@ -84,6 +87,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
 
         if (rolId.HasValue)
         {
+            // Rol filtresi kullanıcı-rol ilişki tablosu üzerinden uygulanır.
             query = query.Where(x =>
                 x.KullaniciRolleri.Any(r => r.RolId == rolId.Value));
         }
@@ -101,6 +105,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
             sayfa = toplamSayfa;
         }
 
+        // Liste için gereken alanlar ve roller tek projeksiyonda alınır.
         var kullaniciHamListe = await query
             .OrderByDescending(x => x.KayitTarihi)
             .Skip((sayfa - 1) * sayfaBasinaKayit)
@@ -124,6 +129,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
             })
             .ToListAsync();
 
+        // Roller mobil görünüm için virgülle ayrılmış tek metne dönüştürülür.
         var kullanicilar = kullaniciHamListe
             .Select(x => new MobileAdminKullaniciItemResponse
             {
@@ -166,6 +172,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
     [HttpGet("{kullaniciId:int}")]
     public async Task<ActionResult<MobileAdminKullaniciDetayResponse>> Detay(int kullaniciId)
     {
+        // Kullanıcının temel bilgileri ve rolleri detay ekranı için alınır.
         var kullanici = await _context.Kullanicilar
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId)
@@ -202,6 +209,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
             });
         }
 
+        // Kullanıcıya ait öğrenci/eğitmen özet sayaçları detay kartlarında kullanılır.
         int kayitliKursSayisi = await _context.KursKayitlari
             .AsNoTracking()
             .CountAsync(x =>
@@ -219,10 +227,12 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
             .AsNoTracking()
             .CountAsync(x => x.KullaniciId == kullaniciId);
 
+        // Kullanıcı eğitmen ise eğitmen kurs sayısı da detay kartında gösterilir.
         int egitmenKursSayisi = await _context.Kurslar
             .AsNoTracking()
             .CountAsync(x => x.EgitmenId == kullaniciId);
 
+        // Kullanıcı eğitmen ise profil ve branş bilgileri de cevapta yer alır.
         var egitmenProfili = await _context.EgitmenProfilleri
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId)
@@ -283,7 +293,6 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
     }
 
     // Admin mobilde kullanıcının kayıtlı olduğu kursları döndürür.
-    // GET /api/mobile/admin/kullanicilar/{kullaniciId}/kurslar?arama=react&sayfa=1&sayfaBasinaKayit=10
     [HttpGet("{kullaniciId:int}/kurslar")]
     public async Task<ActionResult<MobileAdminKullaniciKurslarResponse>> KullaniciKurslari(
         int kullaniciId,
@@ -291,6 +300,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
         [FromQuery] int sayfa = 1,
         [FromQuery] int sayfaBasinaKayit = 10)
     {
+        // Arama ve sayfalama parametreleri kurs listesi için normalize edilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -298,6 +308,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Önce kullanıcı varlığı kontrol edilir; yoksa boş kurs listesi yerine 404 döner.
         var kullanici = await _context.Kullanicilar
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId)
@@ -318,12 +329,14 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
             });
         }
 
+        // Admin görünümünde kullanıcının aktif/pasif tüm kurs kayıtları gösterilir.
         var query = _context.KursKayitlari
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId);
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama kurs adı ve eğitmen adı üzerinden yapılır.
             query = query.Where(x =>
                 x.Kurs.KursAdi.Contains(arama) ||
                 x.Kurs.Egitmen.Ad.Contains(arama) ||
@@ -338,6 +351,7 @@ public class MobileAdminKullanicilarController : MobileAdminBaseController
             sayfa = toplamSayfa;
         }
 
+        // Kurs kayıtları mobil listede gösterilecek özet alanlara indirgenir.
         var kursHamListe = await query
             .OrderByDescending(x => x.KayitTarihi)
             .Skip((sayfa - 1) * sayfaBasinaKayit)

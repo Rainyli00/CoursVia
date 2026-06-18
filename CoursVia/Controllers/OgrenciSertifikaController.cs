@@ -11,6 +11,7 @@ using QRCoder;
 
 namespace CoursVia.Controllers
 {
+    // Öğrencinin kazandığı sertifikaları listeleme ve PDF olarak indirme işlemlerini yönetir.
     [Authorize(Roles = "Öğrenci")]
     public class OgrenciSertifikaController : Controller
     {
@@ -21,6 +22,7 @@ namespace CoursVia.Controllers
             _context = context;
         }
 
+        // Öğrencinin sertifikalarını arama, sıralama ve sayfalama ile listeler.
         public async Task<IActionResult> Index(string? arama, string sirala = "tarih-desc", int sayfa = 1)
         {
             int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -34,10 +36,12 @@ namespace CoursVia.Controllers
                 sayfa = 1;
             }
 
+            // Sadece giriş yapan öğrenciye ait sertifikalar alınır.
             var query = _context.Sertifikalar
                 .AsNoTracking()
                 .Where(x => x.KullaniciId == kullaniciId);
 
+            // Kurs adına veya sertifika koduna göre arama yapılır.
             if (!string.IsNullOrWhiteSpace(arama))
             {
                 query = query.Where(x =>
@@ -45,6 +49,7 @@ namespace CoursVia.Controllers
                     x.SertifikaKodu.Contains(arama));
             }
 
+            // Sertifikalar verilme tarihine göre sıralanır.
             query = sirala switch
             {
                 "tarih-asc" => query.OrderBy(x => x.VerilmeTarihi),
@@ -54,17 +59,19 @@ namespace CoursVia.Controllers
             int toplamKayit = await query.CountAsync();
 
             int toplamSayfa = (int)Math.Ceiling(toplamKayit / (double)sayfaBasinaKayit);
+            // Sayfa sayısı 1'den az olamaz, bu nedenle toplamSayfa 1 olarak ayarlanır.
 
             if (toplamSayfa < 1)
             {
                 toplamSayfa = 1;
             }
-
+            // Geçerli sayfa, toplam sayfa sayısını aşamaz.
             if (sayfa > toplamSayfa)
             {
                 sayfa = toplamSayfa;
             }
 
+            // Sayfada gösterilecek sertifikalar ViewModel'e dönüştürülür.
             var sertifikalar = await query
                 .Skip((sayfa - 1) * sayfaBasinaKayit)
                 .Take(sayfaBasinaKayit)
@@ -80,6 +87,7 @@ namespace CoursVia.Controllers
                 })
                 .ToListAsync();
 
+            // Öğrencinin en son aldığı sertifika tarihi bulunur.
             var sonSertifikaTarihi = await _context.Sertifikalar
                 .AsNoTracking()
                 .Where(x => x.KullaniciId == kullaniciId)
@@ -87,6 +95,7 @@ namespace CoursVia.Controllers
                 .Select(x => (DateTime?)x.VerilmeTarihi)
                 .FirstOrDefaultAsync();
 
+            // Sertifika liste ekranında kullanılacak model hazırlanır.
             var model = new OgrenciSertifikalarViewModel
             {
                 ToplamSertifikaSayisi = toplamKayit,
@@ -103,11 +112,13 @@ namespace CoursVia.Controllers
             return View(model);
         }
 
+        // Öğrencinin seçtiği sertifikayı PDF olarak indirir.
         [HttpGet]
         public async Task<IActionResult> Indir(int id)
         {
             int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            // Sertifikanın gerçekten giriş yapan öğrenciye ait olup olmadığı kontrol edilir.
             var sertifika = await _context.Sertifikalar
                 .AsNoTracking()
                 .Include(x => x.Kullanici)
@@ -126,6 +137,7 @@ namespace CoursVia.Controllers
             string ogrenciAdSoyad = $"{sertifika.Kullanici.Ad} {sertifika.Kullanici.Soyad}".Trim();
             string egitmenAdSoyad = $"{sertifika.Kurs.Egitmen.Ad} {sertifika.Kurs.Egitmen.Soyad}".Trim();
 
+            // Sertifika bilgilerine göre PDF dosyası oluşturulur.
             byte[] pdfDosyasi = SertifikaPdfOlustur(
                 ogrenciAdSoyad,
                 sertifika.Kurs.KursAdi,
@@ -139,19 +151,22 @@ namespace CoursVia.Controllers
             return File(pdfDosyasi, "application/pdf", dosyaAdi);
         }
 
+        // Sertifika PDF içeriğini QuestPDF kullanarak oluşturur.
         private static byte[] SertifikaPdfOlustur(
-    string ogrenciAdSoyad,
-    string kursAdi,
-    string egitmenAdSoyad,
-    string sertifikaKodu,
-    DateTime verilmeTarihi)
+            string ogrenciAdSoyad,
+            string kursAdi,
+            string egitmenAdSoyad,
+            string sertifikaKodu,
+            DateTime verilmeTarihi)
         {
+            // Sertifika kodunu temsil eden QR kod görseli oluşturulur.
             byte[] qrKodGorseli = QrKodOlustur(sertifikaKodu);
 
             return Document.Create(container =>
             {
                 container.Page(page =>
                 {
+                    // Sertifika yatay A4 formatında hazırlanır.
                     page.Size(PageSizes.A4.Landscape());
                     page.Margin(18);
                     page.PageColor(Colors.White);
@@ -170,7 +185,7 @@ namespace CoursVia.Controllers
                         {
                             column.Spacing(0);
 
-                            // Üst alan
+                            // Sertifikanın üst kısmında platform adı, sertifika kodu ve QR kod yer alır.
                             column.Item()
                                 .PaddingHorizontal(34)
                                 .PaddingTop(22)
@@ -217,7 +232,7 @@ namespace CoursVia.Controllers
                                     });
                                 });
 
-                            // Ana başlık
+                            // Sertifikanın ana başlığı yazdırılır.
                             column.Item()
                                 .PaddingTop(34)
                                 .AlignCenter()
@@ -232,7 +247,7 @@ namespace CoursVia.Controllers
                                 .LineHorizontal(1)
                                 .LineColor(Colors.Grey.Darken1);
 
-                            // Öğrenci adı
+                            // Sertifikayı alan öğrencinin adı büyük şekilde gösterilir.
                             column.Item()
                                 .PaddingTop(30)
                                 .AlignCenter()
@@ -241,7 +256,7 @@ namespace CoursVia.Controllers
                                 .FontSize(36)
                                 .FontColor(Colors.Black);
 
-                            // Sertifika açıklaması
+                            // Kurs tamamlama açıklaması oluşturulur.
                             column.Item()
                                 .PaddingTop(22)
                                 .PaddingHorizontal(95)
@@ -279,7 +294,7 @@ namespace CoursVia.Controllers
                                 .FontSize(10)
                                 .FontColor(Colors.Amber.Darken1);
 
-                            // Alt bilgi alanı
+                            // Alt bilgi alanında verilme tarihi ve eğitmen adı gösterilir.
                             column.Item()
                                 .PaddingTop(28)
                                 .PaddingHorizontal(130)
@@ -332,10 +347,15 @@ namespace CoursVia.Controllers
             }).GeneratePdf();
         }
 
+        // Sertifika kodu için PNG formatında QR kod üretir.
         private static byte[] QrKodOlustur(string sertifikaKodu)
         {
             using var qrGenerator = new QRCodeGenerator();
-            using var qrData = qrGenerator.CreateQrCode(sertifikaKodu, QRCodeGenerator.ECCLevel.Q);
+            // QR kod verisi oluşturulur ve hata düzeltme seviyesi Q olarak ayarlanır.
+            using var qrData = qrGenerator.CreateQrCode(
+                sertifikaKodu,
+                QRCodeGenerator.ECCLevel.Q
+            );
 
             var qrCode = new PngByteQRCode(qrData);
 

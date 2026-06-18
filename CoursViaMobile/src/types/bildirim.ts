@@ -19,6 +19,7 @@ export type MobileBildirimItem = {
 };
 
 // GET /api/mobile/bildirimler response tipi.
+// Liste cevabı ekranda rozet için okunmamış bildirim sayısını da taşır.
 export type MobileBildirimlerResponse = {
     basarili: boolean;
     mesaj: string;
@@ -45,6 +46,7 @@ export type MobileBildirimOzetResponse = {
 };
 
 // POST/DELETE işlemlerinde dönen ortak response tipi.
+// İşlemden sonra badge sayısını güncellemek için yeni okunmamış sayı döner.
 export type MobileBildirimIslemResponse = {
     basarili: boolean;
     mesaj: string;

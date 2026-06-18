@@ -1,8 +1,10 @@
 // Mobil AI öneriler API tipleri.
 // Öğrenci ve eğitmen aynı ekranı kullanır.
 
+// Liste ekranında desteklenen sıralama değerleri.
 export type MobileAiOneriSiralama = "yeni" | "eski" | "kurs-az" | "kurs-za";
 
+// Tek bir AI öneri kaydı; öneri kursa bağlı olmayabilir.
 export type MobileAiOneriItem = {
     oneriId: number;
 
@@ -17,6 +19,7 @@ export type MobileAiOneriItem = {
     olusturmaTarihi: string;
 };
 
+// Öneri listesi sayfalama bilgileriyle birlikte döner.
 export type MobileAiOnerilerResponse = {
     basarili: boolean;
 
@@ -34,6 +37,7 @@ export type MobileAiOnerilerResponse = {
     oneriler: MobileAiOneriItem[];
 };
 
+// Öneri silme işleminden dönen sade cevap.
 export type MobileAiOneriSilResponse = {
     basarili: boolean;
     mesaj: string;

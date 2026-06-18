@@ -26,6 +26,7 @@ public class MobileAdminDashboardController : MobileAdminBaseController
     {
         int adminId = KullaniciIdGetir();
 
+        // Dashboard üst kartları için temel sayaçlar ayrı ayrı hesaplanır.
         int toplamKullaniciSayisi = await _context.Kullanicilar
             .AsNoTracking()
             .CountAsync();
@@ -42,12 +43,14 @@ public class MobileAdminDashboardController : MobileAdminBaseController
             .AsNoTracking()
             .CountAsync(x => x.DurumId == 4);
 
+        // Bildirim sayısı sadece giriş yapan admin kullanıcısı için alınır.
         int okunmamisBildirimSayisi = await _context.Bildirimler
             .AsNoTracking()
             .CountAsync(x =>
                 x.KullaniciId == adminId &&
                 !x.OkunduMu);
 
+        // Ana ekranda göstermek için en güncel 3 admin logu ham veri olarak çekilir.
         var sonLogHamListe = await _context.AdminLoglari
             .AsNoTracking()
             .OrderByDescending(x => x.IslemTarihi)
@@ -69,6 +72,7 @@ public class MobileAdminDashboardController : MobileAdminBaseController
             })
             .ToListAsync();
 
+        // Null admin veya işlem tipi değerleri mobil ekranda okunabilir metinlere çevrilir.
         var sonLoglar = sonLogHamListe
             .Select(x => new MobileAdminLogItemResponse
             {

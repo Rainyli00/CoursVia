@@ -26,15 +26,18 @@ export default function OgrenciKursDetayScreen() {
         kursKayitId?: string | string[];
     }>();
 
+    // Kurslarım detay cevabı tek state'te tutulur; ilerleme, yorum ve dersler buradan okunur.
     const [detay, setDetay] = useState<MobileOgrenciKursDetayResponse | null>(
         null
     );
 
+    // Güncelleniyor hatası ayrı tutulur; hata ekranında farklı yönlendirme gösterilir.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
     const [guncelleniyorHatasi, setGuncelleniyorHatasi] = useState(false);
 
+    // Expo Router parametresi string gelebileceği için güvenli sayıya çevrilir.
     const kursKayitId = useMemo(() => {
         const rawValue = Array.isArray(params.kursKayitId)
             ? params.kursKayitId[0]
@@ -45,6 +48,7 @@ export default function OgrenciKursDetayScreen() {
         return Number.isFinite(id) && id > 0 ? id : null;
     }, [params.kursKayitId]);
 
+    // Geçerli kursKayitId varsa detay yüklenir, yoksa kullanıcıya hata ekranı gösterilir.
     useEffect(() => {
         if (!kursKayitId) {
             setYukleniyor(false);
@@ -55,6 +59,7 @@ export default function OgrenciKursDetayScreen() {
         kursDetayGetir();
     }, [kursKayitId]);
 
+    // Kayıtlı kurs detayını API'den getirir; refresh sırasında tam ekran loading göstermez.
     async function kursDetayGetir(refreshMi = false) {
         if (!kursKayitId) {
             return;
@@ -235,6 +240,7 @@ export default function OgrenciKursDetayScreen() {
     );
 }
 
+// Detay verisi gelene kadar gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -244,6 +250,7 @@ function LoadingState() {
     );
 }
 
+// Detay alınamazsa tekrar deneme ya da kurslarım sayfasına dönüş aksiyonu gösterir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -284,6 +291,7 @@ function ErrorState({
     );
 }
 
+// Hero alanındaki küçük kurs metrik kartı.
 function InfoCard({ title, value }: { title: string; value: string }) {
     return (
         <View style={styles.infoCard}>
@@ -293,6 +301,7 @@ function InfoCard({ title, value }: { title: string; value: string }) {
     );
 }
 
+// Kurs içeriğindeki tek bölüm ve altındaki ders listesini gösterir.
 function BolumKart({ bolum }: { bolum: MobileOgrenciBolumItem }) {
     return (
         <View style={styles.bolumCard}>
@@ -338,6 +347,7 @@ function BolumKart({ bolum }: { bolum: MobileOgrenciBolumItem }) {
     );
 }
 
+// Dersin tamamlanma durumunu ve materyal listesini gösteren satır.
 function DersSatiri({ ders }: { ders: MobileOgrenciDersItem }) {
     return (
         <View style={styles.lessonCard}>
@@ -405,6 +415,7 @@ function DersSatiri({ ders }: { ders: MobileOgrenciDersItem }) {
     );
 }
 
+// Kurs içinde bölüm/ders yoksa gösterilen boş durum.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

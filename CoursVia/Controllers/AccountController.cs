@@ -19,6 +19,7 @@ public class AccountController : Controller
     private readonly AdminLogService _adminLogService;
     private readonly KullaniciHesapService _kullaniciHesapService;
 
+    // Account işlemleri için gerekli servisler constructor üzerinden alınır.
     public AccountController(
         AppDbContext context,
         PasswordService passwordService,
@@ -40,6 +41,7 @@ public class AccountController : Controller
     // =========================
 
     [HttpGet]
+    // Admin giriş sayfasını açar.
     public IActionResult AdminLogin()
     {
         var yonlendirme = GirisYapmisKullaniciyiYonlendir();
@@ -58,6 +60,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Admin kullanıcısının giriş işlemini yapar.
     public async Task<IActionResult> AdminLogin(string? eposta, string? sifre)
     {
         return await RolBazliLogin(
@@ -74,6 +77,7 @@ public class AccountController : Controller
     // =========================
 
     [HttpGet]
+    // Eğitmen giriş ve başvuru sayfasını açar.
     public async Task<IActionResult> EgitmenLogin(string? tab)
     {
         var yonlendirme = GirisYapmisKullaniciyiYonlendir();
@@ -115,6 +119,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Eğitmen girişinde rol ve başvuru onay durumunu kontrol eder.
     public async Task<IActionResult> EgitmenLogin(string? eposta, string? sifre)
     {
         return await RolBazliLogin(
@@ -131,6 +136,7 @@ public class AccountController : Controller
     // =========================
 
     [HttpGet]
+    // Öğrenci giriş ve kayıt sayfasını açar.
     public IActionResult OgrenciLogin(string? tab)
     {
         var yonlendirme = GirisYapmisKullaniciyiYonlendir();
@@ -171,6 +177,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Öğrenci kullanıcısının giriş işlemini yapar.
     public async Task<IActionResult> OgrenciLogin(string? eposta, string? sifre)
     {
         return await RolBazliLogin(
@@ -186,6 +193,7 @@ public class AccountController : Controller
     // ORTAK ROL BAZLI LOGIN
     // =========================
 
+    // Admin, eğitmen ve öğrenci girişleri için ortak login kontrolünü yapar.
     private async Task<IActionResult> RolBazliLogin(
         string? eposta,
         string? sifre,
@@ -239,6 +247,7 @@ public class AccountController : Controller
 
         if (hedefRol == "Eğitmen")
         {
+            // Eğitmen girişinde rol dışında başvuru durumunun da onaylı olması gerekir.
             if (kullanici.EgitmenProfili == null)
             {
                 ViewBag.Hata = "Bu hesap için eğitmen başvurusu bulunamadı.";
@@ -293,12 +302,14 @@ public class AccountController : Controller
     // =========================
 
     [HttpGet]
+    // Öğrenci kayıt isteğini login sayfasındaki kayıt sekmesine yönlendirir.
     public IActionResult OgrenciRegister()
     {
         return RedirectToAction(nameof(OgrenciLogin));
     }
 
     [HttpPost]
+    // Yeni öğrenci hesabı oluşturur.
     public async Task<IActionResult> OgrenciRegister(
         string? ad,
         string? soyad,
@@ -385,6 +396,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Öğrenci kayıt ekranında e-posta adresinin kullanılabilirliğini kontrol eder.
     public async Task<IActionResult> OgrenciKayitEpostaKontrol(string? eposta)
     {
         ViewBag.ActiveTab = "register";
@@ -438,6 +450,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Mevcut eğitmen hesabına öğrenci rolü ekler.
     public async Task<IActionResult> OgrenciRolAktiflestir(string? eposta, string? sifre)
     {
         ViewBag.ActiveTab = "register";
@@ -445,7 +458,7 @@ public class AccountController : Controller
         eposta = string.IsNullOrWhiteSpace(eposta)
             ? string.Empty
             : eposta.Trim().ToLower();
-
+        // 
         ViewBag.KayitEpostaKontrolEdildi = true;
         ViewBag.KayitEposta = eposta;
         ViewBag.MevcutEgitmenHesabi = true;
@@ -505,12 +518,14 @@ public class AccountController : Controller
     // =========================
 
     [HttpGet]
+    // Eğitmen kayıt isteğini başvuru sekmesine yönlendirir.
     public IActionResult EgitmenRegister()
     {
         return RedirectToAction(nameof(EgitmenLogin), new { tab = "register" });
     }
 
     [HttpPost]
+    // Yeni eğitmen başvurusu oluşturur veya reddedilen başvuruyu yeniden gönderir.
     public async Task<IActionResult> EgitmenRegister(
         string? ad,
         string? soyad,
@@ -825,12 +840,14 @@ public class AccountController : Controller
     // =========================
 
     [HttpGet]
+    // Şifre sıfırlama sayfasını açar.
     public IActionResult ForgotPassword()
     {
         return View();
     }
 
     [HttpPost]
+    // Kullanıcıya e-posta ile şifre sıfırlama kodu gönderir. Eğer kod zaten oluşturulmuşsa eski kodları geçersiz yapar ve yeni kod oluşturur.
     public async Task<IActionResult> ForgotPassword(string? eposta)
     {
         if (string.IsNullOrWhiteSpace(eposta))
@@ -912,6 +929,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Doğrulama kodu doğruysa kullanıcının şifresini yeniler.
     public async Task<IActionResult> ResetPassword(
         string? eposta,
         string? kod,
@@ -969,6 +987,7 @@ public class AccountController : Controller
     // LOGOUT / ACCESS DENIED
     // =========================
 
+    // Kullanıcı oturumunu kapatır ve aktif rolüne göre login sayfasına yönlendirir.
     public async Task<IActionResult> Logout()
     {
         var aktifRol = User.FindFirst("AktifRol")?.Value;
@@ -1010,12 +1029,14 @@ public class AccountController : Controller
     }
 
     [HttpGet]
+    // Yetkisiz erişim sayfasını açar.
     public IActionResult AccessDenied()
     {
         return View();
     }
 
     [HttpGet]
+    // Çok rollü kullanıcıların aktif panelini değiştirir.
     public async Task<IActionResult> PanelDegistir(string? rol, string? returnUrl = null)
     {
         if (User.Identity == null || !User.Identity.IsAuthenticated)
@@ -1033,6 +1054,8 @@ public class AccountController : Controller
             return RedirectToAction(nameof(AccessDenied));
         }
 
+
+        // Aktif rolü günceller ve kullanıcıyı yeni rolüne göre yönlendirir.
         await _kullaniciHesapService.AktifRolDegistirAsync(rol);
 
         if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
@@ -1053,6 +1076,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Eğitmen başvurusundan önce e-posta durumunu kontrol eder.
     public async Task<IActionResult> EgitmenBasvuruEpostaKontrol(string? eposta)
     {
         if (string.IsNullOrWhiteSpace(eposta))
@@ -1124,6 +1148,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
+    // Reddedilmiş eğitmen başvurusu için şifre doğrulaması yapar.
     public async Task<IActionResult> EgitmenYenidenBasvuruSifreKontrol(string? eposta, string? sifre)
     {
         if (string.IsNullOrWhiteSpace(eposta) || string.IsNullOrWhiteSpace(sifre))
@@ -1166,6 +1191,7 @@ public class AccountController : Controller
     // HELPER
     // =========================
 
+    // Giriş yapmış kullanıcıyı aktif rolüne göre ilgili panele yönlendirir.
     private IActionResult? GirisYapmisKullaniciyiYonlendir()
     {
         if (User.Identity == null || !User.Identity.IsAuthenticated)
@@ -1185,6 +1211,7 @@ public class AccountController : Controller
         return RedirectToAction("Index", "Home");
     }
 
+    // Login hatalarında view için gerekli sekme ve form bilgilerini hazırlar.
     private async Task LoginViewBagHazirlaAsync(string loginViewName, string? eposta)
     {
         if (loginViewName == "OgrenciLogin")

@@ -30,6 +30,7 @@ export async function saveAuth(
         refreshTokenBitisTarihi
     );
 
+    // Kullanıcı bilgisi JSON string olarak saklanır.
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(kullanici));
 }
 
@@ -153,6 +154,7 @@ export async function clearAppBackgroundFlag() {
 // Önceki kullanımda uygulama arka plandayken tamamen kapatılmış mı kontrol eder.
 export async function wasAppKilledAfterBackground() {
     const flag = await SecureStore.getItemAsync(APP_BACKGROUND_FLAG_KEY);
+
 
     return !!flag;
 }

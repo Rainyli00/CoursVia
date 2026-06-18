@@ -10,6 +10,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Eğitmen başvurularının admin tarafından listelenmesi, onaylanması ve reddedilmesini yönetir.
 [Authorize(Roles = "Admin")]
 public class AdminEgitmenBasvuruController : Controller
 {
@@ -18,6 +19,7 @@ public class AdminEgitmenBasvuruController : Controller
     private readonly AdminLogService _adminLogService;
     private readonly BildirimService _bildirimService;
 
+    // Başvuru işlemleri için gerekli veritabanı, mail, log ve bildirim servisleri alınır.
     public AdminEgitmenBasvuruController(
         AppDbContext context,
         EmailService emailService,
@@ -28,10 +30,10 @@ public class AdminEgitmenBasvuruController : Controller
         _emailService = emailService;
         _adminLogService = adminLogService;
         _bildirimService = bildirimService;
-
     }
 
     [HttpGet]
+    // Eğitmen başvurularını durum, arama ve sayfalama bilgilerine göre listeler.
     public async Task<IActionResult> Basvurular(string? arama, string durum = "bekleyen", int sayfa = 1)
     {
         const int sayfaBasinaKayit = 8;
@@ -71,6 +73,7 @@ public class AdminEgitmenBasvuruController : Controller
             query = query.Where(x => x.DurumId == durumId.Value);
         }
 
+        // Arama metni varsa ad, soyad, e-posta, telefon ve uzmanlık alanında filtreleme yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -95,6 +98,7 @@ public class AdminEgitmenBasvuruController : Controller
             sayfa = toplamSayfa;
         }
 
+        // Liste ekranında gösterilecek başvuru bilgileri ViewModel'e dönüştürülür.
         var basvurular = await query
             .OrderByDescending(x => x.EgitmenProfilId)
             .Skip((sayfa - 1) * sayfaBasinaKayit)
@@ -154,6 +158,7 @@ public class AdminEgitmenBasvuruController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Adminin eğitmen başvurusu için onay veya red kararı vermesini sağlar.
     public async Task<IActionResult> Karar(
        int egitmenProfilId,
        string karar,
@@ -182,6 +187,7 @@ public class AdminEgitmenBasvuruController : Controller
             ? null
             : aciklama.Trim();
 
+        // Red kararında admin açıklaması zorunlu tutulur.
         if (karar == "reddet")
         {
             if (string.IsNullOrWhiteSpace(aciklama))
@@ -225,6 +231,7 @@ public class AdminEgitmenBasvuruController : Controller
 
         bool islemBasarili = false;
 
+        // Profil durumu, onay kaydı, rol ataması, bildirim ve log işlemleri tek transaction içinde yapılır.
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
@@ -246,7 +253,7 @@ public class AdminEgitmenBasvuruController : Controller
                     .AnyAsync(x =>
                         x.KullaniciId == egitmenProfili.KullaniciId &&
                         x.RolId == 2);
-
+                // Eğitmen rolü yoksa eklenir. RolId = 2: Eğitmen
                 if (!egitmenRoluVar)
                 {
                     _context.KullaniciRolleri.Add(new KullaniciRol
@@ -255,7 +262,7 @@ public class AdminEgitmenBasvuruController : Controller
                         RolId = 2
                     });
                 }
-
+                // Onaylanan başvuru sahibi kullanıcıya bilgilendirme bildirimi oluşturulur.
                 await _bildirimService.BildirimOlusturAsync(
                     egitmenProfili.KullaniciId,
                     "Bilgilendirme",
@@ -296,6 +303,7 @@ public class AdminEgitmenBasvuruController : Controller
             TempData["AdminHata"] = "İşlem sırasında beklenmeyen bir hata oluştu.";
         }
 
+        // Veritabanı işlemi başarılıysa kullanıcıya ayrıca bilgilendirme maili gönderilir.
         if (islemBasarili)
         {
             try
@@ -313,18 +321,18 @@ public class AdminEgitmenBasvuruController : Controller
                 TempData["AdminBasari"] = islemMetni + ". Bilgilendirme maili gönderilemedi.";
             }
         }
-
+        // geri başvurular erkanına döneriz
         return RedirectToAction(nameof(Basvurular));
     }
 
-
-
+    // Eğitmen başvuru kararına göre kullanıcıya HTML formatında bilgilendirme maili gönderir.
     private async Task EgitmenBasvuruMailGonderAsync(
         string toEmail,
         string adSoyad,
         string karar,
         string? aciklama)
     {
+        // Mail içeriğinde kullanıcı tarafından sağlanan ad soyad ve admin açıklaması gibi veriler HTML encode edilerek güvenli hale getirilir.
         string guvenliAdSoyad = WebUtility.HtmlEncode(adSoyad);
         string guvenliAciklama = WebUtility.HtmlEncode(aciklama ?? string.Empty);
 
@@ -391,8 +399,7 @@ public class AdminEgitmenBasvuruController : Controller
             </div>
         </div>
         """;
-
+        // mail gönderme işlemi email servis üzerinden yapılır.
         await _emailService.SendEmailAsync(toEmail, subject, body);
     }
-    
 }

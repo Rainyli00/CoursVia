@@ -24,6 +24,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
     // GET /api/mobile/ogrenci/kurslarim
     [HttpGet]
     public async Task<ActionResult<MobileOgrenciKurslarimResponse>> Kurslarim(
+        
         [FromQuery] string? arama,
         [FromQuery] int? kategoriId,
         [FromQuery] int sayfa = 1,
@@ -31,6 +32,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Arama, kategori ve sayfalama değerleri mobil istek için normalize edilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -42,8 +44,10 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Filtre dropdown'ı için öğrencinin kayıtlı olduğu kurs kategorileri hazırlanır.
         var kategoriler = await OgrenciKursKategorileriGetirAsync(kullaniciId);
 
+        // Öğrenci sadece kendi aktif kurs kayıtlarını görebilir.
         var query = _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -52,6 +56,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama kurs, eğitmen ve kategori adları üzerinden yapılır.
             query = query.Where(x =>
                 x.Kurs.KursAdi.Contains(arama) ||
                 (x.Kurs.Aciklama != null && x.Kurs.Aciklama.Contains(arama)) ||
@@ -62,6 +67,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
         if (kategoriId.HasValue)
         {
+            // Kategori filtresi kurs-kategori ilişkisi üzerinden uygulanır.
             query = query.Where(x =>
                 x.Kurs.KursKategorileri.Any(k => k.KategoriId == kategoriId.Value));
         }
@@ -74,6 +80,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
             sayfa = toplamSayfa;
         }
 
+        // Liste DTO'su, ilerleme ve öğrencinin kendi değerlendirme bilgileriyle birlikte hazırlanır.
         var kurslar = await query
             .OrderByDescending(x => x.KayitTarihi)
             .Skip((sayfa - 1) * sayfaBasinaKayit)
@@ -135,6 +142,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
         foreach (var kurs in kurslar)
         {
+            // İlerleme yüzdesi filtrelenmiş aktif dersler üzerinden hesaplanır.
             kurs.EgitmenAdSoyad = kurs.EgitmenAdSoyad.Trim();
 
             kurs.IlerlemeYuzdesi = kurs.ToplamDersSayisi == 0
@@ -165,6 +173,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Kurs kaydı kullanıcı id ile filtrelenir; başka öğrencinin kaydına erişim engellenir.
         var kursKaydi = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -231,6 +240,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
             });
         }
 
+        // Güncellenen kurslarda içerik açılmaz, sadece mevcut durum bilgisi döndürülür.
         if (kursKaydi.DurumId == 7)
         {
             return BadRequest(new MobileOgrenciKursDetayResponse
@@ -251,6 +261,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
             });
         }
 
+        // Tamamlanan ders id'leri HashSet'e çevrilerek ders listesinde hızlı işaretleme yapılır.
         var tamamlananDersIdleri = await _context.DersIlerlemeleri
             .AsNoTracking()
             .Where(x =>
@@ -262,6 +273,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
         var tamamlananDersSet = tamamlananDersIdleri.ToHashSet();
 
+        // Bölüm, ders ve materyaller mobil detay ekranının beklediği sırayla hazırlanır.
         var bolumler = await _context.Bolumler
             .AsNoTracking()
             .Where(x => x.KursId == kursKaydi.KursId)
@@ -302,6 +314,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
         foreach (var bolum in bolumler)
         {
+            // Her ders için tamamlanma durumu ve bölüm bazlı ilerleme yüzdesi hesaplanır.
             foreach (var ders in bolum.Dersler)
             {
                 ders.TamamlandiMi = tamamlananDersSet.Contains(ders.DersId);
@@ -315,6 +328,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
                 : (int)Math.Round(bolum.TamamlananDersSayisi * 100.0 / bolum.ToplamDersSayisi);
         }
 
+        // Genel kurs ilerlemesi toplam aktif ders sayısına göre hesaplanır.
         int genelIlerlemeYuzdesi = kursKaydi.ToplamDersSayisi == 0
             ? 0
             : (int)Math.Round(kursKaydi.TamamlananDersSayisi * 100.0 / kursKaydi.ToplamDersSayisi);
@@ -357,6 +371,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
     // Öğrencinin kayıtlı olduğu kursa puan ve yorum vermesini sağlar.
     // POST /api/mobile/ogrenci/kurslarim/{kursKayitId}/degerlendir
+
     [HttpPost("{kursKayitId:int}/degerlendir")]
     public async Task<ActionResult<MobileOgrenciIslemResponse>> Degerlendir(
         int kursKayitId,
@@ -364,6 +379,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Mobil puanlama 1-5 aralığıyla sınırlıdır.
         if (request.Puan < 1 || request.Puan > 5)
         {
             return BadRequest(new MobileOgrenciIslemResponse
@@ -377,6 +393,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
             ? null
             : request.YorumMetni.Trim();
 
+        // Çok uzun yorumlar hem veri tabanı hem de mobil görünüm için reddedilir.
         if (yorumMetni != null && yorumMetni.Length > 1000)
         {
             return BadRequest(new MobileOgrenciIslemResponse
@@ -386,6 +403,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
             });
         }
 
+        // Değerlendirme sadece öğrencinin aktif olarak kayıtlı olduğu kursa yapılabilir.
         var kursKaydi = await _context.KursKayitlari
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
@@ -402,6 +420,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
             });
         }
 
+        // Daha önce değerlendirme varsa güncellenir, yoksa yeni kayıt oluşturulur.
         var mevcutDegerlendirme = await _context.KursDegerlendirmeleri
             .FirstOrDefaultAsync(x =>
                 x.KullaniciId == kullaniciId &&
@@ -441,6 +460,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Kayıt iptali yalnızca öğrencinin kendi aktif kurs kaydı için yapılabilir.
         var kursKaydi = await _context.KursKayitlari
             .FirstOrDefaultAsync(x =>
                 x.KursKayitId == kursKayitId &&
@@ -462,6 +482,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
         try
         {
+            // Önce sınav cevapları silinir; katılım kayıtları bu cevaplara bağlıdır.
             var sinavKatilimIdleri = await _context.SinavKatilimlari
                 .Where(x => x.KursKayitId == kursKaydi.KursKayitId)
                 .Select(x => x.SinavKatilimId)
@@ -473,6 +494,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
             _context.OgrenciCevaplari.RemoveRange(ogrenciCevaplari);
 
+            // Kursa ait sınav katılım, ilerleme, sertifika ve kişisel kayıtlar temizlenir.
             var sinavKatilimlari = await _context.SinavKatilimlari
                 .Where(x => x.KursKayitId == kursKaydi.KursKayitId)
                 .ToListAsync();
@@ -509,6 +531,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
 
             _context.KursDegerlendirmeleri.RemoveRange(degerlendirmeler);
 
+            // En son ana kurs kaydı silinir.
             _context.KursKayitlari.Remove(kursKaydi);
 
             await _context.SaveChangesAsync();
@@ -535,6 +558,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
     // Öğrencinin kayıtlı kurs kategorilerini getirir.
     private async Task<List<MobileOgrenciKategoriSecenekResponse>> OgrenciKursKategorileriGetirAsync(int kullaniciId)
     {
+        // Öğrencinin aktif kurslarındaki kategoriler gruplanarak filtre seçenekleri oluşturulur.
         var kategoriler = await _context.KursKategorileri
             .AsNoTracking()
             .Where(x => _context.KursKayitlari.Any(kayit =>
@@ -553,6 +577,7 @@ public class MobileOgrenciKurslarimController : MobileOgrenciBaseController
             .GroupBy(x => new { x.KategoriId, x.KategoriAdi })
             .Select(x => new MobileOgrenciKategoriSecenekResponse
             {
+                // Kategori bazında kaç farklı kursa kayıtlı olduğunu sayarak kayıt sayısı bilgisi hazırlanır.
                 KategoriId = x.Key.KategoriId,
                 KategoriAdi = x.Key.KategoriAdi,
                 KayitSayisi = x

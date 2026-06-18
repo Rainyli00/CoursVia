@@ -32,6 +32,7 @@ type KesfetSiralamaValue =
     | "ad-az"
     | "ad-za";
 
+// API'nin desteklediği keşfet sıralama değerleri kullanıcı etiketleriyle tutulur.
 const SIRALAMA_SECENEKLERI: { label: string; value: KesfetSiralamaValue }[] = [
     { label: "Güncel", value: "guncel" },
     { label: "En İyi Puan", value: "puan-yuksek" },
@@ -47,17 +48,21 @@ const SIRALAMA_SECENEKLERI: { label: string; value: KesfetSiralamaValue }[] = [
 // Eğitmenin kendi kursunda "Kendi Kursun" yazılır.
 // Arama, kategori filtreleme, sıralama, sayfalama, detay ve kayıt ol işlemleri bulunur.
 export default function OgrenciKesfetScreen() {
+    // Yayındaki kurs listesi ve kategori filtre seçenekleri.
     const [kurslar, setKurslar] = useState<MobileOgrenciKesfetKursItem[]>([]);
     const [kategoriler, setKategoriler] = useState<MobileOgrenciKategoriSecenek[]>(
         []
     );
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış aktif filtredir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Aktif kategori ve sıralama filtreleri.
     const [kategoriId, setKategoriId] = useState<number | null>(null);
     const [sirala, setSirala] = useState<KesfetSiralamaValue>("guncel");
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -68,10 +73,12 @@ export default function OgrenciKesfetScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Kayıt olma sırasında sadece ilgili kursun butonu loading olur.
     const [kayitOlunanKursId, setKayitOlunanKursId] = useState<number | null>(
         null
     );
 
+    // Ekran ilk açıldığında varsayılan keşfet listesi çekilir.
     useEffect(() => {
         kesfetKurslariniGetir(false, {
             arama: null,
@@ -81,6 +88,7 @@ export default function OgrenciKesfetScreen() {
         });
     }, []);
 
+    // Keşfet listesini API'den çeker; override ile filtreler state'e yazılmadan kullanılabilir.
     async function kesfetKurslariniGetir(
         refreshMi = false,
         override?: {
@@ -146,6 +154,7 @@ export default function OgrenciKesfetScreen() {
         }
     }
 
+    // Arama yeni bir liste anlamına geldiği için sayfa bire döner.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -162,6 +171,7 @@ export default function OgrenciKesfetScreen() {
         });
     }
 
+    // Tüm filtreleri varsayılana çekip ilk sayfayı yeniden yükler.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -179,6 +189,7 @@ export default function OgrenciKesfetScreen() {
         });
     }
 
+    // Kategori değişince aktif arama korunur ve ilk sayfa yüklenir.
     function kategoriSec(yeniKategoriId: number | null) {
         Keyboard.dismiss();
 
@@ -196,6 +207,7 @@ export default function OgrenciKesfetScreen() {
         });
     }
 
+    // Sıralama değişince mevcut arama/kategori korunarak liste baştan çekilir.
     function siralamaSec(yeniSirala: KesfetSiralamaValue) {
         Keyboard.dismiss();
 
@@ -213,6 +225,7 @@ export default function OgrenciKesfetScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -228,10 +241,12 @@ export default function OgrenciKesfetScreen() {
         });
     }
 
+    // Keşfet kartından detay ekranına geçer.
     function detayAc(kursId: number) {
         router.push(`/ogrenci/kesfet-detay/${kursId}` as any);
     }
 
+    // Kayıt olmadan önce kursun uygunluk durumları tek tek kontrol edilir.
     function kayitOlOnayiAl(kurs: MobileOgrenciKesfetKursItem) {
         if (kurs.guncelleniyorMu) {
             Alert.alert("Bilgi", "Bu kurs şu anda güncelleniyor.");
@@ -269,6 +284,7 @@ export default function OgrenciKesfetScreen() {
         );
     }
 
+    // Kayıt başarılı olursa kullanıcıya kurslarım sayfasına gitme seçeneği sunulur.
     async function kayitOl(kursId: number) {
         try {
             setKayitOlunanKursId(kursId);
@@ -380,6 +396,7 @@ export default function OgrenciKesfetScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -389,6 +406,7 @@ function LoadingState() {
     );
 }
 
+// Keşfet listesi alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -408,6 +426,7 @@ function ErrorState({
     );
 }
 
+// Keşfet ekranındaki toplam yayın kursu özet kartı.
 function SummaryCard({ toplamKayit }: { toplamKayit: number }) {
     return (
         <View style={styles.summaryCard}>
@@ -417,6 +436,7 @@ function SummaryCard({ toplamKayit }: { toplamKayit: number }) {
     );
 }
 
+// Arama, kategori ve sıralama kontrollerini tek panelde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -499,6 +519,7 @@ function FilterPanel({
     );
 }
 
+// Kategori seçeneklerini modal dropdown olarak gösterir.
 function CategoryDropdown({
     kategoriler,
     kategoriId,
@@ -516,6 +537,7 @@ function CategoryDropdown({
         ? seciliKategori.kategoriAdi
         : "Tüm Kategoriler";
 
+    // null seçimi tüm kategoriler filtresine döner.
     function sec(id: number | null) {
         setModalAcik(false);
         kategoriSec(id);
@@ -570,6 +592,7 @@ function CategoryDropdown({
     );
 }
 
+// Keşfet sıralama seçeneklerini modal dropdown olarak gösterir.
 function SiralamaDropdown({
     sirala,
     siralamaSec,
@@ -583,6 +606,7 @@ function SiralamaDropdown({
         SIRALAMA_SECENEKLERI.find((x) => x.value === sirala) ??
         SIRALAMA_SECENEKLERI[0];
 
+    // Seçilen value doğrudan API'nin beklediği sirala parametresidir.
     function sec(value: KesfetSiralamaValue) {
         setModalAcik(false);
         siralamaSec(value);
@@ -625,6 +649,7 @@ function SiralamaDropdown({
     );
 }
 
+// Dropdown seçimlerini ortak modal içinde gösterir.
 function SelectionModal({
     visible,
     title,
@@ -665,6 +690,7 @@ function SelectionModal({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -698,6 +724,7 @@ function DropdownItem({
     );
 }
 
+// Keşfet kurs kartı; detay ve kayıt ol aksiyonlarını birlikte sunar.
 function KesfetKursKart({
     kurs,
     detayAc,
@@ -820,6 +847,7 @@ function KesfetKursKart({
     );
 }
 
+// Kurs kartındaki küçük metrik kutusu.
 function InfoPill({ label, value }: { label: string; value: string }) {
     return (
         <View style={styles.infoPill}>
@@ -829,6 +857,7 @@ function InfoPill({ label, value }: { label: string; value: string }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -887,6 +916,7 @@ function PaginationControls({
     );
 }
 
+// Arama veya filtrelere uygun keşfet kursu yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

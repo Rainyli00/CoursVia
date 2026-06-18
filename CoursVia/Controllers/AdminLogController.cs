@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Controllers;
 
+// Admin panelinde sistemde yapılan işlemlerin log kayıtlarını listeler.
 [Authorize(Roles = "Admin")]
 public class AdminLogController : Controller
 {
@@ -17,14 +18,15 @@ public class AdminLogController : Controller
         _context = context;
     }
 
+    // Admin loglarını arama, kategori, tarih, sıralama ve sayfalama bilgilerine göre listeler.
     [HttpGet]
     public async Task<IActionResult> Loglar(
-     string? arama,
-     string kategori = "tum",
-     string siralama = "yeni",
-     DateTime? baslangicTarihi = null,
-     DateTime? bitisTarihi = null,
-     int sayfa = 1)
+        string? arama,
+        string kategori = "tum",
+        string siralama = "yeni",
+        DateTime? baslangicTarihi = null,
+        DateTime? bitisTarihi = null,
+        int sayfa = 1)
     {
         const int sayfaBasinaKayit = 12;
 
@@ -40,6 +42,7 @@ public class AdminLogController : Controller
             ? "yeni"
             : siralama.Trim().ToLower();
 
+        // Geçersiz kategori değeri gelirse tüm loglar gösterilir.
         if (kategori != "tum" &&
             kategori != "kullanici" &&
             kategori != "egitmen-basvuru" &&
@@ -52,6 +55,7 @@ public class AdminLogController : Controller
             kategori = "tum";
         }
 
+        // Geçersiz sıralama değeri gelirse en yeni kayıtlar önce gösterilir.
         if (siralama != "yeni" && siralama != "eski")
         {
             siralama = "yeni";
@@ -68,6 +72,7 @@ public class AdminLogController : Controller
             .Include(x => x.IslemTipi)
             .AsQueryable();
 
+        // Açıklama, IP adresi, admin bilgileri veya işlem tipi üzerinden arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -80,6 +85,7 @@ public class AdminLogController : Controller
                 x.IslemTipi.IslemTipAdi.Contains(arama));
         }
 
+        // Seçilen kategoriye göre log tipi filtrelenir.
         query = kategori switch
         {
             "kullanici" => query.Where(x =>
@@ -106,12 +112,14 @@ public class AdminLogController : Controller
             _ => query
         };
 
+        // Başlangıç tarihi seçildiyse o tarihten sonraki loglar getirilir.
         if (baslangicTarihi.HasValue)
         {
             DateTime baslangic = baslangicTarihi.Value.Date;
             query = query.Where(x => x.IslemTarihi >= baslangic);
         }
 
+        // Bitiş tarihi seçildiyse o günün sonuna kadar olan loglar getirilir.
         if (bitisTarihi.HasValue)
         {
             DateTime bitis = bitisTarihi.Value.Date.AddDays(1);
@@ -132,6 +140,7 @@ public class AdminLogController : Controller
             sayfa = toplamSayfa;
         }
 
+        // Loglar seçilen sıralama tipine göre eski veya yeni olarak sıralanır.
         var siraliQuery = siralama == "eski"
             ? query
                 .OrderBy(x => x.IslemTarihi)
@@ -140,18 +149,22 @@ public class AdminLogController : Controller
                 .OrderByDescending(x => x.IslemTarihi)
                 .ThenByDescending(x => x.AdminLogId);
 
+        // Log kayıtları liste ekranında kullanılacak ViewModel'e dönüştürülür.
         var loglar = await siraliQuery
             .Skip((sayfa - 1) * sayfaBasinaKayit)
             .Take(sayfaBasinaKayit)
             .Select(x => new AdminLogListeItemViewModel
             {
                 AdminLogId = x.AdminLogId,
+
                 AdminAdSoyad = x.Admin != null
                     ? x.Admin.Ad + " " + x.Admin.Soyad
                     : "Sistem / Kullanıcı",
+
                 AdminEposta = x.Admin != null
                     ? x.Admin.Eposta
                     : "-",
+
                 IslemTipiAdi = x.IslemTipi.IslemTipAdi,
                 Aciklama = x.Aciklama,
                 IpAdresi = x.IpAdresi,
@@ -160,8 +173,10 @@ public class AdminLogController : Controller
             .ToListAsync();
 
         DateTime bugun = DateTime.Today;
+
         DateTime yarin = bugun.AddDays(1);
 
+        // Liste, filtre ve özet sayılar view tarafına gönderilir.
         var model = new AdminLogViewModel
         {
             Arama = arama,
@@ -189,4 +204,3 @@ public class AdminLogController : Controller
         return View(model);
     }
 }
-

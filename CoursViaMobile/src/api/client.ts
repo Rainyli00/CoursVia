@@ -20,8 +20,7 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
     _retry?: boolean;
 };
 
-//  Ana API client'ımız. Tüm API istekleri bu client üzerinden yapılacak. Interceptor'lar burada tanımlanır.
-// Tüm API isteklerini bu client üzerinden göndereceğiz.
+// Uygulamanın ortak API client'ı; token ekleme, 401 yakalama ve refresh sonrası isteği yeniden deneme akışı burada yönetilir.
 export const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 15000,
@@ -40,7 +39,8 @@ const authApi = axios.create({
     },
 });
 
-// Access token yenileme işlemi sırasında birden fazla API isteği 401 dönerse,
+// Aynı anda birden fazla API isteği 401 dönerse tek refresh isteği çalışsın diye
+// devam eden refresh promise'i burada tutulur.
 let refreshPromise: Promise<string | null> | null = null;
 
 // Her API isteğinden önce access token varsa Authorization header'a ekler.
@@ -65,17 +65,20 @@ api.interceptors.response.use(
         const status = error.response?.status;
         const originalRequest = error.config as RetryableRequestConfig | undefined;
 
+        // 401 dışındaki hatalar auth akışına sokulmadan çağırana bırakılır.
         if (!originalRequest || status !== 401) {
             return Promise.reject(error);
         }
 
         const url = originalRequest.url ?? "";
 
+        // Auth endpointlerinde refresh denemek sonsuz döngüye yol açabileceği için bu istekler hariç tutulur.
         const authEndpointMi =
             url.includes("/api/mobile/auth/login") ||
             url.includes("/api/mobile/auth/refresh") ||
             url.includes("/api/mobile/auth/logout");
 
+        // Aynı istek ikinci kez 401 alırsa oturum artık geçersiz kabul edilir.
         if (authEndpointMi || originalRequest._retry) {
             await clearAuth();
             router.replace("/login" as any);
@@ -86,6 +89,7 @@ api.interceptors.response.use(
         originalRequest._retry = true;
 
         try {
+            // Refresh token geçerliyse yeni access token alınır.
             const yeniAccessToken = await accessTokenYenile();
 
             if (!yeniAccessToken) {
@@ -97,6 +101,7 @@ api.interceptors.response.use(
 
             originalRequest.headers.Authorization = `Bearer ${yeniAccessToken}`;
 
+            // Yeni token ile başarısız olan orijinal istek bir kez daha denenir.
             return api(originalRequest);
         } catch (refreshError) {
             await clearAuth();
@@ -107,6 +112,8 @@ api.interceptors.response.use(
     }
 );
 
+// Devam eden bir refresh işlemi varsa ona katılır; yoksa yeni refresh başlatır.
+// Böylece eş zamanlı 401 hataları backend'e tek refresh isteği olarak gider.
 async function accessTokenYenile() {
     if (!refreshPromise) {
         refreshPromise = refreshTokenIleYenile();
@@ -115,13 +122,17 @@ async function accessTokenYenile() {
     try {
         return await refreshPromise;
     } finally {
+        // Refresh tamamlanınca kilit temizlenir; sonraki 401 yeni bir refresh başlatabilir.
         refreshPromise = null;
     }
 }
 
+// SecureStore'daki refresh token ile backend'den yeni token çifti ister.
+// Cevap beklenen alanları taşıyorsa token'ları kaydeder ve yeni access token'ı döner.
 async function refreshTokenIleYenile() {
     const refreshToken = await getRefreshToken();
 
+    // Refresh token yoksa kullanıcının yeniden login olması gerekir.
     if (!refreshToken) {
         return null;
     }
@@ -135,6 +146,7 @@ async function refreshTokenIleYenile() {
 
     const data = response.data;
 
+    // Eksik veya başarısız cevaplarda bozuk token kaydetmemek için refresh geçersiz sayılır.
     if (
         !data.basarili ||
         !data.accessToken ||

@@ -11,9 +11,11 @@ from tokenizers import Tokenizer
 import config
 from model import MiniCoursViaLLM
 
+# Modelin ürettiği cevabın Web/API tarafına dönecek standart veri modeli.
 
 @dataclass
 class GenerateResult:
+    # Web/API tarafına dönen üretim sonucunun standart veri modeli.
     success: bool
     output: str
     raw_output: str
@@ -22,7 +24,9 @@ class GenerateResult:
 
 
 class Generator:
+    # Tokenizer ve eğitilmiş MiniCoursVia modelini yükleyip üretim yapan ana sınıf.
     def __init__(self, model_path: str | Path | None = None):
+        # CUDA varsa GPU, yoksa CPU kullanılır.
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         if not config.TOKENIZER_FILE.exists():
@@ -30,33 +34,41 @@ class Generator:
 
         self.tokenizer = Tokenizer.from_file(str(config.TOKENIZER_FILE))
 
+        # Dışarıdan model yolu verilmezse önce best checkpoint denenir.
         self.model_path = Path(model_path) if model_path else config.BEST_MODEL_FILE
 
+        # Best model yoksa final checkpoint'e düşülür.
         if not self.model_path.exists():
             self.model_path = config.FINAL_MODEL_FILE
 
         if not self.model_path.exists():
             raise FileNotFoundError(f"Model dosyası bulunamadı: {self.model_path}")
 
+        # Checkpoint hem eski hem yeni kayıt formatlarına uyumlu okunur.
         checkpoint = self._load_checkpoint(self.model_path)
 
         model_config = self._checkpoint_config(checkpoint)
 
+        # Checkpoint config'i ile aynı mimaride model oluşturulur.
         self.model = MiniCoursViaLLM(model_config).to(self.device)
 
         state_dict = self._state_dict_from_checkpoint(checkpoint)
         self.model.load_state_dict(state_dict)
+        # Model eval moduna alınır, böylece dropout ve batchnorm gibi katmanlar üretimde pasif olur.
         self.model.eval()
 
+        # Üretimde erken durmak için end-of-text token id'si saklanır.
         self.eos_token_id = self.tokenizer.token_to_id("<|endoftext|>")
 
     def _load_checkpoint(self, path):
+        # Yeni PyTorch sürümlerinde weights_only parametresi desteklenir, eskilerde fallback yapılır.
         try:
             return torch.load(path, map_location=self.device, weights_only=False)
         except TypeError:
             return torch.load(path, map_location=self.device)
 
     def _checkpoint_config(self, checkpoint):
+        # Checkpoint içinde mimari config varsa onu kullanır; yoksa config.py varsayılanlarına döner.
         if isinstance(checkpoint, dict):
             cfg = checkpoint.get("config", {})
 
@@ -79,6 +91,7 @@ class Generator:
         )
 
     def _state_dict_from_checkpoint(self, checkpoint):
+        # Farklı eğitim kayıt formatlarını tek state_dict'e indirir.
         if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
             return checkpoint["model_state_dict"]
 
@@ -88,9 +101,11 @@ class Generator:
         return checkpoint
 
     def encode(self, text: str):
+        # Metni tokenizer id dizisine çevirir.
         return self.tokenizer.encode(text).ids
 
     def decode(self, ids):
+        # Token id dizisini özel tokenları koruyarak metne çevirir.
         return self.tokenizer.decode([int(i) for i in ids], skip_special_tokens=False)
 
     def generate_raw(
@@ -100,10 +115,12 @@ class Generator:
         temperature: float | None = None,
         top_k: int | None = None,
     ):
+        # Parametre verilmezse config.py içindeki varsayılan üretim ayarları kullanılır.
         max_new_tokens = max_new_tokens if max_new_tokens is not None else config.GENERATE_MAX_NEW_TOKENS
         temperature = temperature if temperature is not None else config.TEMPERATURE
         top_k = top_k if top_k is not None else config.TOP_K
 
+        # Prompt token id dizisine çevrilir ve modele tek batch olarak verilir.
         input_ids = self.encode(prompt)
 
         if not input_ids:
@@ -111,6 +128,7 @@ class Generator:
 
         idx = torch.tensor([input_ids], dtype=torch.long, device=self.device)
 
+        # Üretim sırasında gradient gerekmez.
         with torch.no_grad():
             out = self.model.generate(
                 idx,
@@ -124,6 +142,7 @@ class Generator:
         return self.decode(out[0].tolist())
 
     def generate(self, prompt: str, max_new_tokens=500, temperature=0.0):
+        # Ham model çıktısından sadece [YANIT] sonrası cevap bölümü alınıp temizlenir.
         raw = self.generate_raw(
             prompt=prompt,
             max_new_tokens=max_new_tokens,
@@ -134,13 +153,18 @@ class Generator:
         return clean_text(extract_answer(raw))
 
     def analyze_egitmen(self, data: dict) -> GenerateResult:
+        # Eğitmen JSON verisi prompta çevrilir, model cevabı üretilir ve doğrulanır.
+
+        
         prompt = build_egitmen_prompt(data)
 
+# Model cevabı ham olarak alınır, sadece [YANIT] sonrası temizlenir ve doğrulama yapılır.
         raw = self.generate_raw(prompt)
         answer = clean_text(extract_answer(raw))
 
         errors = validate_output(answer, "egitmen", data)
 
+        # Format/veri koruma hatası varsa güvenli fallback metni kullanılır.
         if errors:
             return GenerateResult(
                 success=True,
@@ -159,6 +183,7 @@ class Generator:
         )
 
     def analyze_ogrenci(self, data: dict) -> GenerateResult:
+        # Öğrenci JSON verisi prompta çevrilir, model cevabı üretilir ve doğrulanır.
         prompt = build_ogrenci_prompt(data)
 
         raw = self.generate_raw(prompt)
@@ -166,6 +191,7 @@ class Generator:
 
         errors = validate_output(answer, "ogrenci", data)
 
+        # Format/veri koruma hatası varsa güvenli fallback metni kullanılır.
         if errors:
             return GenerateResult(
                 success=True,
@@ -185,6 +211,7 @@ class Generator:
 
 
 def normalize_lessons(value) -> list[str]:
+    # Ders listesi dict/list/string formatında gelebilir; hepsi düz string listesine çevrilir.
     if isinstance(value, list):
         result = []
 
@@ -215,6 +242,7 @@ def normalize_lessons(value) -> list[str]:
 
 
 def build_egitmen_prompt(data: dict) -> str:
+    # Web tarafından gelen eğitmen verisini modelin eğitimde gördüğü etiketli prompt formatına çevirir.
     lessons = normalize_lessons(data.get("zorlanilan_dersler", []))
 
     return f"""[GOREV] EGITMEN_KURS_ANALIZI
@@ -230,6 +258,7 @@ def build_egitmen_prompt(data: dict) -> str:
 
 
 def build_ogrenci_prompt(data: dict) -> str:
+    # Web tarafından gelen öğrenci verisini modelin eğitimde gördüğü etiketli prompt formatına çevirir.
     lessons = normalize_lessons(data.get("zorlanilan_dersler", []))
 
     return f"""[GOREV] OGRENCI_CALISMA_ONERISI
@@ -243,6 +272,7 @@ def build_ogrenci_prompt(data: dict) -> str:
 
 
 def extract_answer(text: str) -> str:
+    # Model bazen promptu da geri basabilir; sadece [YANIT] sonrası cevap bölümü tutulur.
     if "[YANIT]" in text:
         text = text.split("[YANIT]", 1)[1]
 
@@ -256,6 +286,7 @@ def extract_answer(text: str) -> str:
         "[ZORLANILAN_BOLUM]",
     ]
 
+    # Yeni bir sistem etiketi başladıysa cevap burada kesilir.
     for marker in cut_markers:
         if marker in text:
             text = text.split(marker, 1)[0]
@@ -264,6 +295,7 @@ def extract_answer(text: str) -> str:
 
 
 def clean_text(text: str) -> str:
+    # Tokenizer/model kaynaklı boşluk ve noktalama bozulmalarını düzeltir.
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     # Noktalama öncesi boşlukları temizle:
@@ -305,6 +337,7 @@ def clean_text(text: str) -> str:
 
 
 def canonical_text(text: str) -> str:
+    # Validasyon için metni aksan, boşluk ve tire farklarından arındırılmış karşılaştırma formuna çevirir.
     text = clean_text(str(text))
 
     # Unicode normalizasyon
@@ -330,10 +363,12 @@ def canonical_text(text: str) -> str:
 
 
 def contains_field(output_text: str, field: str) -> bool:
+    # Alanın çıktı içinde korunup korunmadığını esnek metin karşılaştırmasıyla kontrol eder.
     return canonical_text(field) in canonical_text(output_text)
 
 
 def required_fields(mode: str, data: dict) -> list[str]:
+    # Model çıktısında mutlaka korunması gereken kurs/bölüm/ders alanları.
     lessons = normalize_lessons(data.get("zorlanilan_dersler", []))
 
     return [
@@ -344,6 +379,7 @@ def required_fields(mode: str, data: dict) -> list[str]:
 
 
 def validate_output(text: str, mode: str, data: dict) -> list[str]:
+    # Cevabın başlık, veri koruma, sistem etiketi sızıntısı ve minimum uzunluk şartlarını kontrol eder.
     errors = []
 
     if not text or len(text) < 80:
@@ -390,6 +426,7 @@ def validate_output(text: str, mode: str, data: dict) -> list[str]:
 
 
 def fallback_egitmen(data: dict) -> str:
+    # Model çıktısı validasyondan geçmezse eğitmen için veri koruyan güvenli cevap üretilir.
     lessons = normalize_lessons(data.get("zorlanilan_dersler", []))
 
     d1 = lessons[0] if len(lessons) > 0 else "ilgili ders"
@@ -409,6 +446,7 @@ Geliştirme Önerisi:
 
 
 def fallback_ogrenci(data: dict) -> str:
+    # Model çıktısı validasyondan geçmezse öğrenci için veri koruyan güvenli cevap üretilir.
     lessons = normalize_lessons(data.get("zorlanilan_dersler", []))
 
     d1 = lessons[0] if len(lessons) > 0 else "ilgili ders"

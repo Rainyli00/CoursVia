@@ -16,8 +16,10 @@ public class EmailService
         _environment = environment;
     }
 
+    // SendEmailAsync metodu, MailKit kullanarak SMTP üzerinden e-posta gönderir.
     public async Task SendEmailAsync(string toEmail, string subject, string body)
     {
+        // SMTP ayarları appsettings üzerinden okunur.
         var smtpServer = _configuration["EmailSettings:SmtpServer"];
         var portText = _configuration["EmailSettings:Port"];
         var senderName = _configuration["EmailSettings:SenderName"];
@@ -30,11 +32,13 @@ public class EmailService
             string.IsNullOrWhiteSpace(senderEmail) ||
             string.IsNullOrWhiteSpace(password))
         {
+            // Eksik ayar varsa mail göndermek yerine açık hata fırlatılır.
             throw new InvalidOperationException("EmailSettings bilgileri eksik.");
         }
 
         int port = int.Parse(portText);
 
+        // MailKit mesaj nesnesi HTML gövde ile hazırlanır.
         var email = new MimeMessage();
 
         email.From.Add(new MailboxAddress(senderName, senderEmail));
@@ -55,6 +59,7 @@ public class EmailService
             smtp.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
         }
 
+        // SMTP bağlantısı TLS ile açılır, kimlik doğrulanır ve mesaj gönderilir.
         await smtp.ConnectAsync(smtpServer, port, SecureSocketOptions.StartTls);
         await smtp.AuthenticateAsync(senderEmail, password);
         await smtp.SendAsync(email);

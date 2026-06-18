@@ -9,6 +9,7 @@ using QRCoder;
 
 namespace CoursVia.Controllers;
 
+// Sertifika doğrulama ekranını ve sertifika kodu ile PDF indirme işlemini yönetir.
 public class SertifikaDogrulamaController : Controller
 {
     private readonly AppDbContext _context;
@@ -18,6 +19,8 @@ public class SertifikaDogrulamaController : Controller
         _context = context;
     }
 
+    // Sertifika doğrulama sayfasını açar.
+    // Eğer URL üzerinden kod gelirse otomatik olarak sorgulama işlemi yapılır.
     [HttpGet]
     public async Task<IActionResult> Index(string? kod)
     {
@@ -26,12 +29,15 @@ public class SertifikaDogrulamaController : Controller
         if (!string.IsNullOrWhiteSpace(kod))
         {
             model.SertifikaKodu = kod;
+
+            // QR kod veya link üzerinden gelen sertifika kodu direkt sorgulanır.
             return await Sorgula(model);
         }
 
         return View(model);
     }
 
+    // Girilen sertifika kodunu veritabanında arar ve geçerli olup olmadığını kontrol eder.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sorgula(SertifikaDogrulamaViewModel model)
@@ -44,6 +50,7 @@ public class SertifikaDogrulamaController : Controller
             return View("Index", model);
         }
 
+        // Sertifika koduna göre sertifika, öğrenci ve kurs bilgileri alınır.
         var sertifika = await _context.Sertifikalar
             .Include(x => x.Kullanici)
             .Include(x => x.Kurs)
@@ -52,19 +59,22 @@ public class SertifikaDogrulamaController : Controller
 
         if (sertifika != null)
         {
+            // Sertifika bulunduysa doğrulama başarılı kabul edilir.
             model.GecerliMi = true;
             model.OgrenciAdSoyad = $"{sertifika.Kullanici.Ad} {sertifika.Kullanici.Soyad}";
-            model.KursAdi = sertifika.Kurs.KursAdi; // Note: Ensure Kurs has KursAdi property
+            model.KursAdi = sertifika.Kurs.KursAdi;
             model.VerilmeTarihi = sertifika.VerilmeTarihi;
         }
         else
         {
+            // Kod veritabanında yoksa geçersiz sertifika sonucu gösterilir.
             model.GecerliMi = false;
         }
 
         return View("Index", model);
     }
 
+    // Sertifika koduna göre sertifikayı PDF olarak indirir.
     [HttpGet]
     public async Task<IActionResult> Indir(string kod)
     {
@@ -73,6 +83,7 @@ public class SertifikaDogrulamaController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Sertifika koduna ait kayıt, öğrenci, kurs ve eğitmen bilgileriyle birlikte alınır.
         var sertifika = await _context.Sertifikalar
             .AsNoTracking()
             .Include(x => x.Kullanici)
@@ -88,6 +99,7 @@ public class SertifikaDogrulamaController : Controller
         string ogrenciAdSoyad = $"{sertifika.Kullanici.Ad} {sertifika.Kullanici.Soyad}".Trim();
         string egitmenAdSoyad = $"{sertifika.Kurs.Egitmen.Ad} {sertifika.Kurs.Egitmen.Soyad}".Trim();
 
+        // Sertifika bilgilerine göre PDF dosyası oluşturulur.
         byte[] pdfDosyasi = SertifikaPdfOlustur(
             ogrenciAdSoyad,
             sertifika.Kurs.KursAdi,
@@ -101,6 +113,7 @@ public class SertifikaDogrulamaController : Controller
         return File(pdfDosyasi, "application/pdf", dosyaAdi);
     }
 
+    // Sertifika PDF içeriğini QuestPDF kullanarak oluşturur.
     private static byte[] SertifikaPdfOlustur(
         string ogrenciAdSoyad,
         string kursAdi,
@@ -108,12 +121,14 @@ public class SertifikaDogrulamaController : Controller
         string sertifikaKodu,
         DateTime verilmeTarihi)
     {
+        // Sertifika kodunu temsil eden QR kod görseli hazırlanır.
         byte[] qrKodGorseli = QrKodOlustur(sertifikaKodu);
 
         return Document.Create(container =>
         {
             container.Page(page =>
             {
+                // Sertifika yatay A4 formatında hazırlanır.
                 page.Size(PageSizes.A4.Landscape());
                 page.Margin(18);
                 page.PageColor(Colors.White);
@@ -132,7 +147,7 @@ public class SertifikaDogrulamaController : Controller
                     {
                         column.Spacing(0);
 
-                        // Üst alan
+                        // Üst bölümde platform adı, sertifika kodu ve QR kod gösterilir.
                         column.Item()
                             .PaddingHorizontal(34)
                             .PaddingTop(22)
@@ -179,7 +194,7 @@ public class SertifikaDogrulamaController : Controller
                                 });
                             });
 
-                        // Ana başlık
+                        // Sertifikanın ana başlığı.
                         column.Item()
                             .PaddingTop(34)
                             .AlignCenter()
@@ -194,7 +209,7 @@ public class SertifikaDogrulamaController : Controller
                             .LineHorizontal(1)
                             .LineColor(Colors.Grey.Darken1);
 
-                        // Öğrenci adı
+                        // Sertifikayı almaya hak kazanan öğrencinin adı.
                         column.Item()
                             .PaddingTop(30)
                             .AlignCenter()
@@ -203,7 +218,7 @@ public class SertifikaDogrulamaController : Controller
                             .FontSize(36)
                             .FontColor(Colors.Black);
 
-                        // Sertifika açıklaması
+                        // Öğrencinin hangi kursu başarıyla tamamladığını açıklayan metin.
                         column.Item()
                             .PaddingTop(22)
                             .PaddingHorizontal(95)
@@ -226,6 +241,7 @@ public class SertifikaDogrulamaController : Controller
                                     .FontColor(Colors.Black);
                             });
 
+                        // Sertifikanın verilme tarihi orta alanda gösterilir.
                         column.Item()
                             .PaddingTop(10)
                             .AlignCenter()
@@ -241,7 +257,7 @@ public class SertifikaDogrulamaController : Controller
                             .FontSize(10)
                             .FontColor(Colors.Amber.Darken1);
 
-                        // Alt bilgi alanı
+                        // Alt bilgi alanında verilme tarihi ve eğitmen adı yer alır.
                         column.Item()
                             .PaddingTop(28)
                             .PaddingHorizontal(130)
@@ -294,10 +310,16 @@ public class SertifikaDogrulamaController : Controller
         }).GeneratePdf();
     }
 
+    // Sertifika kodu için PNG formatında QR kod üretir.
     private static byte[] QrKodOlustur(string sertifikaKodu)
     {
         using var qrGenerator = new QRCodeGenerator();
-        using var qrData = qrGenerator.CreateQrCode(sertifikaKodu, QRCodeGenerator.ECCLevel.Q);
+
+        // QR kodu oluştururken hata düzeltme seviyesi Q olarak ayarlanır.
+        using var qrData = qrGenerator.CreateQrCode(
+            sertifikaKodu,
+            QRCodeGenerator.ECCLevel.Q
+        );
 
         var qrCode = new PngByteQRCode(qrData);
 

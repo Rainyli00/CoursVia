@@ -20,17 +20,21 @@ import type {
 // Eğitmen dashboard ekranı.
 // Sade tutuldu: toplam kurs, yayındaki kurs ve toplam öğrenci bilgisi gösterilir.
 export default function EgitmenDashboardScreen() {
+    // Dashboard API cevabı tek state'te tutulur; sayaçlar ve son kurslar buradan okunur.
     const [dashboard, setDashboard] =
         useState<MobileEgitmenDashboardResponse | null>(null);
 
+    // İlk yükleme, pull-to-refresh ve hata ekranı birbirinden ayrı yönetilir.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Ekran açıldığında dashboard özeti bir kez yüklenir.
     useEffect(() => {
         dashboardGetir();
     }, []);
 
+    // Üstteki özet kartları dashboard cevabından türetilir.
     const ozetKartlari = useMemo(() => {
         if (!dashboard) {
             return [];
@@ -52,6 +56,7 @@ export default function EgitmenDashboardScreen() {
         ];
     }, [dashboard]);
 
+    // Dashboard bilgisini getirir; refreshMi true ise tam ekran loading yerine yenileme göstergesi kullanılır.
     async function dashboardGetir(refreshMi = false) {
         try {
             if (refreshMi) {
@@ -81,6 +86,7 @@ export default function EgitmenDashboardScreen() {
         }
     }
 
+    // Son kurs kartından eğitmen kurs detay ekranına geçiş yapar.
     function kursDetayAc(kursId: number) {
         router.push(`/egitmen/kurs-detay/${kursId}` as any);
     }
@@ -148,6 +154,7 @@ export default function EgitmenDashboardScreen() {
     );
 }
 
+// Dashboard ilk açılış yüklenme ekranı.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -157,6 +164,7 @@ function LoadingState() {
     );
 }
 
+// Dashboard alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -176,6 +184,7 @@ function ErrorState({
     );
 }
 
+// Dashboard sayaçlarını göstermek için kullanılan küçük kart.
 function SummaryCard({
     title,
     value,
@@ -237,6 +246,7 @@ function DashboardKursKart({
     );
 }
 
+// Eğitmene bağlı kurs yoksa gösterilen boş durum.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

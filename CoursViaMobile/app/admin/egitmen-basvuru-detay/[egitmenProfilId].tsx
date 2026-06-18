@@ -27,18 +27,23 @@ export default function AdminEgitmenBasvuruDetayScreen() {
         egitmenProfilId?: string | string[];
     }>();
 
+    // Başvuru detay cevabı tek state'te tutulur; karar ve profil alanları buradan beslenir.
     const [detay, setDetay] =
         useState<MobileAdminEgitmenBasvuruDetayResponse | null>(null);
 
+    // İlk yükleme, pull-to-refresh ve hata ekranı ayrı ayrı yönetilir.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Onay/red sırasında aksiyon butonları kilitlenir.
     const [islemYapiliyor, setIslemYapiliyor] = useState(false);
 
+    // Red kararında açıklama zorunlu olduğu için modal form state'i ayrı tutulur.
     const [redModalAcik, setRedModalAcik] = useState(false);
     const [redAciklama, setRedAciklama] = useState("");
 
+    // Expo Router parametresi string gelebileceği için güvenli sayıya çevrilir.
     const egitmenProfilId = useMemo(() => {
         const rawValue = Array.isArray(params.egitmenProfilId)
             ? params.egitmenProfilId[0]
@@ -49,8 +54,10 @@ export default function AdminEgitmenBasvuruDetayScreen() {
         return Number.isFinite(id) && id > 0 ? id : null;
     }, [params.egitmenProfilId]);
 
+    // Sadece bekleyen veya düzeltme istenen başvurularda karar aksiyonları gösterilir.
     const kararVerilebilirMi = detay?.durumId === 4 || detay?.durumId === 7;
 
+    // Geçerli başvuru id varsa detay yüklenir, yoksa hata ekranı gösterilir.
     useEffect(() => {
         if (!egitmenProfilId) {
             setYukleniyor(false);
@@ -61,6 +68,7 @@ export default function AdminEgitmenBasvuruDetayScreen() {
         detayGetir();
     }, [egitmenProfilId]);
 
+    // Başvuru detayını API'den getirir; refresh sırasında tam ekran loading göstermez.
     async function detayGetir(refreshMi = false) {
         if (!egitmenProfilId) {
             return;
@@ -94,6 +102,7 @@ export default function AdminEgitmenBasvuruDetayScreen() {
         }
     }
 
+    // Onay işlemi rol değişikliği yaratacağı için kullanıcıdan açık onay alınır.
     function onayOnayiAl() {
         if (!detay || !egitmenProfilId || !kararVerilebilirMi) {
             return;
@@ -115,6 +124,7 @@ export default function AdminEgitmenBasvuruDetayScreen() {
         );
     }
 
+    // Başvuruyu onaylar ve güncel durumun ekrana yansıması için detayı yeniler.
     async function basvuruOnayla() {
         if (!egitmenProfilId) {
             return;
@@ -145,6 +155,7 @@ export default function AdminEgitmenBasvuruDetayScreen() {
         }
     }
 
+    // Red modalı sadece karar verilebilir başvurularda açılır.
     function redModalAc() {
         if (!kararVerilebilirMi) {
             return;
@@ -154,6 +165,7 @@ export default function AdminEgitmenBasvuruDetayScreen() {
         setRedModalAcik(true);
     }
 
+    // Red açıklaması zorunludur; başarılı olursa detay yenilenir.
     async function basvuruReddet() {
         if (!egitmenProfilId) {
             return;
@@ -364,6 +376,7 @@ export default function AdminEgitmenBasvuruDetayScreen() {
     );
 }
 
+// Detay verisi gelene kadar gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -373,6 +386,7 @@ function LoadingState() {
     );
 }
 
+// Detay alınamazsa tekrar deneme ve geri dönme aksiyonlarını gösterir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -397,6 +411,7 @@ function ErrorState({
     );
 }
 
+// Hero alanındaki küçük başvuru metrik kartı.
 function InfoCard({ title, value }: { title: string; value: string }) {
     return (
         <View style={styles.infoCard}>
@@ -406,6 +421,7 @@ function InfoCard({ title, value }: { title: string; value: string }) {
     );
 }
 
+// Profil bilgisindeki uzun metinli alanlar için kullanılır.
 function DetailBlock({ label, value }: { label: string; value: string }) {
     return (
         <View style={styles.detailBlock}>
@@ -415,6 +431,7 @@ function DetailBlock({ label, value }: { label: string; value: string }) {
     );
 }
 
+// Başvuruyu reddetmek için zorunlu açıklama isteyen modal.
 function RedModal({
     visible,
     value,
@@ -485,6 +502,7 @@ function RedModal({
     );
 }
 
+// Geçerli tarihse Türkçe kısa tarih formatına çevirir.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 

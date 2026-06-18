@@ -4,18 +4,22 @@ using CoursVia.ViewModels.Ai;
 
 namespace CoursVia.Services.Ai;
 
+// AI modellerine gönderilecek eğitmen ve öğrenci promptlarını merkezi olarak üretir.
 public class AiPromptBuilder
 {
+    // Eğitmen tarafında kurs performans verisinden kurs geliştirme promptu oluşturur.
     public string EgitmenKursAnaliziPromptOlustur(AiEgitmenKursAnalizVerisi veri)
     {
         var zorlanilanDersler = new StringBuilder();
 
+        // Zorlanılan dersler prompt içinde modelin okuyacağı kısa liste formatına çevrilir.
         foreach (var ders in veri.ZorlanilanDersler)
         {
             zorlanilanDersler.AppendLine(
                 $"- {ders.DersAdi} ({ders.BolumAdi}) - Yanlış Sayısı: {ders.YanlisSayisi}, Yanlış Oranı: %{FormatDecimal(ders.YanlisOrani)}");
         }
 
+        // Kurallar özellikle sayı/süre uydurmayı ve markdown üretmeyi engellemek için sert yazılmıştır.
         return $"""
 Sen CoursVia adlı online eğitim platformu için çalışan bir AI analiz asistanısın.
 
@@ -73,15 +77,18 @@ Eğitmen için öncelikli aksiyon planı
 """;
     }
 
+    // Öğrenci tarafında yanlış yapılan derslerden çalışma önerisi promptu oluşturur.
     public string OgrenciCalismaOnerisiPromptOlustur(AiOgrenciCalismaVerisi veri)
     {
         var yanlisDersler = new StringBuilder();
 
+        // Yanlış yapılan dersler, modelin yeni ders adı uydurmadan kullanacağı kaynak liste olur.
         foreach (var ders in veri.YanlisYapilanDersler)
         {
             yanlisDersler.AppendLine($"- {ders.DersAdi} ({ders.BolumAdi})");
         }
 
+        // Öğrenci promptu, sınavdan geçemeyen kullanıcıya kısa ve uygulanabilir öneri üretmeye zorlar.
         return $"""
 Sen CoursVia adlı online eğitim platformu için çalışan bir AI analiz asistanısın.
 
@@ -137,6 +144,7 @@ Tekrar etmen gereken bölüm
 """;
     }
 
+    // Ondalık sayıları modelin okuyacağı şekilde nokta ve iki basamakla formatlar.
     private static string FormatDecimal(decimal value)
     {
         return value.ToString("0.##", CultureInfo.InvariantCulture);

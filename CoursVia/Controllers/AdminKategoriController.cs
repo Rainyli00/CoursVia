@@ -9,6 +9,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Admin panelinde kategori ekleme, düzenleme, silme ve listeleme işlemlerini yönetir.
 [Authorize(Roles = "Admin")]
 public class AdminKategoriController : Controller
 {
@@ -22,6 +23,7 @@ public class AdminKategoriController : Controller
     }
 
     [HttpGet]
+    // Kategorileri arama, filtreleme ve sayfalama ile listeler.
     public async Task<IActionResult> Kategoriler(string? arama, string? durumFiltresi, int sayfa = 1)
     {
         const int sayfaBasinaKayit = 10;
@@ -46,6 +48,7 @@ public class AdminKategoriController : Controller
             query = query.Where(x => x.KategoriAdi.Contains(arama));
         }
 
+        // Kategori kullanılıyor mu veya boş mu bilgisine göre filtre uygulanır.
         if (!string.IsNullOrWhiteSpace(durumFiltresi))
         {
             if (durumFiltresi == "kullanilan")
@@ -116,6 +119,7 @@ public class AdminKategoriController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Yeni kategori ekler.
     public async Task<IActionResult> Ekle(KategoriKaydetViewModel model)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -145,6 +149,7 @@ public class AdminKategoriController : Controller
 
         _context.Kategoriler.Add(kategori);
 
+        // Kategori ekleme işlemi admin loglarına kaydedilir.
         await _adminLogService.KaydetAsync(
             adminId,
             AdminLogService.KategoriIslemleri,
@@ -159,6 +164,7 @@ public class AdminKategoriController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Mevcut kategori adını günceller.
     public async Task<IActionResult> Duzenle(KategoriKaydetViewModel model)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -186,6 +192,7 @@ public class AdminKategoriController : Controller
             return RedirectToAction(nameof(Kategoriler));
         }
 
+        // "Diğer" kategorisi sistem tarafından kullanıldığı için adı değiştirilemez.
         if (kategori.KategoriAdi.Trim().ToLower() == "diğer" &&
             model.KategoriAdi.Trim().ToLower() != "diğer")
         {
@@ -223,6 +230,7 @@ public class AdminKategoriController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Kategoriyi siler; kullanılıyorsa bağlı kayıtları "Diğer" kategorisine taşır.
     public async Task<IActionResult> Sil(int id)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -254,6 +262,7 @@ public class AdminKategoriController : Controller
                 kategori.KursKategorileri.Any() ||
                 kategori.EgitmenBranslari.Any();
 
+            // Kullanılan kategori silinirse kurslar ve eğitmen branşları boşa düşmesin diye "Diğer" kategorisine aktarılır.
             if (kullaniliyorMu)
             {
                 var digerKategori = await DigerKategorisiniGetirVeyaOlusturAsync();
@@ -294,6 +303,7 @@ public class AdminKategoriController : Controller
         }
     }
 
+    // "Diğer" kategorisini getirir; yoksa yeni oluşturur.
     private async Task<Kategori> DigerKategorisiniGetirVeyaOlusturAsync()
     {
         var digerKategori = await _context.Kategoriler
@@ -316,6 +326,7 @@ public class AdminKategoriController : Controller
         return digerKategori;
     }
 
+    // Silinen kategoriye bağlı kurs kategori ilişkilerini "Diğer" kategorisine taşır.
     private async Task KursKategorileriniDigereTasiAsync(int silinecekKategoriId, int digerKategoriId)
     {
         var kursKategorileri = await _context.KursKategorileri
@@ -334,6 +345,7 @@ public class AdminKategoriController : Controller
 
         var tasinanKursIdleri = new HashSet<int>(digerKategoriKursIdleri);
 
+        //Kurs zaten “Diğer” kategorisinde varsa sistem eski kategori bağlantısını siliyor. 
         foreach (var kursKategori in kursKategorileri)
         {
             if (tasinanKursIdleri.Contains(kursKategori.KursId))
@@ -341,13 +353,15 @@ public class AdminKategoriController : Controller
                 _context.KursKategorileri.Remove(kursKategori);
             }
             else
-            {
+            {// Kursu "Diğer" kategorisine taşı.
                 kursKategori.KategoriId = digerKategoriId;
+                // Taşınan kurs ID'sini HashSet'e ekle.
                 tasinanKursIdleri.Add(kursKategori.KursId);
             }
         }
     }
 
+    // Silinen kategoriye bağlı eğitmen branşlarını "Diğer" kategorisine taşır.
     private async Task EgitmenBranslariniDigereTasiAsync(int silinecekKategoriId, int digerKategoriId)
     {
         var egitmenBranslari = await _context.EgitmenBranslari
@@ -365,7 +379,7 @@ public class AdminKategoriController : Controller
             .ToListAsync();
 
         var tasinanEgitmenProfilIdleri = new HashSet<int>(digerKategoriEgitmenProfilIdleri);
-
+        // Eğitmen zaten “Diğer” kategorisinde varsa sistem eski kategori bağlantısını siliyor.
         foreach (var egitmenBransi in egitmenBranslari)
         {
             if (tasinanEgitmenProfilIdleri.Contains(egitmenBransi.EgitmenProfilId))
@@ -379,5 +393,4 @@ public class AdminKategoriController : Controller
             }
         }
     }
-
 }

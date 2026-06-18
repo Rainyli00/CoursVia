@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Controllers;
 
+// Eğitmen panelinde ders ekleme, düzenleme, silme, sıralama ve materyal yükleme işlemlerini yönetir.
 [Authorize(Roles = "Eğitmen")]
 public class EgitmenDersController : EgitmenBaseController
 {
@@ -18,10 +19,7 @@ public class EgitmenDersController : EgitmenBaseController
         _webHostEnvironment = webHostEnvironment;
     }
 
-    // =========================
-    // DERS EKLE
-    // =========================
-
+    // Eğitmenin kendi kursuna yeni ders eklemesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DersEkle(
@@ -46,12 +44,14 @@ public class EgitmenDersController : EgitmenBaseController
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Kurs düzenlenebilir durumda değilse yeni ders eklenmesine izin verilmez.
         if (!KursDuzenlenebilirMi(kurs.DurumId))
         {
             TempData["KursHata"] = "Bu kurs şu an düzenlenebilir durumda değil.";
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = kursId });
         }
 
+        // Seçilen bölümün gerçekten bu kursa ait olup olmadığı kontrol edilir.
         bool bolumBuKursaAitMi = kurs.Bolumler.Any(x => x.BolumId == bolumId);
 
         if (!bolumBuKursaAitMi)
@@ -70,6 +70,7 @@ public class EgitmenDersController : EgitmenBaseController
         string finalVideoUrl;
         var yuklenenFizikselDosyalar = new List<string>();
 
+        // Ders, video ve materyal kayıtları tek işlem gibi yönetilir.
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
@@ -95,31 +96,33 @@ public class EgitmenDersController : EgitmenBaseController
                 var izinliVideoUzantilari = new[] { ".mp4", ".webm" };
                 string videoUzanti = Path.GetExtension(videoDosyasi.FileName).ToLowerInvariant();
 
+                // Sadece izin verilen video formatları kabul edilir.
                 if (!izinliVideoUzantilari.Contains(videoUzanti))
                 {
                     TempData["KursHata"] = "Sadece .mp4 ve .webm formatında videolar yükleyebilirsiniz.";
                     return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = kursId });
                 }
-
+                // Videolar için uploads/ders-videolari klasörüne fiziksel dosya kaydedilir ve URL oluşturulur.
                 string videoKlasoru = Path.Combine(
                     _webHostEnvironment.WebRootPath,
                     "uploads",
                     "ders-videolari"
                 );
-
+                // Klasör yoksa oluşturulur.
                 if (!Directory.Exists(videoKlasoru))
                 {
                     Directory.CreateDirectory(videoKlasoru);
                 }
-
+                // Dosya adı olarak benzersiz bir GUID kullanılır, böylece aynı isimle dosya yüklenmesi durumunda çakışma olmaz.
                 string videoDosyaAdi = $"{Guid.NewGuid()}{videoUzanti}";
                 string videoFizikselYol = Path.Combine(videoKlasoru, videoDosyaAdi);
-
+                
                 using (var fileStream = new FileStream(videoFizikselYol, FileMode.Create))
                 {
                     await videoDosyasi.CopyToAsync(fileStream);
                 }
 
+                // Hata olursa yüklenen fiziksel dosya geri silinebilmesi için listeye eklenir.
                 yuklenenFizikselDosyalar.Add(videoFizikselYol);
 
                 finalVideoUrl = $"/uploads/ders-videolari/{videoDosyaAdi}";
@@ -130,6 +133,7 @@ public class EgitmenDersController : EgitmenBaseController
                 return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = kursId });
             }
 
+            // Yeni ders aktif normal derslerin sonuna eklenir.
             int yeniSira = (await _context.Dersler
                 .Where(x => x.KursId == kursId && x.AktifMi && !x.SistemDersiMi)
                 .MaxAsync(x => (int?)x.SiraNo) ?? 0) + 1;
@@ -151,6 +155,7 @@ public class EgitmenDersController : EgitmenBaseController
 
             await _context.SaveChangesAsync();
 
+            // Ders kaydedildikten sonra varsa ders materyalleri de yüklenir.
             await DersMateryalleriniKaydetAsync(
                 yeniDers.DersId,
                 materyalBasliklari,
@@ -158,6 +163,7 @@ public class EgitmenDersController : EgitmenBaseController
                 yuklenenFizikselDosyalar
             );
 
+            // Yayındaki kursa ders eklenirse kurs tekrar taslak durumuna alınır.
             OnayliKursuTaslakYap(kurs);
             kurs.GuncellemeTarihi = DateTime.Now;
 
@@ -172,6 +178,7 @@ public class EgitmenDersController : EgitmenBaseController
         {
             await transaction.RollbackAsync();
 
+            // Veritabanı işlemi başarısız olursa yüklenen fiziksel dosyalar da temizlenir.
             YuklenenDosyalariSil(yuklenenFizikselDosyalar);
 
             TempData["KursHata"] = ex is InvalidOperationException
@@ -182,21 +189,18 @@ public class EgitmenDersController : EgitmenBaseController
         }
     }
 
-    // =========================
-    // DERS DÜZENLE GET
-    // =========================
-
-    [HttpGet]
-    public async Task<IActionResult> DersDuzenle(int id)
+    // Eğitmenin dersi aktif veya pasif duruma almasını sağlar.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DersDurumDegistir(int dersId, bool aktifMi)
     {
         int kullaniciId = AktifKullaniciId;
 
         var ders = await _context.Dersler
             .Include(x => x.Kurs)
             .FirstOrDefaultAsync(x =>
-                x.DersId == id &&
+                x.DersId == dersId &&
                 x.Kurs.EgitmenId == kullaniciId &&
-                x.AktifMi &&
                 !x.SistemDersiMi);
 
         if (ders == null)
@@ -210,14 +214,51 @@ public class EgitmenDersController : EgitmenBaseController
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
         }
 
-        TempData["KursHata"] = "Ders düzenleme artık kurs içerik ekranındaki modal üzerinden yapılıyor.";
+        if (ders.AktifMi == aktifMi)
+        {
+            TempData["KursHata"] = aktifMi
+                ? "Ders zaten aktif durumda."
+                : "Ders zaten pasif durumda.";
+
+            return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
+        }
+
+        ders.AktifMi = aktifMi;
+
+        if (aktifMi)
+        {
+            // Pasif ders tekrar aktif yapılırsa aktif derslerin sonuna eklenir.
+            int yeniSira = (await _context.Dersler
+                .Where(x =>
+                    x.KursId == ders.KursId &&
+                    x.AktifMi &&
+                    !x.SistemDersiMi &&
+                    x.DersId != ders.DersId)
+                .MaxAsync(x => (int?)x.SiraNo) ?? 0) + 1;
+
+            ders.SiraNo = yeniSira;
+        }
+        else
+        {
+            // Pasif ders unique sıra çakışması oluşturmaması için negatif sıraya alınır.
+            ders.SiraNo = -ders.DersId;
+        }
+
+        OnayliKursuTaslakYap(ders.Kurs);
+        ders.Kurs.GuncellemeTarihi = DateTime.Now;
+
+        await _context.SaveChangesAsync();
+
+        await AktifDersleriYenidenSiralaAsync(ders.KursId);
+
+        TempData["KursBasari"] = aktifMi
+            ? "Ders başarıyla aktif hale getirildi."
+            : "Ders başarıyla pasif hale getirildi.";
+
         return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
     }
 
-    // =========================
-    // DERS DÜZENLE POST
-    // =========================
-
+    // Eğitmenin mevcut dersi, videosunu ve materyallerini güncellemesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DersDuzenle(DersDuzenleViewModel model)
@@ -244,6 +285,7 @@ public class EgitmenDersController : EgitmenBaseController
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
         }
 
+        // Yeni seçilen bölümün bu kursa ait olup olmadığı kontrol edilir.
         bool bolumBuKursaAitMi = await _context.Bolumler
             .AnyAsync(x => x.BolumId == model.BolumId && x.KursId == ders.KursId);
 
@@ -263,11 +305,14 @@ public class EgitmenDersController : EgitmenBaseController
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
         }
 
+        // Formdan gelen materyal Id listeleri temizlenir ve geçerli hale getirilir.
+        // Sıralama ve tekrar eden Id'ler dikkate alınmaz.
         model.MevcutMateryalIdleri = model.MevcutMateryalIdleri
             .Where(x => x > 0)
             .ToList();
 
         model.MevcutMateryalBasliklari ??= new List<string>();
+
         model.SilinecekMateryalIdleri = model.SilinecekMateryalIdleri
             .Where(x => x > 0)
             .Distinct()
@@ -277,7 +322,9 @@ public class EgitmenDersController : EgitmenBaseController
             .Select(x => x.MateryalId)
             .ToHashSet();
 
+        // Kullanıcının bu derse ait olmayan materyal Id göndermesi engellenir.
         bool gecersizMateryalVarMi =
+            // Mevcut materyal Id'leri arasında dersin materyallerinde olmayan bir Id var mı?
             model.MevcutMateryalIdleri.Any(x => !dersMateryalIdleri.Contains(x)) ||
             model.SilinecekMateryalIdleri.Any(x => !dersMateryalIdleri.Contains(x));
 
@@ -286,7 +333,7 @@ public class EgitmenDersController : EgitmenBaseController
             TempData["KursHata"] = "Materyal bilgisi geçersiz. Sayfayı yenileyip tekrar deneyin.";
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
         }
-
+        // Video kaynağına göre final video URL'si belirlenir. Eğer video değiştirilmeyecekse mevcut URL korunur.
         string finalVideoUrl = ders.VideoUrl;
         var yuklenenFizikselDosyalar = new List<string>();
         var silinecekFizikselDosyalar = new List<string>();
@@ -327,18 +374,18 @@ public class EgitmenDersController : EgitmenBaseController
                     TempData["KursHata"] = "Sadece .mp4 ve .webm formatında video yükleyebilirsiniz.";
                     return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
                 }
-
+                // Yeni video dosyası uploads/ders-videolari klasörüne kaydedilir. 
                 string videoKlasoru = Path.Combine(
                     _webHostEnvironment.WebRootPath,
                     "uploads",
                     "ders-videolari"
                 );
-
+                // Klasör yoksa oluşturulur.
                 if (!Directory.Exists(videoKlasoru))
                 {
                     Directory.CreateDirectory(videoKlasoru);
                 }
-
+                // Yeni dosya adı olarak benzersiz bir GUID kullanılır, böylece aynı isimle dosya yüklenmesi durumunda çakışma olmaz.
                 string dosyaAdi = $"{Guid.NewGuid()}{uzanti}";
                 string fizikselYol = Path.Combine(videoKlasoru, dosyaAdi);
 
@@ -351,11 +398,12 @@ public class EgitmenDersController : EgitmenBaseController
                 finalVideoUrl = $"/uploads/ders-videolari/{dosyaAdi}";
             }
             else
-            {
+            {// Geçersiz video tipi gönderilmesi durumunda işlem iptal edilir.
                 TempData["KursHata"] = "Geçersiz video kaynağı.";
                 return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
             }
 
+            // Video değiştiyse eski local video dosyası sonradan silinmek üzere listeye alınır.
             if (!string.Equals(finalVideoUrl, ders.VideoUrl, StringComparison.Ordinal))
             {
                 DosyaYoluEkleEgerUploadIse(
@@ -367,6 +415,7 @@ public class EgitmenDersController : EgitmenBaseController
 
             var silinecekMateryalIdleri = model.SilinecekMateryalIdleri.ToHashSet();
 
+            // Silinmesi istenen materyaller hem veritabanından silinir hem de dosya listesine eklenir.
             foreach (var materyal in ders.DersMateryalleri
                 .Where(x => silinecekMateryalIdleri.Contains(x.MateryalId))
                 .ToList())
@@ -383,6 +432,7 @@ public class EgitmenDersController : EgitmenBaseController
             var materyallerById = ders.DersMateryalleri
                 .ToDictionary(x => x.MateryalId);
 
+            // Mevcut materyallerin başlıkları güncellenir.
             for (int i = 0; i < model.MevcutMateryalIdleri.Count; i++)
             {
                 int materyalId = model.MevcutMateryalIdleri[i];
@@ -405,6 +455,7 @@ public class EgitmenDersController : EgitmenBaseController
             ders.Aciklama = string.IsNullOrWhiteSpace(model.Aciklama) ? null : model.Aciklama.Trim();
             ders.VideoUrl = finalVideoUrl;
 
+            // Yeni yüklenen materyaller derse eklenir.
             await DersMateryalleriniKaydetAsync(
                 ders.DersId,
                 model.MateryalBasliklari,
@@ -418,6 +469,7 @@ public class EgitmenDersController : EgitmenBaseController
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // Veritabanı işlemi başarılı olduktan sonra eski fiziksel dosyalar silinir.
             YuklenenDosyalariSil(silinecekFizikselDosyalar);
 
             TempData["KursBasari"] = "Ders başarıyla güncellendi.";
@@ -428,19 +480,18 @@ public class EgitmenDersController : EgitmenBaseController
         {
             await transaction.RollbackAsync();
 
+            // Hata olursa bu işlem sırasında yüklenen yeni dosyalar temizlenir.
             YuklenenDosyalariSil(yuklenenFizikselDosyalar);
 
             TempData["KursHata"] = ex is InvalidOperationException
                 ? ex.Message
                 : "Ders güncellenirken bir hata oluştu.";
+
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = ders.KursId });
         }
     }
 
-    // =========================
-    // DERS SİL
-    // =========================
-
+    // Eğitmenin kendi kursundaki dersi silmesini veya pasife almasını sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DersSil(int dersId)
@@ -480,11 +531,13 @@ public class EgitmenDersController : EgitmenBaseController
         int kursId = ders.KursId;
         var kurs = ders.Kurs;
 
+        // Öğrenci ilerlemesi varsa ders tamamen silinmez, sadece pasife alınır.
         bool ogrenciIlerlemesiVarMi = await _context.DersIlerlemeleri
             .AnyAsync(x => x.DersId == dersId);
 
         var silinecekFizikselDosyalar = new List<string>();
 
+        // Ders hiç kullanılmadıysa video ve materyal dosyaları da fiziksel olarak silinebilir.
         if (!ogrenciIlerlemesiVarMi)
         {
             DosyaYoluEkleEgerUploadIse(
@@ -511,9 +564,11 @@ public class EgitmenDersController : EgitmenBaseController
                 .Where(x => x.DersId == dersId)
                 .ToListAsync();
 
+            // Silinen derse bağlı sınav soruları varsa bağlantılar Diğer sistem dersine aktarılır.
             if (soruDersleri.Any())
             {
                 var digerDers = await DigerSistemDersiniGetirVeyaOlusturAsync(kursId);
+
                 var etkilenenSoruIdleri = soruDersleri
                     .Select(x => x.SoruId)
                     .Distinct()
@@ -535,6 +590,7 @@ public class EgitmenDersController : EgitmenBaseController
                         _context.SoruDersleri.Remove(soruDersi);
                         continue;
                     }
+                    // DersId güncellenerek soru Diğer sistem dersine aktarılır.
 
                     soruDersi.DersId = digerDers.DersId;
                     digerDerseBagliSoruIdleri.Add(soruDersi.SoruId);
@@ -548,7 +604,7 @@ public class EgitmenDersController : EgitmenBaseController
                 ders.AktifMi = false;
             }
             else
-            {
+            {// Ders tamamen silinir, önce ders materyalleri silinir.
                 if (ders.DersMateryalleri.Any())
                 {
                     _context.DersMateryalleri.RemoveRange(ders.DersMateryalleri);
@@ -559,6 +615,7 @@ public class EgitmenDersController : EgitmenBaseController
 
             await _context.SaveChangesAsync();
 
+            // Ders silindikten veya pasife alındıktan sonra aktif derslerin sırası düzeltilir.
             await AktifDersleriYenidenSiralaAsync(kursId);
 
             OnayliKursuTaslakYap(kurs);
@@ -592,10 +649,7 @@ public class EgitmenDersController : EgitmenBaseController
         }
     }
 
-    // =========================
-    // DERS SIRALA AJAX
-    // =========================
-
+    // Derslerin AJAX ile yeniden sıralanmasını ve farklı bölümlere taşınmasını sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DersSiralaAjax([FromBody] List<DersSiralaViewModel> dersler)
@@ -609,6 +663,7 @@ public class EgitmenDersController : EgitmenBaseController
             });
         }
 
+        // Geçersiz ders/bölüm Id'leri temizlenir ve tekrar eden ders kayıtları teke düşürülür.
         dersler = dersler
             .Where(x => x.DersId > 0 && x.BolumId > 0)
             .GroupBy(x => x.DersId)
@@ -659,6 +714,7 @@ public class EgitmenDersController : EgitmenBaseController
             .Where(x => x.AktifMi && !x.SistemDersiMi)
             .ToList();
 
+        // Frontend tüm aktif dersleri göndermediyse sıralama işlemi kabul edilmez.
         if (dersler.Count != aktifNormalDersler.Count)
         {
             return BadRequest(new
@@ -672,6 +728,7 @@ public class EgitmenDersController : EgitmenBaseController
             .Select(x => x.BolumId)
             .ToHashSet();
 
+        // Derslerin taşınacağı bölümlerin bu kursa ait olup olmadığı kontrol edilir.
         bool gecersizBolumVarMi = dersler
             .Any(x => !kursBolumIdleri.Contains(x.BolumId));
 
@@ -688,6 +745,7 @@ public class EgitmenDersController : EgitmenBaseController
             .Select(x => x.DersId)
             .ToHashSet();
 
+        // Gönderilen ders listesinin bu kursun aktif normal dersleriyle eşleştiği kontrol edilir.
         bool gecersizDersVarMi = aktifNormalDersler
             .Any(x => !gonderilenDersIdleri.Contains(x.DersId));
 
@@ -700,6 +758,7 @@ public class EgitmenDersController : EgitmenBaseController
             });
         }
 
+        // Sıra numarası çakışmasını önlemek için önce geçici negatif değerler atanır.
         foreach (var ders in aktifNormalDersler)
         {
             ders.SiraNo = -ders.DersId;
@@ -709,6 +768,7 @@ public class EgitmenDersController : EgitmenBaseController
 
         int sira = 1;
 
+        // Frontend'den gelen sıraya göre derslerin bölümü ve sıra numarası güncellenir.
         foreach (var item in dersler)
         {
             var ders = aktifNormalDersler.First(x => x.DersId == item.DersId);
@@ -728,10 +788,7 @@ public class EgitmenDersController : EgitmenBaseController
         });
     }
 
-    // =========================
-    // YARDIMCI METOTLAR
-    // =========================
-
+    // Ders materyallerini fiziksel olarak yükler ve veritabanına kaydeder.
     private async Task DersMateryalleriniKaydetAsync(
         int dersId,
         List<string>? materyalBasliklari,
@@ -776,6 +833,7 @@ public class EgitmenDersController : EgitmenBaseController
 
             string uzanti = Path.GetExtension(dosya.FileName).ToLowerInvariant();
 
+            // Desteklenmeyen materyal dosyaları yüklenmez.
             if (!izinliMateryalUzantilari.Contains(uzanti))
             {
                 throw new InvalidOperationException($"{dosya.FileName} dosya türü desteklenmiyor.");
@@ -789,6 +847,7 @@ public class EgitmenDersController : EgitmenBaseController
                 await dosya.CopyToAsync(fileStream);
             }
 
+            // Hata durumunda geri silinebilmesi için yüklenen dosya listeye eklenir.
             yuklenenFizikselDosyalar.Add(tamYol);
 
             string baslik =
@@ -809,6 +868,7 @@ public class EgitmenDersController : EgitmenBaseController
         }
     }
 
+    // Dosya uzantısına göre materyal tipi Id değerini belirler.
     private static int MateryalTipIdBul(string uzanti)
     {
         return uzanti switch
@@ -825,6 +885,7 @@ public class EgitmenDersController : EgitmenBaseController
         };
     }
 
+    // Silinen derslere bağlı soru ilişkileri için "Diğer" sistem dersini getirir veya oluşturur.
     private async Task<Ders> DigerSistemDersiniGetirVeyaOlusturAsync(int kursId)
     {
         var digerDers = await _context.Dersler
@@ -848,6 +909,7 @@ public class EgitmenDersController : EgitmenBaseController
             throw new InvalidOperationException("Diğer sistem dersini oluşturmak için kursun en az bir bölümü olmalıdır.");
         }
 
+        // Sistem dersinin normal ders sıralamasında görünmemesi için sıra numarası geriye alınır.
         int sistemSiraNo = (await _context.Dersler
             .Where(x => x.KursId == kursId)
             .MinAsync(x => (int?)x.SiraNo) ?? 0) - 1;
@@ -872,14 +934,20 @@ public class EgitmenDersController : EgitmenBaseController
         return digerDers;
     }
 
+    // Aktif normal dersleri 1'den başlayacak şekilde yeniden sıralar.
     private async Task AktifDersleriYenidenSiralaAsync(int kursId)
     {
-        var aktifDersler = await _context.Dersler
-            .Where(x => x.KursId == kursId && x.AktifMi && !x.SistemDersiMi)
-            .OrderBy(x => x.SiraNo)
+        var kursDersleri = await _context.Dersler
+            .Where(x => x.KursId == kursId)
             .ToListAsync();
 
-        foreach (var ders in aktifDersler)
+        var aktifDersler = kursDersleri
+            .Where(x => x.AktifMi && !x.SistemDersiMi)
+            .OrderBy(x => x.SiraNo)
+            .ToList();
+
+        // Unique SiraNo çakışmasını önlemek için kurstaki tüm dersler önce geçici negatif değere alınır.
+        foreach (var ders in kursDersleri)
         {
             ders.SiraNo = -ders.DersId;
         }
@@ -888,6 +956,7 @@ public class EgitmenDersController : EgitmenBaseController
 
         int yeniSira = 1;
 
+        // Sadece aktif normal dersler öğrenciye görünecek şekilde 1, 2, 3 diye sıralanır.
         foreach (var ders in aktifDersler)
         {
             ders.SiraNo = yeniSira++;
@@ -896,6 +965,7 @@ public class EgitmenDersController : EgitmenBaseController
         await _context.SaveChangesAsync();
     }
 
+    // Verilen URL beklenen upload klasöründeyse fiziksel dosya yolunu listeye ekler.
     private void DosyaYoluEkleEgerUploadIse(List<string> dosyaListesi, string? url, string beklenenPrefix)
     {
         if (string.IsNullOrWhiteSpace(url))
@@ -916,10 +986,11 @@ public class EgitmenDersController : EgitmenBaseController
         dosyaListesi.Add(fizikselYol);
     }
 
+    // Verilen fiziksel dosya yollarındaki dosyaları sistemden siler.
     private static void YuklenenDosyalariSil(List<string> dosyaYollari)
     {
         foreach (var dosyaYolu in dosyaYollari)
-        {
+        {  // Dosya var mı kontrol edilir ve varsa silinir.
             if (System.IO.File.Exists(dosyaYolu))
             {
                 System.IO.File.Delete(dosyaYolu);

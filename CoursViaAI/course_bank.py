@@ -1,3 +1,5 @@
+# Sentetik eğitim verisi üretirken kullanılan örnek kurs/bölüm/ders havuzu.
+# Modelin CoursVia alanına yakın cevaplar üretmesi için farklı disiplinlerden kontrollü örnekler içerir.
 KURS_VERITABANI = {
     "yazilim": [
         {
@@ -280,6 +282,7 @@ KURS_VERITABANI = {
     ],
 }
 
+# Ezber yerine inputtaki kurs adını kopyalamayı öğretmek için kullanılan benzersiz kurs kökleri.
 BENZERSIZ_KURS_KOKLERI = [
     "Akademik Okuma",
     "Veri Okuryazarlığı",
@@ -293,6 +296,7 @@ BENZERSIZ_KURS_KOKLERI = [
     "Proje Yönetimi",
 ]
 
+# Sentetik benzersiz bölüm adları için kullanılan kökler.
 BENZERSIZ_BOLUM_KOKLERI = [
     "Temel Kavramlar",
     "Uygulama Adımları",
@@ -302,6 +306,7 @@ BENZERSIZ_BOLUM_KOKLERI = [
     "Değerlendirme Bölümü",
 ]
 
+# Sentetik benzersiz ders adları için kullanılan kökler.
 BENZERSIZ_DERS_KOKLERI = [
     "Giriş İlkeleri",
     "Örnek Çözümleme",

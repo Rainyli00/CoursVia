@@ -102,6 +102,7 @@ export default function PanelLayout({
     // Bildirim ön izleme hata mesajını tutar.
     const [bildirimHata, setBildirimHata] = useState<string | null>(null);
 
+    // Header aksiyonları için cihazda saklanan kullanıcı bilgisi tek kez okunur.
     useEffect(() => {
         async function kullaniciBilgisiniGetir() {
             const storedUser = await getUser();
@@ -111,10 +112,12 @@ export default function PanelLayout({
         kullaniciBilgisiniGetir();
     }, []);
 
+    // Açılışta oturum sürekliliği kontrol edilir, uygulama durum değişimlerinde online bilgisi güncellenir.
     useEffect(() => {
         async function ilkAcilisKontrolu() {
             const appKillSonrasiAcildiMi = await wasAppKilledAfterBackground();
 
+            // Arka planda kapatılıp tekrar açıldıysa güvenlik için yeniden giriş istenir.
             if (appKillSonrasiAcildiMi) {
                 await zorunluOturumKapat();
                 return;
@@ -126,6 +129,7 @@ export default function PanelLayout({
 
         ilkAcilisKontrolu();
 
+        // AppState ile kullanıcı aktifken online, arka plandayken offline olarak işaretlenir.
         const subscription = AppState.addEventListener("change", async (nextState) => {
             if (nextState === "background") {
                 await onlineDurumGonder(false);
@@ -144,6 +148,7 @@ export default function PanelLayout({
         };
     }, []);
 
+    // Birden fazla rolü olan kullanıcılar panel değiştirme ekranına dönebilir.
     const profilDegistirilebilirMi = (kullanici?.roller?.length ?? 0) > 1;
 
     // Bildirim sayısı 99'dan büyükse rozette 99+ gösteriyoruz.

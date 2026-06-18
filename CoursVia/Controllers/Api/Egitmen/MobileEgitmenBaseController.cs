@@ -66,6 +66,8 @@ public abstract class MobileEgitmenBaseController : ControllerBase
     // Eğitmene ait kursları tek tip mobil kurs kartına dönüştüren ortak sorgu.
     protected IQueryable<MobileEgitmenKursItemResponse> KursItemQuery(int kullaniciId)
     {
+        // Eğitmene ait kurslar için ortak liste sorgusu hazırlanır.
+        // IQueryable döndüğü için bu sorgu çağrıldığı yerde filtreleme, sıralama veya sayfalama ile devam ettirilebilir.
         return _context.Kurslar
             .AsNoTracking()
             .Where(x => x.EgitmenId == kullaniciId)
@@ -75,38 +77,46 @@ public abstract class MobileEgitmenBaseController : ControllerBase
                 KursAdi = x.KursAdi,
                 KapakGorselUrl = x.KapakGorselUrl,
 
+                // Kursun mevcut durum bilgisi alınır.
                 DurumId = x.DurumId,
                 DurumAdi = x.Durum.DurumAdi,
 
+                // Kursa aktif kayıtlı öğrenci sayısı hesaplanır.
                 OgrenciSayisi = _context.KursKayitlari
                     .Count(k =>
                         k.KursId == x.KursId &&
                         k.AktifMi),
 
+                // Kursu tamamlayan aktif öğrencilerin sayısı hesaplanır.
                 TamamlayanOgrenciSayisi = _context.KursKayitlari
                     .Count(k =>
                         k.KursId == x.KursId &&
                         k.AktifMi &&
                         k.TamamlandiMi),
 
+                // Kurstaki aktif ve sistem dersi olmayan normal ders sayısı hesaplanır.
                 DersSayisi = _context.Dersler
                     .Count(d =>
                         d.KursId == x.KursId &&
                         d.AktifMi &&
                         !d.SistemDersiMi),
 
+                // Kursa yapılan toplam değerlendirme sayısı alınır.
                 DegerlendirmeSayisi = _context.KursDegerlendirmeleri
                     .Count(d => d.KursId == x.KursId),
 
+                // Kursun ortalama puanı hesaplanır.
+                // Hiç değerlendirme yoksa null gelmemesi için 0 atanır.
                 OrtalamaPuan = _context.KursDegerlendirmeleri
                     .Where(d => d.KursId == x.KursId)
                     .Select(d => (double?)d.Puan)
                     .Average() ?? 0,
 
+                // Kursun oluşturulma ve güncellenme tarihleri mobil tarafa gönderilir.
                 OlusturmaTarihi = x.OlusturmaTarihi,
                 GuncellemeTarihi = x.GuncellemeTarihi
             });
     }
 
-  
+
 }

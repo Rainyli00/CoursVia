@@ -9,17 +9,22 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Öğrencinin kurs keşfetme, kursa kayıt olma, kurslarını listeleme,
+// favori ve değerlendirme işlemlerini yönetir.
 [Authorize(Roles = "Öğrenci")]
 public class OgrenciKursController : Controller
 {
     private readonly AppDbContext _context;
     private readonly BildirimService _bildirimService;
+
     public OgrenciKursController(AppDbContext context, BildirimService bildirimService)
     {
         _context = context;
         _bildirimService = bildirimService;
     }
 
+    // Öğrencinin yayındaki kursları keşfetmesini sağlar.
+    // Arama, kategori filtresi, sıralama ve sayfalama işlemleri burada yapılır.
     [HttpGet]
     public async Task<IActionResult> Kesfet(string? arama, int? kategoriId, string? siralama, int sayfa = 1)
     {
@@ -36,6 +41,7 @@ public class OgrenciKursController : Controller
             sayfa = 1;
         }
 
+        // Keşfet ekranında filtre olarak gösterilecek kategoriler alınır.
         var kategoriler = await _context.Kategoriler
             .AsNoTracking()
             .OrderBy(x => x.KategoriAdi)
@@ -46,10 +52,12 @@ public class OgrenciKursController : Controller
             })
             .ToListAsync();
 
+        // Sadece yayındaki kurslar keşfet ekranında gösterilir.
         var query = _context.Kurslar
             .AsNoTracking()
             .Where(x => x.DurumId == 5);
 
+        // Kurs adı, açıklama veya eğitmen adına göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -59,6 +67,7 @@ public class OgrenciKursController : Controller
                 x.Egitmen.Soyad.Contains(arama));
         }
 
+        // Kategori seçildiyse sadece o kategoriye bağlı kurslar listelenir.
         if (kategoriId.HasValue)
         {
             query = query.Where(x =>
@@ -81,11 +90,13 @@ public class OgrenciKursController : Controller
 
         string[] siralamaSecenekleri = ["oneCikan", "puan", "populer", "enYeni", "ad"];
 
+        // Geçersiz sıralama değeri gelirse varsayılan olarak öne çıkan kullanılır.
         if (string.IsNullOrWhiteSpace(siralama) || !siralamaSecenekleri.Contains(siralama))
         {
             siralama = "oneCikan";
         }
 
+        // Seçilen sıralama türüne göre kurslar sıralanır.
         var queryOrdered = siralama switch
         {
             "puan" => query
@@ -116,6 +127,7 @@ public class OgrenciKursController : Controller
                 .ThenByDescending(x => x.OlusturmaTarihi)
         };
 
+        // Sayfada gösterilecek kurslar ViewModel'e dönüştürülür.
         var kurslar = await queryOrdered
             .Skip((sayfa - 1) * sayfaBasinaKayit)
             .Take(sayfaBasinaKayit)
@@ -150,15 +162,18 @@ public class OgrenciKursController : Controller
                     d.AktifMi &&
                     !d.SistemDersiMi),
 
+                // Öğrencinin bu kursa kayıtlı olup olmadığı kontrol edilir.
                 KayitliMi = _context.KursKayitlari.Any(k =>
                     k.KullaniciId == kullaniciId &&
                     k.KursId == x.KursId &&
                     k.AktifMi),
 
+                // Kursun öğrencinin favorilerinde olup olmadığı kontrol edilir.
                 FavorideMi = _context.Favoriler.Any(f =>
                     f.KullaniciId == kullaniciId &&
                     f.KursId == x.KursId),
 
+                // Kullanıcı aynı zamanda kursun eğitmeniyse kayıt olmasını engellemek için kullanılır.
                 KendiKursuMu = x.EgitmenId == kullaniciId
             })
             .ToListAsync();
@@ -180,6 +195,7 @@ public class OgrenciKursController : Controller
         return View(model);
     }
 
+    // Öğrencinin yayındaki bir kursa kayıt olmasını sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> KayitOl(int id)
@@ -195,18 +211,21 @@ public class OgrenciKursController : Controller
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Öğrenci sadece yayındaki kurslara kayıt olabilir.
         if (kurs.DurumId != 5)
         {
             TempData["OgrenciHata"] = "Sadece yayındaki kurslara kayıt olabilirsiniz.";
             return RedirectToAction(nameof(Kesfet));
         }
 
+        // Eğitmen kendi kursuna öğrenci olarak kayıt olamaz.
         if (kurs.EgitmenId == kullaniciId)
         {
             TempData["OgrenciHata"] = "Kendi kursunuza öğrenci olarak kayıt olamazsınız.";
             return RedirectToAction(nameof(Kesfet));
         }
 
+        // Aynı kursa tekrar aktif kayıt yapılması engellenir.
         bool aktifKayitVar = await _context.KursKayitlari
             .AnyAsync(x =>
                 x.KullaniciId == kullaniciId &&
@@ -236,7 +255,8 @@ public class OgrenciKursController : Controller
         return RedirectToAction("Izle", "OgrenciDers", new { kursId = id });
     }
 
-
+    // Öğrencinin kurs kaydını iptal eder.
+    // Kayıt iptal edilirken bu kursa ait ilerleme, sınav, cevap, sertifika, favori ve değerlendirme kayıtları da temizlenir.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> KayitIptal(int id, string? returnUrl = null)
@@ -264,34 +284,35 @@ public class OgrenciKursController : Controller
 
         try
         {
-            // Bu kayıt üzerinden girilen sınavlar
+            // Bu kurs kaydı üzerinden girilen sınav katılım Id değerleri alınır.
             var sinavKatilimIdleri = await _context.SinavKatilimlari
                 .Where(x => x.KursKayitId == kursKaydi.KursKayitId)
                 .Select(x => x.SinavKatilimId)
                 .ToListAsync();
 
-            // Önce öğrenci cevapları silinir
+            // Önce öğrenci cevapları silinir.
+            // Çünkü cevaplar sınav katılım kayıtlarına bağlıdır.
             var ogrenciCevaplari = await _context.OgrenciCevaplari
                 .Where(x => sinavKatilimIdleri.Contains(x.SinavKatilimId))
                 .ToListAsync();
 
             _context.OgrenciCevaplari.RemoveRange(ogrenciCevaplari);
 
-            // Sonra sınav katılımları silinir
+            // Cevaplardan sonra sınav katılım kayıtları silinir.
             var sinavKatilimlari = await _context.SinavKatilimlari
                 .Where(x => x.KursKayitId == kursKaydi.KursKayitId)
                 .ToListAsync();
 
             _context.SinavKatilimlari.RemoveRange(sinavKatilimlari);
 
-            // Ders ilerlemeleri silinir
+            // Ders ilerleme kayıtları silinir.
             var dersIlerlemeleri = await _context.DersIlerlemeleri
                 .Where(x => x.KursKayitId == kursKaydi.KursKayitId)
                 .ToListAsync();
 
             _context.DersIlerlemeleri.RemoveRange(dersIlerlemeleri);
 
-            // Sertifika varsa silinir
+            // Bu kursa ait sertifika varsa silinir.
             var sertifikalar = await _context.Sertifikalar
                 .Where(x =>
                     x.KullaniciId == kullaniciId &&
@@ -300,7 +321,7 @@ public class OgrenciKursController : Controller
 
             _context.Sertifikalar.RemoveRange(sertifikalar);
 
-            // Favori varsa silinir
+            // Kurs favorilere eklenmişse favori kaydı silinir.
             var favoriler = await _context.Favoriler
                 .Where(x =>
                     x.KullaniciId == kullaniciId &&
@@ -309,7 +330,7 @@ public class OgrenciKursController : Controller
 
             _context.Favoriler.RemoveRange(favoriler);
 
-            // Değerlendirme varsa silinir
+            // Öğrencinin bu kursa yaptığı değerlendirme varsa silinir.
             var degerlendirmeler = await _context.KursDegerlendirmeleri
                 .Where(x =>
                     x.KullaniciId == kullaniciId &&
@@ -318,7 +339,7 @@ public class OgrenciKursController : Controller
 
             _context.KursDegerlendirmeleri.RemoveRange(degerlendirmeler);
 
-            // En son kurs kaydı silinir
+            // Tüm bağlı kayıtlar temizlendikten sonra en son kurs kaydı silinir.
             _context.KursKayitlari.Remove(kursKaydi);
 
             await _context.SaveChangesAsync();
@@ -341,6 +362,7 @@ public class OgrenciKursController : Controller
         return RedirectToAction(nameof(Kurslarim));
     }
 
+    // Öğrencinin kayıtlı olduğu kursları filtreleme, arama, sıralama ve sayfalama ile listeler.
     [HttpGet]
     public async Task<IActionResult> Kurslarim(
         string? arama,
@@ -361,6 +383,7 @@ public class OgrenciKursController : Controller
             ? "tum"
             : durum.Trim().ToLower();
 
+        // Geçersiz durum filtresi gelirse tüm kurslar gösterilir.
         if (durum != "tum" &&
             durum != "devam" &&
             durum != "tamamlanan" &&
@@ -373,6 +396,7 @@ public class OgrenciKursController : Controller
             ? kategoriId
             : null;
 
+        // Eski sıralama parametreleri yeni karşılıklara çevrilir.
         siralama = siralama switch
         {
             "kayitYeni" => "guncel",
@@ -401,6 +425,7 @@ public class OgrenciKursController : Controller
             sayfa = 1;
         }
 
+        // Öğrencinin kayıtlı olduğu kurslarda bulunan kategoriler filtre için hazırlanır.
         var kategoriler = await _context.KursKategorileri
             .AsNoTracking()
             .Where(x =>
@@ -421,7 +446,7 @@ public class OgrenciKursController : Controller
             .OrderBy(x => x.KategoriAdi)
             .ToListAsync();
 
-        // Üst kartlar için tüm aktif kayıtlı kurslar
+        // Üst kartlarda gösterilecek genel kurs özetleri alınır.
         var tumKursOzetleri = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -450,6 +475,7 @@ public class OgrenciKursController : Controller
 
         int ortalamaIlerlemeYuzdesi = 0;
 
+        // Öğrencinin tüm kurslarındaki ortalama ilerleme yüzdesi hesaplanır.
         if (tumKursOzetleri.Any())
         {
             var ilerlemeler = tumKursOzetleri.Select(x =>
@@ -471,6 +497,7 @@ public class OgrenciKursController : Controller
                 x.KullaniciId == kullaniciId &&
                 x.AktifMi);
 
+        // Kurs adı, eğitmen adı veya kategori adına göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -480,12 +507,14 @@ public class OgrenciKursController : Controller
                 x.Kurs.KursKategorileri.Any(k => k.Kategori.KategoriAdi.Contains(arama)));
         }
 
+        // Kategori filtresi uygulanır.
         if (kategoriId.HasValue)
         {
             query = query.Where(x =>
                 x.Kurs.KursKategorileri.Any(k => k.KategoriId == kategoriId.Value));
         }
 
+        // Durum filtresine göre devam eden, tamamlanan veya favori kurslar listelenir.
         if (durum == "devam")
         {
             query = query.Where(x => !x.TamamlandiMi);
@@ -516,6 +545,7 @@ public class OgrenciKursController : Controller
             sayfa = toplamSayfa;
         }
 
+        // Öğrencinin kursları seçilen sıralama türüne göre sıralanır.
         var queryOrdered = siralama switch
         {
             "eski" => query
@@ -549,6 +579,7 @@ public class OgrenciKursController : Controller
                 .ThenBy(x => x.Kurs.KursAdi)
         };
 
+        // Sayfadaki kurslar ViewModel'e aktarılır.
         var kurslar = await queryOrdered
             .Skip((sayfa - 1) * sayfaBasinaKayit)
             .Take(sayfaBasinaKayit)
@@ -613,6 +644,7 @@ public class OgrenciKursController : Controller
             .Select(x => x.KursKayitId)
             .ToList();
 
+        // Sayfadaki kurslara ait sınav katılımları alınır.
         var sinavKatilimlari = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x => kursKayitIdleri.Contains(x.KursKayitId))
@@ -626,6 +658,7 @@ public class OgrenciKursController : Controller
             })
             .ToListAsync();
 
+        // Her kurs kaydı için en son sınav sonucu bulunur.
         var sonSinavlar = sinavKatilimlari
             .GroupBy(x => x.KursKayitId)
             .ToDictionary(
@@ -633,6 +666,7 @@ public class OgrenciKursController : Controller
                 x => x.First()
             );
 
+        // Kurs ilerleme yüzdesi ve son sınav durumu hesaplanır.
         foreach (var kurs in kurslar)
         {
             kurs.IlerlemeYuzdesi = kurs.ToplamDersSayisi == 0
@@ -656,6 +690,7 @@ public class OgrenciKursController : Controller
             }
         }
 
+        // Kurslarım ekranında kullanılacak tüm bilgiler ViewModel'e aktarılır.
         var model = new OgrenciKurslarimViewModel
         {
             Kurslar = kurslar,
@@ -680,12 +715,14 @@ public class OgrenciKursController : Controller
         return View(model);
     }
 
+    // Öğrencinin kendi kurs değerlendirmesini silmesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DegerlendirmeSil(int kursId, string? returnUrl = null)
     {
         int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        // Öğrenci sadece aktif kayıtlı olduğu kursun değerlendirmesini silebilir.
         bool aktifKayitVar = await _context.KursKayitlari
             .AsNoTracking()
             .AnyAsync(x =>
@@ -735,12 +772,15 @@ public class OgrenciKursController : Controller
         return RedirectToAction(nameof(Kurslarim));
     }
 
+    // Öğrencinin kayıtlı olduğu kursa puan ve yorum vermesini sağlar.
+    // Daha önce değerlendirme varsa güncellenir, yoksa yeni kayıt oluşturulur.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Degerlendir(int kursId, int puan, string? yorumMetni, string? returnUrl = null)
     {
         int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        // Puanın 1 ile 5 arasında olması gerekir.
         if (puan < 1 || puan > 5)
         {
             TempData["OgrenciHata"] = "Puan 1 ile 5 arasında olmalıdır.";
@@ -755,6 +795,7 @@ public class OgrenciKursController : Controller
 
         byte puanByte = (byte)puan;
 
+        // Öğrencinin kursa aktif kayıtlı olup olmadığı kontrol edilir.
         bool aktifKayitVar = await _context.KursKayitlari
             .AsNoTracking()
             .AnyAsync(x =>
@@ -774,6 +815,7 @@ public class OgrenciKursController : Controller
             return RedirectToAction(nameof(Kurslarim));
         }
 
+        // Bildirim göndermek için kurs adı ve eğitmen Id bilgisi alınır.
         var kursBilgisi = await _context.Kurslar
             .AsNoTracking()
             .Where(x => x.KursId == kursId)
@@ -807,6 +849,7 @@ public class OgrenciKursController : Controller
 
         if (mevcutDegerlendirme == null)
         {
+            // İlk kez değerlendirme yapılıyorsa yeni değerlendirme kaydı oluşturulur.
             var yeniDegerlendirme = new KursDegerlendirmesi
             {
                 KullaniciId = kullaniciId,
@@ -818,6 +861,7 @@ public class OgrenciKursController : Controller
 
             _context.KursDegerlendirmeleri.Add(yeniDegerlendirme);
 
+            // Eğitmene yeni değerlendirme yapıldığına dair bildirim gönderilir.
             await _bildirimService.BildirimOlusturAsync(
                 kursBilgisi.EgitmenId,
                 "Bilgilendirme",
@@ -829,6 +873,7 @@ public class OgrenciKursController : Controller
         }
         else
         {
+            // Daha önce değerlendirme varsa puan ve yorum güncellenir.
             mevcutDegerlendirme.Puan = puanByte;
             mevcutDegerlendirme.YorumMetni = yorumMetni;
             mevcutDegerlendirme.DegerlendirmeTarihi = DateTime.Now;
@@ -838,20 +883,23 @@ public class OgrenciKursController : Controller
 
         await _context.SaveChangesAsync();
 
+        // Kullanıcıyı yönlendirmek için returnUrl parametresi kontrol edilir.
         if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
         {
             return Redirect(returnUrl);
         }
-
+        // Eğer returnUrl geçerli değilse varsayılan olarak Kurslarim sayfasına yönlendirilir.
         return RedirectToAction(nameof(Kurslarim));
     }
 
+    // Öğrencinin kayıtlı olduğu kursu favorilere eklemesini veya favorilerden çıkarmasını sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> FavoriDegistir(int id, string? returnUrl = null)
     {
         int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        // Öğrenci sadece kayıtlı olduğu kursları favorilere ekleyebilir.
         bool aktifKayitVar = await _context.KursKayitlari
             .AsNoTracking()
             .AnyAsync(x =>
@@ -878,6 +926,7 @@ public class OgrenciKursController : Controller
 
         if (favori == null)
         {
+            // Favori kaydı yoksa yeni favori eklenir.
             var yeniFavori = new Favori
             {
                 KullaniciId = kullaniciId,
@@ -891,6 +940,7 @@ public class OgrenciKursController : Controller
         }
         else
         {
+            // Favori kaydı varsa kaldırılır.
             _context.Favoriler.Remove(favori);
 
             TempData["OgrenciBasari"] = "Kurs favorilerden çıkarıldı.";
@@ -906,6 +956,7 @@ public class OgrenciKursController : Controller
         return RedirectToAction(nameof(Kurslarim));
     }
 
+    // Öğrencinin kurs detay sayfasını görüntülemesini sağlar.
     [HttpGet]
     public async Task<IActionResult> Detay(int id, int yorumSayfa = 1)
     {
@@ -918,6 +969,7 @@ public class OgrenciKursController : Controller
             yorumSayfa = 1;
         }
 
+        // Kurs detayında gösterilecek kurs bilgileri ilişkili verilerle birlikte alınır.
         var kurs = await _context.Kurslar
             .AsNoTracking()
             .Include(x => x.Egitmen)
@@ -937,12 +989,14 @@ public class OgrenciKursController : Controller
             return RedirectToAction(nameof(Kesfet));
         }
 
+        // Güncellenen kurs öğrenciye detay olarak gösterilmez.
         if (kurs.DurumId == 7)
         {
             TempData["OgrenciHata"] = "Bu kurs şu anda güncelleniyor.";
             return RedirectToAction(nameof(Kurslarim));
         }
 
+        // Detay sayfasında sadece yayındaki kurslar gösterilir.
         if (kurs.DurumId != 5)
         {
             TempData["OgrenciHata"] = "Kurs bulunamadı veya yayında değil.";
@@ -980,6 +1034,7 @@ public class OgrenciKursController : Controller
             ? Math.Round(await degerlendirmeQuery.AverageAsync(x => x.Puan), 1)
             : 0;
 
+        // Kurs değerlendirmeleri sayfalı şekilde alınır.
         var degerlendirmeler = await degerlendirmeQuery
             .OrderByDescending(x => x.DegerlendirmeTarihi)
             .Skip((yorumSayfa - 1) * yorumSayfaBasinaKayit)
@@ -994,6 +1049,7 @@ public class OgrenciKursController : Controller
             })
             .ToListAsync();
 
+        // Kurs detay sayfasında gösterilecek tüm bilgiler ViewModel'e aktarılır.
         var model = new KursDetayViewModel
         {
             KursId = kurs.KursId,

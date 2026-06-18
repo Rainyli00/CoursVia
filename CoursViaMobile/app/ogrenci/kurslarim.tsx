@@ -26,24 +26,29 @@ import type {
 // Öğrencinin kayıtlı olduğu tüm kursları gösteren ekran.
 // Bu ekranda arama, kategori dropdown, sayfalama, detay, yorum/puan ve kayıt iptal işlemleri bulunur.
 export default function OgrenciKurslarimScreen() {
+    // Liste verisi ve kategori filtresinde kullanılacak seçenekler.
     const [kurslar, setKurslar] = useState<MobileOgrenciKursItem[]>([]);
     const [kategoriler, setKategoriler] = useState<MobileOgrenciKategoriSecenek[]>(
         []
     );
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış aktif filtredir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
     const [kategoriId, setKategoriId] = useState<number | null>(null);
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
     const [toplamKayit, setToplamKayit] = useState(0);
     const [toplamSayfa, setToplamSayfa] = useState(1);
 
+    // İlk yükleme, pull-to-refresh ve hata ekranı ayrı yönetilir.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Yorum modalında düzenlenecek kurs ve form değerleri.
     const [yorumModalAcik, setYorumModalAcik] = useState(false);
     const [seciliKurs, setSeciliKurs] = useState<MobileOgrenciKursItem | null>(
         null
@@ -53,14 +58,17 @@ export default function OgrenciKurslarimScreen() {
     const [yorumMetni, setYorumMetni] = useState("");
     const [yorumGonderiliyor, setYorumGonderiliyor] = useState(false);
 
+    // Kayıt iptalinde sadece ilgili kurs kartının butonu loading olur.
     const [iptalEdilenKursKayitId, setIptalEdilenKursKayitId] = useState<
         number | null
     >(null);
 
+    // Ekran açıldığında öğrencinin kayıtlı kursları varsayılan filtrelerle çekilir.
     useEffect(() => {
         kurslariGetir();
     }, []);
 
+    // Özet kartları mevcut sayfadaki kursların durumundan hesaplanır.
     const ozet = useMemo(() => {
         const tamamlananKursSayisi = kurslar.filter(
             (x) => x.kursTamamlandiMi
@@ -88,6 +96,7 @@ export default function OgrenciKurslarimScreen() {
         };
     }, [kurslar, toplamKayit]);
 
+    // Listeyi API'den getirir; override ile filtre state'i güncellenmeden istek atılabilir.
     async function kurslariGetir(
         refreshMi = false,
         override?: {
@@ -149,10 +158,12 @@ export default function OgrenciKurslarimScreen() {
         }
     }
 
+    // Karttan kayıtlı kurs detay ekranına gider.
     function kursDetayAc(kursKayitId: number) {
         router.push(`/ogrenci/kurs-detay/${kursKayitId}` as any);
     }
 
+    // Arama uygulandığında liste ilk sayfadan tekrar yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -168,6 +179,7 @@ export default function OgrenciKurslarimScreen() {
         });
     }
 
+    // Arama ve kategori filtresini sıfırlayıp varsayılan listeye döner.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -183,6 +195,7 @@ export default function OgrenciKurslarimScreen() {
         });
     }
 
+    // Kategori değiştiğinde aktif arama korunur ve sayfa bire çekilir.
     function kategoriSec(yeniKategoriId: number | null) {
         Keyboard.dismiss();
 
@@ -199,6 +212,7 @@ export default function OgrenciKurslarimScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -213,6 +227,7 @@ export default function OgrenciKurslarimScreen() {
         });
     }
 
+    // Var olan değerlendirme varsa modal mevcut puan ve yorumla açılır.
     function yorumModalAc(kurs: MobileOgrenciKursItem) {
         setSeciliKurs(kurs);
         setPuan(kurs.kendiPuan ?? 5);
@@ -220,6 +235,7 @@ export default function OgrenciKurslarimScreen() {
         setYorumModalAcik(true);
     }
 
+    // Gönderim sırasında modal kapatılmaz; form state'i ancak güvenli durumda temizlenir.
     function yorumModalKapat() {
         if (yorumGonderiliyor) {
             return;
@@ -231,6 +247,7 @@ export default function OgrenciKurslarimScreen() {
         setYorumMetni("");
     }
 
+    // Öğrencinin kurs değerlendirmesini kaydeder ve listeyi güncel verilerle yeniler.
     async function yorumGonder() {
         if (!seciliKurs) {
             return;
@@ -275,6 +292,7 @@ export default function OgrenciKurslarimScreen() {
         }
     }
 
+    // Kayıt iptali ilerlemeyi etkileyebileceği için kullanıcıdan onay alınır.
     function kayitIptalOnayiAl(kurs: MobileOgrenciKursItem) {
         Alert.alert(
             "Kayıt İptal",
@@ -293,6 +311,7 @@ export default function OgrenciKurslarimScreen() {
         );
     }
 
+    // Kayıt iptali başarılı olursa mevcut liste yeniden çekilir.
     async function kayitIptalEt(kurs: MobileOgrenciKursItem) {
         try {
             setIptalEdilenKursKayitId(kurs.kursKayitId);
@@ -408,6 +427,7 @@ export default function OgrenciKurslarimScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -417,6 +437,7 @@ function LoadingState() {
     );
 }
 
+// Liste alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -436,6 +457,7 @@ function ErrorState({
     );
 }
 
+// Üstteki özet sayaç kartı.
 function SummaryCard({
     title,
     value,
@@ -451,6 +473,7 @@ function SummaryCard({
     );
 }
 
+// Arama ve kategori filtresini tek panelde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -523,6 +546,7 @@ function FilterPanel({
     );
 }
 
+// Kayıtlı kursların kategori filtresini modal dropdown olarak gösterir.
 function CategoryDropdown({
     kategoriler,
     kategoriId,
@@ -540,6 +564,7 @@ function CategoryDropdown({
         ? seciliKategori.kategoriAdi
         : "Tüm Kategoriler";
 
+    // null seçimi tüm kategoriler filtresine döner.
     function sec(id: number | null) {
         setModalAcik(false);
         kategoriSec(id);
@@ -623,6 +648,7 @@ function CategoryDropdown({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -658,6 +684,7 @@ function DropdownItem({
     );
 }
 
+// Kayıtlı kurs kartı; detay, değerlendirme ve kayıt iptal aksiyonlarını gösterir.
 function KursKart({
     kurs,
     kursDetayAc,
@@ -818,6 +845,7 @@ function KursKart({
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -876,6 +904,7 @@ function PaginationControls({
     );
 }
 
+// Kursa puan ve yorum vermek için kullanılan modal formu.
 function YorumModal({
     acik,
     kurs,
@@ -974,6 +1003,7 @@ function YorumModal({
     );
 }
 
+// Arama veya kategori filtresine uygun kayıtlı kurs yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

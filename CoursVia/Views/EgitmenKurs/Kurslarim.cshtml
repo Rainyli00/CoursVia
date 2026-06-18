@@ -412,6 +412,25 @@
                                         <!-- Sağ Butonlar -->
                                         <div class="flex flex-wrap gap-2 xl:justify-end">
 
+                                            @if (kurs.DurumId != 4)
+                                            {
+                                                <form asp-controller="EgitmenKurs"
+                                                      asp-action="KursDurumDegistir"
+                                                      asp-route-id="@kurs.KursId"
+                                                      method="post"
+                                                      class="js-swal-form inline-flex"
+                                                      data-swal-title="@(kurs.DurumId == 2 ? "Kursu aktif etmek istiyor musunuz?" : "Kursu pasife almak istiyor musunuz?")"
+                                                      data-swal-text="@(kurs.DurumId == 2 ? "Kurs yayınlanmak üzere admin onayına gönderilecektir." : "Pasif kurslar öğrenciler tarafından bulunamaz ancak kayıtlı öğrenciler erişmeye devam edebilir.")"
+                                                      data-swal-confirm="@(kurs.DurumId == 2 ? "Aktif Et" : "Pasife Al")"
+                                                      data-swal-confirm-color="@(kurs.DurumId == 2 ? "#10b981" : "#f59e0b")">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit"
+                                                            class="btn btn-sm @(kurs.DurumId == 2 ? "btn-outline btn-success" : "btn-outline btn-warning") rounded-xl">
+                                                        @(kurs.DurumId == 2 ? "Aktif Et" : "Pasife Al")
+                                                    </button>
+                                                </form>
+                                            }
+
                                             @if (kurs.DurumId == 5)
                                             {
                                                 <a asp-controller="EgitmenKurs"
@@ -529,7 +548,7 @@
                                                 <button type="button"
                                                         class="btn btn-sm rounded-xl border-slate-200 bg-slate-100 text-slate-400"
                                                         disabled
-                                                        title="Onay bekleyen kurs düzenlenemez.">
+                                                        title="@(kurs.DurumId == 2 ? "Pasif kurslar düzenlenemez, önce aktif etmelisiniz." : "Bu durumdaki kurs düzenlenemez.")">
                                                     Düzenle
                                                 </button>
                                             }

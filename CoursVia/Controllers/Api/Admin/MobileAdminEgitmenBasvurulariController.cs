@@ -40,7 +40,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
     // 4 = Onay Bekliyor
     // 6 = Reddedildi
     // 8 = Onaylandı
-    // GET /api/mobile/admin/egitmen-basvurulari?arama=mehmet&durumId=4&sayfa=1&sayfaBasinaKayit=10
+    
     [HttpGet]
     public async Task<ActionResult<MobileAdminEgitmenBasvurulariResponse>> Basvurular(
         [FromQuery] string? arama,
@@ -48,6 +48,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
         [FromQuery] int sayfa = 1,
         [FromQuery] int sayfaBasinaKayit = 10)
     {
+        // Arama, durum ve sayfalama değerleri mobil liste için normalize edilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -64,6 +65,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Başvuru filtresinde yalnızca bekleyen, reddedilen ve onaylanan durumlar gösterilir.
         var durumlar = await _context.Durumlar
             .AsNoTracking()
             .Where(x =>
@@ -80,12 +82,14 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
             })
             .ToListAsync();
 
+        // Asıl başvuru listesi eğitmen profilleri üzerinden oluşturulur.
         var query = _context.EgitmenProfilleri
             .AsNoTracking()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama kullanıcı bilgileri ve uzmanlık alanı üzerinden yapılır.
             query = query.Where(x =>
                 x.Kullanici.Ad.Contains(arama) ||
                 x.Kullanici.Soyad.Contains(arama) ||
@@ -106,6 +110,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
             sayfa = toplamSayfa;
         }
 
+        // Son işlem tarihi, eğitmen onay geçmişindeki en güncel kayıt üzerinden alınır.
         var basvurularHamListe = await query
             .OrderByDescending(x => x.EgitmenProfilId)
             .Skip((sayfa - 1) * sayfaBasinaKayit)
@@ -169,6 +174,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
     [HttpGet("{egitmenProfilId:int}")]
     public async Task<ActionResult<MobileAdminEgitmenBasvuruDetayResponse>> Detay(int egitmenProfilId)
     {
+        // Başvuru detayı, profil bilgileri ve son karar açıklamasıyla birlikte hazırlanır.
         var basvuru = await _context.EgitmenProfilleri
             .AsNoTracking()
             .Where(x => x.EgitmenProfilId == egitmenProfilId)
@@ -258,6 +264,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
     {
         int adminId = KullaniciIdGetir();
 
+        // Profil kullanıcıyla birlikte alınır; mail ve bildirim için kullanıcı bilgisi gerekir.
         var profil = await _context.EgitmenProfilleri
             .Include(x => x.Kullanici)
             .FirstOrDefaultAsync(x => x.EgitmenProfilId == egitmenProfilId);
@@ -280,6 +287,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
             });
         }
 
+        // Açıklama boşsa mobil admin için varsayılan karar notu kullanılır.
         string aciklama = string.IsNullOrWhiteSpace(request?.Aciklama)
             ? "Mobil admin üzerinden eğitmen başvurusu onaylandı."
             : request.Aciklama.Trim();
@@ -297,6 +305,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
 
         try
         {
+            // Başvuru onaylanır ve kullanıcıya eğitmen rolü gerekiyorsa eklenir.
             profil.DurumId = 8;
 
             bool egitmenRoluVarMi = await _context.KullaniciRolleri
@@ -313,6 +322,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
                 });
             }
 
+            // Karar geçmişi, kullanıcı bildirimi ve admin logu aynı transaction içinde kaydedilir.
             _context.EgitmenOnaylari.Add(new EgitmenOnayi
             {
                 KullaniciId = profil.KullaniciId,
@@ -349,6 +359,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
             });
         }
 
+        // Mail transaction dışında gönderilir; mail hatası kararın geri alınmasına sebep olmaz.
         bool mailGonderildi = await OnayMailiGonderAsync(profil, adminId);
 
         return Ok(new MobileAdminIslemResponse
@@ -373,6 +384,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
     {
         int adminId = KullaniciIdGetir();
 
+        // Red işleminde açıklama zorunludur; kullanıcıya da bu açıklama iletilir.
         string? aciklama = string.IsNullOrWhiteSpace(request?.Aciklama)
             ? null
             : request.Aciklama.Trim();
@@ -395,6 +407,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
             });
         }
 
+        // Profil kullanıcıyla birlikte alınır; red bildirimi ve maili için kullanıcı bilgisi gerekir.
         var profil = await _context.EgitmenProfilleri
             .Include(x => x.Kullanici)
             .FirstOrDefaultAsync(x => x.EgitmenProfilId == egitmenProfilId);
@@ -430,6 +443,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
 
         try
         {
+            // Başvuru reddedilir ve karar geçmişine red kaydı eklenir.
             profil.DurumId = 6;
 
             _context.EgitmenOnaylari.Add(new EgitmenOnayi
@@ -441,6 +455,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
                 IslemTarihi = DateTime.Now
             });
 
+            // Red açıklaması bildirim metnine eklenerek kullanıcıya net geri bildirim verilir.
             string bildirimMesaji = string.IsNullOrWhiteSpace(aciklama)
                 ? "Eğitmen başvurunuz admin tarafından reddedildi."
                 : $"Eğitmen başvurunuz admin tarafından reddedildi. Red sebebi: {aciklama}";
@@ -472,6 +487,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
             });
         }
 
+        // Mail gönderimi transaction sonrasında denenir; başarısızsa işlem başarılı kalır ama mesaj değişir.
         bool mailGonderildi = await RedMailiGonderAsync(profil, aciklama, adminId);
 
         return Ok(new MobileAdminIslemResponse
@@ -487,6 +503,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
     {
         try
         {
+            // Kullanıcıya gönderilecek onay maili HTML şablonundan üretilir.
             string adSoyad = $"{profil.Kullanici.Ad} {profil.Kullanici.Soyad}".Trim();
 
             await _emailService.SendEmailAsync(
@@ -499,6 +516,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
         }
         catch (Exception ex)
         {
+            // Mail hatası admin loguna yazılır ve ana işlem başarısız sayılmaz.
             await _adminLogService.KaydetAsync(
                 adminId,
                 AdminLogService.SistemKullanici,
@@ -515,6 +533,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
     {
         try
         {
+            // Red mailinde kullanıcının adı ve red açıklaması HTML şablonuna yerleştirilir.
             string adSoyad = $"{profil.Kullanici.Ad} {profil.Kullanici.Soyad}".Trim();
 
             await _emailService.SendEmailAsync(
@@ -527,6 +546,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
         }
         catch (Exception ex)
         {
+            // Mail hatası admin loguna yazılır ve red kararı geri alınmaz.
             await _adminLogService.KaydetAsync(
                 adminId,
                 AdminLogService.SistemKullanici,
@@ -541,6 +561,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
 
     private static string OnayMailHtmlOlustur(string adSoyad)
     {
+        // Mail HTML'ine kullanıcı verisi basmadan önce encode edilir.
         string guvenliAdSoyad = WebUtility.HtmlEncode(adSoyad);
 
         return $@"
@@ -570,6 +591,7 @@ public class MobileAdminEgitmenBasvurulariController : MobileAdminBaseController
 
     private static string RedMailHtmlOlustur(string adSoyad, string redAciklamasi)
     {
+        // Mail HTML'ine basılan kullanıcı adı ve açıklama XSS riskine karşı encode edilir.
         string guvenliAdSoyad = WebUtility.HtmlEncode(adSoyad);
         string guvenliAciklama = WebUtility.HtmlEncode(redAciklamasi);
 

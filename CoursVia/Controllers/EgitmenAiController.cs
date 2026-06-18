@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Controllers;
 
+// Eğitmen panelinde AI destekli kurs analizi ve öneri işlemlerini yönetir.
 [Authorize(Roles = "Eğitmen")]
 public class EgitmenAiController : EgitmenBaseController
 {
@@ -23,6 +24,7 @@ public class EgitmenAiController : EgitmenBaseController
         _aiOneriService = aiOneriService;
     }
 
+    // Eğitmenin kurslarını ve daha önce oluşturulan AI önerilerini listeler.
     [HttpGet]
     public async Task<IActionResult> Oneriler(CancellationToken cancellationToken = default)
     {
@@ -55,7 +57,6 @@ public class EgitmenAiController : EgitmenBaseController
                 OneriTipAdi = o.OneriTipi.OneriTipAdi,
                 OneriMetni = o.OneriMetni,
                 OlusturmaTarihi = o.OlusturmaTarihi
-            
             })
             .ToListAsync(cancellationToken);
 
@@ -68,6 +69,7 @@ public class EgitmenAiController : EgitmenBaseController
         return View(viewModel);
     }
 
+    // Seçilen kurs için AI analizini AJAX isteğiyle çalıştırır ve sonucu JSON olarak döndürür.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> KursAnaliziAjax(
@@ -94,15 +96,18 @@ public class EgitmenAiController : EgitmenBaseController
             });
         }
 
+        // AI modeline gönderilecek kurs performans verileri hazırlanır.
         var aiVerisi = await EgitmenAiVerisiHazirlaAsync(
             kurs,
             cancellationToken);
 
+        // Seçilen AI modeliyle eğitmen kurs analizi yapılır.
         var sonuclar = await _aiAnalizService.EgitmenKursAnaliziAsync(
             aiVerisi,
             modelTipi,
             cancellationToken);
 
+        // Üretilen AI önerileri daha sonra görüntülenebilmesi için veritabanına kaydedilir.
         await _aiOneriService.OnerileriKaydetAsync(
             kullaniciId: egitmenId,
             kursId: kurs.KursId,
@@ -129,6 +134,7 @@ public class EgitmenAiController : EgitmenBaseController
         });
     }
 
+    // Eğitmenin daha önce oluşturduğu AI önerisini siler.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OneriSil(int oneriId, CancellationToken cancellationToken = default)
@@ -148,66 +154,8 @@ public class EgitmenAiController : EgitmenBaseController
         return Json(new { basarili = true, mesaj = "Öneri silindi." });
     }
 
-    [HttpGet]
-    public async Task<IActionResult> KursAnalizi(
-        int kursId,
-        AiModelTipi modelTipi = AiModelTipi.Gemini,
-        CancellationToken cancellationToken = default)
-    {
-        var egitmenId = AktifKullaniciId;
 
-        var kurs = await _context.Kurslar
-            .AsNoTracking()
-            .Include(k => k.Sinav)
-            .FirstOrDefaultAsync(k =>
-                k.KursId == kursId &&
-                k.EgitmenId == egitmenId,
-                cancellationToken);
-
-        if (kurs == null)
-        {
-            TempData["Hata"] = "Kurs bulunamadı veya bu kurs için yetkiniz yok.";
-            return RedirectToAction("Kurslarim", "EgitmenKurs");
-        }
-
-        var aiVerisi = await EgitmenAiVerisiHazirlaAsync(
-            kurs,
-            cancellationToken);
-
-        var sonuclar = await _aiAnalizService.EgitmenKursAnaliziAsync(
-            aiVerisi,
-            modelTipi,
-            cancellationToken);
-
-        await _aiOneriService.OnerileriKaydetAsync(
-            kullaniciId: egitmenId,
-            kursId: kurs.KursId,
-            oneriTipAdi: "Eğitmen Kurs Analizi",
-            sonuclar: sonuclar,
-            cancellationToken: cancellationToken);
-
-        var viewModel = new AiKarsilastirmaViewModel
-        {
-            IstekTipi = AiIstekTipi.EgitmenKursAnalizi,
-            SecilenModelTipi = modelTipi,
-            KursId = kurs.KursId,
-            Baslik = $"{kurs.KursAdi} - AI Kurs Analizi",
-            Aciklama = "Kurs performans verilerine göre oluşturulan eğitmen önerileri.",
-            Sonuclar = sonuclar.Select(x => new AiModelSonucViewModel
-            {
-                ModelTipi = x.ModelTipi,
-                ModelAdi = x.ModelAdi,
-                BasariliMi = x.BasariliMi,
-                Cikti = x.TemizCikti,
-                HataMesaji = x.HataMesaji,
-                SureMs = x.SureMs,
-                GuvenlikFiltresiUygulandiMi = x.GuvenlikFiltresiUygulandiMi
-            }).ToList()
-        };
-
-        return View(viewModel);
-    }
-
+    // AI analiz süresini ekranda okunabilir metin formatına çevirir.
     private static string FormatSure(long sureMs)
     {
         if (sureMs <= 0)
@@ -219,6 +167,7 @@ public class EgitmenAiController : EgitmenBaseController
         return $"{sureMs / 1000.0:0.00} sn";
     }
 
+    // Kursa ait öğrenci, puan, tamamlama ve sınav verilerini AI analizine uygun hale getirir.
     private async Task<AiEgitmenKursAnalizVerisi> EgitmenAiVerisiHazirlaAsync(
         Kurs kurs,
         CancellationToken cancellationToken)
@@ -250,6 +199,7 @@ public class EgitmenAiController : EgitmenBaseController
 
         ortalamaPuan = Math.Round(ortalamaPuan, 2);
 
+        // Yanlış cevapların en çok yoğunlaştığı bölüm tespit edilir.
         var zorlanilanBolum = await _context.OgrenciCevaplari
             .AsNoTracking()
             .Where(x =>
@@ -274,6 +224,7 @@ public class EgitmenAiController : EgitmenBaseController
             .Select(x => x.BolumAdi)
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Ders bazında toplam cevap sayıları yanlış oranını hesaplamak için alınır.
         var dersToplamCevapSayilari = await _context.OgrenciCevaplari
             .AsNoTracking()
             .Where(x => x.SinavKatilimi.Sinav.KursId == kurs.KursId)
@@ -289,6 +240,7 @@ public class EgitmenAiController : EgitmenBaseController
                 x => x.ToplamCevapSayisi,
                 cancellationToken);
 
+        // En çok yanlış yapılan dersler AI önerisinde kullanılmak üzere çıkarılır.
         var zorlanilanDersler = await _context.OgrenciCevaplari
             .AsNoTracking()
             .Where(x =>
@@ -318,8 +270,10 @@ public class EgitmenAiController : EgitmenBaseController
             .Take(5)
             .ToListAsync(cancellationToken);
 
+        // Her zorlanılan ders için yanlış oranı hesaplanır.
         foreach (var ders in zorlanilanDersler)
         {
+            // Yanlış oranı = (Yanlış Sayısı / Toplam Cevap Sayısı) * 100
             if (dersToplamCevapSayilari.TryGetValue(ders.DersId, out var toplamCevap) &&
                 toplamCevap > 0)
             {
@@ -331,7 +285,7 @@ public class EgitmenAiController : EgitmenBaseController
         {
             zorlanilanBolum = "Belirgin zorlanılan bölüm bulunamadı";
         }
-
+        // Eğer belirgin zorlanılan dersler yoksa, AI modeline anlamlı veri sağlamak için varsayılan bir giriş eklenir.
         if (!zorlanilanDersler.Any())
         {
             zorlanilanDersler.Add(new AiZorlanilanDersVerisi
@@ -355,5 +309,4 @@ public class EgitmenAiController : EgitmenBaseController
             ZorlanilanDersler = zorlanilanDersler
         };
     }
-
 }

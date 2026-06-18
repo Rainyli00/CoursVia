@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Öğrencinin kayıtlı olduğu kurslardaki dersleri izlemesini ve ders ilerlemesini yönetir.
 [Authorize(Roles = "Öğrenci")]
 public class OgrenciDersController : Controller
 {
@@ -18,11 +19,13 @@ public class OgrenciDersController : Controller
         _context = context;
     }
 
+    // Öğrencinin seçilen kurs içerisindeki dersi izlemesini sağlar.
     [HttpGet]
     public async Task<IActionResult> Izle(int kursId, int? dersId)
     {
         int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        // Öğrencinin bu kursa aktif kayıtlı olup olmadığı kontrol edilir.
         var kursKaydi = await _context.KursKayitlari
             .AsNoTracking()
             .Include(x => x.Kurs)
@@ -39,12 +42,14 @@ public class OgrenciDersController : Controller
             return RedirectToAction("Kesfet", "OgrenciKurs");
         }
 
+        // Kurs düzeltme/güncelleme durumundaysa öğrencinin izleme ekranına erişmesi engellenir.
         if (kursKaydi.Kurs.DurumId == 7)
         {
             TempData["OgrenciHata"] = "Bu kurs şu anda güncelleniyor.";
             return RedirectToAction("Kurslarim", "OgrenciKurs");
         }
 
+        // Kursa ait bölümler ve bölümlerin aktif normal dersleri sıralı şekilde alınır.
         var bolumler = await _context.Bolumler
             .AsNoTracking()
             .Where(x => x.KursId == kursId)
@@ -54,6 +59,7 @@ public class OgrenciDersController : Controller
                 x.BolumId,
                 x.BolumAdi,
                 x.SiraNo,
+
                 Dersler = x.Dersler
                     .Where(d => d.AktifMi && !d.SistemDersiMi)
                     .OrderBy(d => d.SiraNo)
@@ -69,6 +75,7 @@ public class OgrenciDersController : Controller
             })
             .ToListAsync();
 
+        // Tüm bölümlerdeki dersler tek listeye alınır.
         var tumDersler = bolumler
             .SelectMany(x => x.Dersler)
             .OrderBy(x => x.SiraNo)
@@ -80,11 +87,15 @@ public class OgrenciDersController : Controller
             return RedirectToAction("Kurslarim", "OgrenciKurs");
         }
 
+        // Öğrencinin daha önce tamamladığı derslerin Id bilgileri alınır.
         var tamamlananDersIdleri = kursKaydi.DersIlerlemeleri
             .Where(x => x.TamamlandiMi)
             .Select(x => x.DersId)
             .ToHashSet();
 
+        // Eğer dersId gönderildiyse o ders seçilir.
+        // Gönderilmediyse öğrencinin tamamlamadığı ilk ders seçilir.
+        // Tüm dersler tamamlandıysa ilk ders seçilir.
         var seciliDers = dersId.HasValue
             ? tumDersler.FirstOrDefault(x => x.DersId == dersId.Value)
             : tumDersler.FirstOrDefault(x => !tamamlananDersIdleri.Contains(x.DersId)) ?? tumDersler.First();
@@ -95,25 +106,32 @@ public class OgrenciDersController : Controller
             return RedirectToAction("Kurslarim", "OgrenciKurs");
         }
 
+        // Seçili dersin listedeki sırası bulunur.
         int seciliIndex = tumDersler.FindIndex(x => x.DersId == seciliDers.DersId);
 
+        // Önceki ders varsa Id değeri hazırlanır.
         int? oncekiDersId = seciliIndex > 0
             ? tumDersler[seciliIndex - 1].DersId
             : null;
 
+        // Sonraki ders varsa Id değeri hazırlanır.
         int? sonrakiDersId = seciliIndex < tumDersler.Count - 1
             ? tumDersler[seciliIndex + 1].DersId
             : null;
 
         int toplamDersSayisi = tumDersler.Count;
 
+        // Sadece bu kursun aktif dersleri içinde tamamlanan ders sayısı hesaplanır.
         int tamamlananDersSayisi = tamamlananDersIdleri.Count(x =>
             tumDersler.Any(d => d.DersId == x));
 
+        // Öğrencinin kurs ilerleme yüzdesi hesaplanır.
+        // Toplam ders sayısı sıfır ise ilerleme yüzdesi 0 olarak atanır, aksi halde tamamlanan derslerin toplam ders sayısına oranı yüzdeye çevrilir ve yuvarlanır.
         int ilerlemeYuzdesi = toplamDersSayisi == 0
-            ? 0
-            : (int)Math.Round((tamamlananDersSayisi * 100.0) / toplamDersSayisi);
+            ? 0 
+            : (int)Math.Round((tamamlananDersSayisi * 100.0) / toplamDersSayisi); 
 
+        // Seçili derse ait materyaller alınır.
         var materyaller = await _context.DersMateryalleri
             .AsNoTracking()
             .Where(x => x.DersId == seciliDers.DersId)
@@ -127,6 +145,7 @@ public class OgrenciDersController : Controller
             })
             .ToListAsync();
 
+        // Kursa ait sınav olup olmadığı kontrol edilir.
         var sinavBilgisi = await _context.Sinavlar
             .AsNoTracking()
             .Where(x => x.KursId == kursId)
@@ -140,6 +159,7 @@ public class OgrenciDersController : Controller
 
         bool sinavGecildiMi = false;
 
+        // Sınav varsa öğrencinin bu sınavdan geçip geçmediği kontrol edilir.
         if (sinavBilgisi != null)
         {
             sinavGecildiMi = await _context.SinavKatilimlari
@@ -151,6 +171,7 @@ public class OgrenciDersController : Controller
                     x.GectiMi == true);
         }
 
+        // Ders izleme ekranında gösterilecek tüm bilgiler ViewModel'e aktarılır.
         var model = new OgrenciDersIzleViewModel
         {
             KursId = kursId,
@@ -185,6 +206,7 @@ public class OgrenciDersController : Controller
                     BolumId = b.BolumId,
                     BolumAdi = b.BolumAdi,
                     SiraNo = b.SiraNo,
+
                     Dersler = b.Dersler
                         .OrderBy(d => d.SiraNo)
                         .Select(d => new OgrenciDersListeItemViewModel
@@ -205,12 +227,14 @@ public class OgrenciDersController : Controller
         return View(model);
     }
 
+    // Öğrencinin izlediği dersi tamamlandı olarak işaretler.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DersiTamamla(int kursId, int dersId)
     {
         int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        // Öğrencinin bu kursa aktif kaydı olup olmadığı kontrol edilir.
         var kursKaydi = await _context.KursKayitlari
             .Include(x => x.Kurs)
             .FirstOrDefaultAsync(x =>
@@ -230,6 +254,7 @@ public class OgrenciDersController : Controller
             return RedirectToAction("Kurslarim", "OgrenciKurs");
         }
 
+        // Tamamlanacak dersin bu kursa ait aktif normal bir ders olduğu doğrulanır.
         bool dersGecerliMi = await _context.Dersler
             .AnyAsync(x =>
                 x.DersId == dersId &&
@@ -243,6 +268,7 @@ public class OgrenciDersController : Controller
             return RedirectToAction(nameof(Izle), new { kursId });
         }
 
+        // Bu ders için daha önce ilerleme kaydı oluşturulmuş mu kontrol edilir.
         var dersIlerlemesi = await _context.DersIlerlemeleri
             .FirstOrDefaultAsync(x =>
                 x.KursKayitId == kursKaydi.KursKayitId &&
@@ -250,6 +276,7 @@ public class OgrenciDersController : Controller
 
         if (dersIlerlemesi == null)
         {
+            // İlk kez tamamlanıyorsa yeni ilerleme kaydı oluşturulur.
             dersIlerlemesi = new DersIlerlemesi
             {
                 KursKayitId = kursKaydi.KursKayitId,
@@ -261,6 +288,7 @@ public class OgrenciDersController : Controller
         }
         else
         {
+            // Daha önce kayıt varsa tekrar tamamlandı olarak işaretlenir.
             dersIlerlemesi.TamamlandiMi = true;
         }
 

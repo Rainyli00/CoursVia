@@ -26,14 +26,18 @@ import type {
 // Admin eğitmen başvuruları ekranı.
 // Arama, durum filtresi ve sayfalama destekler.
 export default function AdminEgitmenBasvurulariScreen() {
+    // Başvuru listesi ve durum dropdown seçenekleri.
     const [basvurular, setBasvurular] = useState<MobileAdminEgitmenBasvuruItem[]>([]);
     const [durumlar, setDurumlar] = useState<MobileAdminSecenek[]>([]);
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış aktif filtredir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Seçili başvuru durumu; null tüm durumları ifade eder.
     const [durumId, setDurumId] = useState<number | null>(null);
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -44,6 +48,7 @@ export default function AdminEgitmenBasvurulariScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Ekran açıldığında varsayılan filtrelerle başvurular çekilir.
     useEffect(() => {
         basvurulariGetir(false, {
             arama: null,
@@ -52,6 +57,7 @@ export default function AdminEgitmenBasvurulariScreen() {
         });
     }, []);
 
+    // Başvuru listesini API'den çeker; override ile filtreler state'e yazılmadan kullanılabilir.
     async function basvurulariGetir(
         refreshMi = false,
         override?: {
@@ -90,6 +96,7 @@ export default function AdminEgitmenBasvurulariScreen() {
             );
 
             setBasvurular(response.data.basvurular ?? []);
+            // Mobil listede düzeltme isteniyor durumu karar akışı için kullanılmadığından gizlenir.
             setDurumlar((response.data.durumlar ?? []).filter((x) => x.id !== 7));
 
             setToplamKayit(response.data.toplamKayit ?? 0);
@@ -113,6 +120,7 @@ export default function AdminEgitmenBasvurulariScreen() {
         }
     }
 
+    // Arama uygulandığında liste ilk sayfadan yeniden yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -128,6 +136,7 @@ export default function AdminEgitmenBasvurulariScreen() {
         });
     }
 
+    // Arama ve durum filtresini sıfırlayıp varsayılan listeye döner.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -143,6 +152,7 @@ export default function AdminEgitmenBasvurulariScreen() {
         });
     }
 
+    // Durum filtresi değişince aktif arama korunur ve sayfa bire döner.
     function durumSec(yeniDurumId: number | null) {
         Keyboard.dismiss();
 
@@ -159,6 +169,7 @@ export default function AdminEgitmenBasvurulariScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -236,6 +247,7 @@ export default function AdminEgitmenBasvurulariScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -245,6 +257,7 @@ function LoadingState() {
     );
 }
 
+// Liste alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -264,6 +277,7 @@ function ErrorState({
     );
 }
 
+// Arama ve durum filtresini tek panelde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -336,6 +350,7 @@ function FilterPanel({
     );
 }
 
+// Başvuru durumlarını modal dropdown olarak gösterir.
 function DurumDropdown({
     durumlar,
     durumId,
@@ -350,6 +365,7 @@ function DurumDropdown({
     const seciliDurum = durumlar.find((x) => x.id === durumId);
     const seciliMetin = seciliDurum ? seciliDurum.ad : "Tüm Durumlar";
 
+    // null seçimi tüm durumlar filtresine döner.
     function sec(value: number | null) {
         setModalAcik(false);
         durumSec(value);
@@ -404,6 +420,7 @@ function DurumDropdown({
     );
 }
 
+// Dropdown seçimlerini ortak modal içinde gösterir.
 function SelectionModal({
     visible,
     title,
@@ -444,6 +461,7 @@ function SelectionModal({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -477,6 +495,7 @@ function DropdownItem({
     );
 }
 
+// Eğitmen başvuru kartı; tıklandığında karar verilecek detay ekranına gider.
 function BasvuruKart({ basvuru }: { basvuru: MobileAdminEgitmenBasvuruItem }) {
     return (
         <Pressable
@@ -525,6 +544,7 @@ function BasvuruKart({ basvuru }: { basvuru: MobileAdminEgitmenBasvuruItem }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -583,6 +603,7 @@ function PaginationControls({
     );
 }
 
+// Arama veya filtreye uygun başvuru yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>
@@ -594,6 +615,7 @@ function EmptyState() {
     );
 }
 
+// Geçerli tarihse Türkçe kısa tarih formatına çevirir.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 

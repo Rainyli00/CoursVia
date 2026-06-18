@@ -20,6 +20,7 @@ public abstract class MobileOgrenciBaseController : ControllerBase
     {
         string? kullaniciIdDegeri = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        // Token içinde beklenen kullanıcı id yoksa öğrenci işlemleri güvenli şekilde durdurulur.
         if (!int.TryParse(kullaniciIdDegeri, out int kullaniciId))
         {
             throw new UnauthorizedAccessException("Geçersiz kullanıcı bilgisi.");
@@ -31,6 +32,7 @@ public abstract class MobileOgrenciBaseController : ControllerBase
     // Sayfa değerini normalize eder.
     protected static int SayfaNormalizeEt(int sayfa)
     {
+        // Mobil taraftan 0 veya negatif değer gelirse ilk sayfa kabul edilir.
         return sayfa < 1
             ? 1
             : sayfa;
@@ -39,6 +41,7 @@ public abstract class MobileOgrenciBaseController : ControllerBase
     // Sayfa başına kayıt değerini normalize eder.
     protected static int SayfaBasinaKayitNormalizeEt(int sayfaBasinaKayit)
     {
+        // Geçersiz değerler varsayılana çekilir, çok büyük istekler 50 kayıtla sınırlandırılır.
         if (sayfaBasinaKayit < 1)
         {
             return 10;
@@ -50,6 +53,7 @@ public abstract class MobileOgrenciBaseController : ControllerBase
     // Toplam sayfa sayısını hesaplar.
     protected static int ToplamSayfaHesapla(int toplamKayit, int sayfaBasinaKayit)
     {
+        // Kayıt yokken de sayfa değeri 1 kalsın ki Skip hesabı negatifleşmesin.
         if (toplamKayit <= 0)
         {
             return 1;

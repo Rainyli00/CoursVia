@@ -6,6 +6,7 @@ import sys
 from generate import Generator
 
 
+# Terminalden hızlı test için kullanılan örnek eğitmen payload'u.
 EGITMEN_DEMO_DATA = {
     "kurs": "Türkçe Dil Bilgisi",
     "ogrenci_sayisi": 42,
@@ -20,6 +21,7 @@ EGITMEN_DEMO_DATA = {
 }
 
 
+# Terminalden hızlı test için kullanılan örnek öğrenci payload'u.
 OGRENCI_DEMO_DATA = {
     "kurs": "Türkçe Dil Bilgisi",
     "sinav_puani": 58,
@@ -34,10 +36,12 @@ OGRENCI_DEMO_DATA = {
 
 
 def print_json(payload):
+    # C# tarafı stdout'tan JSON okuduğu için tek satır JSON basılır ve flush edilir.
     print(json.dumps(payload, ensure_ascii=False), flush=True)
 
 
 def stdin_oku() -> str:
+    # Web entegrasyonunda JSON veri stdin üzerinden gelir.
     try:
         raw_bytes = sys.stdin.buffer.read()
 
@@ -52,6 +56,7 @@ def stdin_oku() -> str:
 
 
 def json_parcasi_ayikla(raw: str) -> str:
+    # Gürültülü input içinde ilk JSON nesnesini bulmaya çalışır.
     raw = (raw or "").strip()
     raw = raw.lstrip("\ufeff").strip()
 
@@ -70,6 +75,7 @@ def json_parcasi_ayikla(raw: str) -> str:
 
 
 def parse_json_or_prompt(raw: str):
+    # Gelen veri JSON da olabilir, eski test prompt formatı da olabilir.
     raw = (raw or "").strip()
 
     if not raw:
@@ -105,6 +111,7 @@ def parse_json_or_prompt(raw: str):
 
 
 def read_request(args):
+    # Öncelik sırası: demo veri, --json argümanı, stdin, hata.
     if args.demo:
         return dict(EGITMEN_DEMO_DATA) if args.mode == "egitmen" else dict(OGRENCI_DEMO_DATA)
 
@@ -123,6 +130,7 @@ def read_request(args):
 
 
 def get_any(data: dict, *keys, default=None):
+    # Farklı isimlendirme varyasyonlarından ilk dolu değeri seçer.
     for key in keys:
         if key in data and data[key] is not None:
             return data[key]
@@ -131,6 +139,7 @@ def get_any(data: dict, *keys, default=None):
 
 
 def normalize_lessons(value):
+    # Ders listesi dict/list/string formatında gelebilir; hepsi düz listeye çevrilir.
     if value is None:
         return []
 
@@ -168,6 +177,7 @@ def normalize_lessons(value):
 
 
 def get_tag(prompt: str, tag: str, default=""):
+    # Eski prompt formatındaki [TAG] alanlarını okumak için kullanılır.
     pattern = rf"^\[{re.escape(tag)}\]\s*(.+)$"
     match = re.search(pattern, prompt, flags=re.MULTILINE)
 
@@ -178,6 +188,7 @@ def get_tag(prompt: str, tag: str, default=""):
 
 
 def parse_prompt_to_data(prompt: str, mode: str):
+    # Prompt formatı geldiyse tekrar modelin beklediği data sözlüğüne çevrilir.
     dersler_text = get_tag(prompt, "ZORLANILAN_DERSLER")
 
     if not dersler_text:
@@ -211,6 +222,7 @@ def parse_prompt_to_data(prompt: str, mode: str):
 
 
 def build_egitmen_data(request: dict):
+    # JSON/prompt isteğinden eğitmen analizinin standart input sözlüğünü üretir.
     if "prompt" in request and str(request["prompt"]).strip():
         return parse_prompt_to_data(str(request["prompt"]), "egitmen")
 
@@ -273,6 +285,7 @@ def build_egitmen_data(request: dict):
 
 
 def build_ogrenci_data(request: dict):
+    # JSON/prompt isteğinden öğrenci önerisinin standart input sözlüğünü üretir.
     if "prompt" in request and str(request["prompt"]).strip():
         return parse_prompt_to_data(str(request["prompt"]), "ogrenci")
 
@@ -321,6 +334,7 @@ def build_ogrenci_data(request: dict):
 
 
 def validate_required(mode: str, data: dict):
+    # Model çağrısından önce zorunlu alanların boş olup olmadığı kontrol edilir.
     errors = []
 
     if not str(data.get("kurs", "")).strip():
@@ -356,6 +370,7 @@ def validate_required(mode: str, data: dict):
 
 
 def main():
+    # CLI giriş noktası; C# MiniCoursViaAiService bu script'i --mode ile çalıştırır.
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -399,6 +414,7 @@ def main():
             )
             return
 
+        # Mode'a göre request standart data formatına çevrilir.
         if args.mode == "egitmen":
             data = build_egitmen_data(request)
         else:
@@ -420,6 +436,7 @@ def main():
             )
             return
 
+        # Model ve tokenizer burada yüklenir; hata olursa JSON hata cevabı döner.
         ai = Generator()
 
         if args.mode == "egitmen":

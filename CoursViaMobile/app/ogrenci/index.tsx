@@ -79,6 +79,7 @@ export default function OgrenciScreen() {
         return <ErrorState mesaj={hata} tekrarDene={() => dashboardGetir()} />;
     }
 
+    // PanelLayout ortak header, menü, bildirim rozeti ve pull-to-refresh davranışını sağlar.
     return (
         <PanelLayout
             title="Öğrenci Paneli"
@@ -192,6 +193,7 @@ function ProgressSummary({ value }: { value: number }) {
 
 // Dashboard altında görünen son kurs kartı.
 function CourseCard({ kurs }: { kurs: MobileOgrenciDashboardKurs }) {
+    // Güncellenen kurslarda ilerleme görünür ama erişimin geçici kapalı olduğu ayrıca belirtilir.
     const guncelleniyorMu = kurs.guncelleniyorMu;
 
     return (

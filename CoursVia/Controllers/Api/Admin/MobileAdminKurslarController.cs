@@ -30,7 +30,6 @@ public class MobileAdminKurslarController : MobileAdminBaseController
     // 5 = Yayında
     // 6 = Reddedildi
     // 7 = Düzeltme İsteniyor
-    // GET /api/mobile/admin/kurslar?arama=react&durumId=5&kategoriId=1&sirala=guncel&sayfa=1&sayfaBasinaKayit=10
     [HttpGet]
     public async Task<ActionResult<MobileAdminKurslarResponse>> Kurslar(
         [FromQuery] string? arama,
@@ -40,6 +39,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
         [FromQuery] int sayfa = 1,
         [FromQuery] int sayfaBasinaKayit = 10)
     {
+        // Arama, durum, kategori, sıralama ve sayfalama değerleri normalize edilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -82,6 +82,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Mobil filtreler için izin verilen kurs durumları ve mevcut kategoriler hazırlanır.
         var durumlar = await _context.Durumlar
             .AsNoTracking()
             .Where(x =>
@@ -114,12 +115,14 @@ public class MobileAdminKurslarController : MobileAdminBaseController
             .OrderBy(x => x.Ad)
             .ToListAsync();
 
+        // Admin kurs listesi tüm kurslardan başlar; filtreler aşağıda uygulanır.
         var query = _context.Kurslar
             .AsNoTracking()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama kurs, eğitmen, durum ve kategori adları üzerinden yapılır.
             query = query.Where(x =>
                 x.KursAdi.Contains(arama) ||
                 x.Egitmen.Ad.Contains(arama) ||
@@ -135,6 +138,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
 
         if (kategoriId.HasValue)
         {
+            // Kategori filtresi çoklu kurs-kategori ilişkisi üzerinden uygulanır.
             query = query.Where(x =>
                 x.KursKategorileri.Any(k => k.KategoriId == kategoriId.Value));
         }
@@ -147,6 +151,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
             sayfa = toplamSayfa;
         }
 
+        // Sıralama; tarih, ad, puan ve öğrenci sayısı seçeneklerine göre veritabanında uygulanır.
         query = sirala switch
         {
             "eski" => query.OrderBy(x => x.OlusturmaTarihi),
@@ -189,6 +194,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
             _ => query.OrderByDescending(x => x.GuncellemeTarihi ?? x.OlusturmaTarihi)
         };
 
+        // Liste DTO'su için kurs istatistikleri alt sorgularla birlikte seçilir.
         var kurslar = await query
             .Skip((sayfa - 1) * sayfaBasinaKayit)
             .Take(sayfaBasinaKayit)
@@ -235,7 +241,9 @@ public class MobileAdminKurslarController : MobileAdminBaseController
 
         foreach (var kurs in kurslar)
         {
+            // Mobil görünüm için ad soyad ve ortalama puan formatı sonradan düzenlenir.
             kurs.EgitmenAdSoyad = kurs.EgitmenAdSoyad.Trim();
+            // Ortalama puan 1 ondalık basamak ile yuvarlanır.
             kurs.OrtalamaPuan = Math.Round(kurs.OrtalamaPuan, 1);
         }
 
@@ -267,6 +275,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
     [HttpGet("{kursId:int}")]
     public async Task<ActionResult<MobileAdminKursDetayResponse>> Detay(int kursId)
     {
+        // Kursun genel bilgileri ve istatistikleri tek detay DTO'suna projekte edilir.
         var kursDetay = await _context.Kurslar
             .AsNoTracking()
             .Where(x => x.KursId == kursId)
@@ -341,6 +350,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
         kursDetay.EgitmenAdSoyad = kursDetay.EgitmenAdSoyad.Trim();
         kursDetay.OrtalamaPuan = Math.Round(kursDetay.OrtalamaPuan, 1);
 
+        // Bölüm, ders ve materyal başlıkları sıralı şekilde ayrı sorguyla doldurulur.
         kursDetay.Bolumler = await _context.Bolumler
             .AsNoTracking()
             .Where(x => x.KursId == kursId)
@@ -382,6 +392,7 @@ public class MobileAdminKurslarController : MobileAdminBaseController
 
         foreach (var bolum in kursDetay.Bolumler)
         {
+            // Ders sayısı aktif ve sistem dersi olmayan filtrelenmiş liste üzerinden hesaplanır.
             bolum.DersSayisi = bolum.Dersler.Count;
         }
 

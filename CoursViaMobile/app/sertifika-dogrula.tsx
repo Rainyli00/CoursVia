@@ -76,6 +76,7 @@ export default function SertifikaDogrulaScreen() {
 
             const data = response.data;
 
+            // Kod geçersizse sertifika null gelir, mesaj kullanıcıya gösterilebilir.
             if (!data.basarili || !data.gecerliMi || !data.sertifika) {
                 setHata(data.mesaj || "Sertifika doğrulanamadı.");
                 return;

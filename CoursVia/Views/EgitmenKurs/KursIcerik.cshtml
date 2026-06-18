@@ -768,7 +768,7 @@
         let sira = 1;
 
         document.querySelectorAll('.sortable-dersler').forEach(function (liste) {
-        liste.querySelectorAll('li[data-ders-id]').forEach(function (dersItem) {
+        liste.querySelectorAll('li[data-ders-id][data-aktif="true"]').forEach(function (dersItem) {
         const siraSpan = dersItem.querySelector('.ders-sira');
 
         if (siraSpan) {
@@ -789,7 +789,7 @@
         return;
         }
 
-        const dersSayisi = liste.querySelectorAll('li[data-ders-id]').length;
+        const dersSayisi = liste.querySelectorAll('li[data-ders-id][data-aktif="true"]').length;
         sayac.textContent = dersSayisi + ' ders';
         });
         }
@@ -804,7 +804,7 @@
         return;
         }
 
-        liste.querySelectorAll('li[data-ders-id]').forEach(function (dersItem) {
+        liste.querySelectorAll('li[data-ders-id][data-aktif="true"]').forEach(function (dersItem) {
         const dersId = parseInt(dersItem.dataset.dersId);
 
         if (!Number.isNaN(dersId)) {
@@ -868,7 +868,7 @@
              Sortable.create(liste, {
             group: 'dersler',
             handle: '.ders-drag-handle',
-            draggable: 'li[data-ders-id]',
+            draggable: 'li[data-ders-id][data-aktif="true"]',
             animation: 150,
             ghostClass: 'opacity-50',
             emptyInsertThreshold: 12,
@@ -876,7 +876,7 @@
             onEnd: function () {
                 document.querySelectorAll('.sortable-dersler').forEach(function (liste) {
                     const placeholder = liste.querySelector('.ders-empty-placeholder');
-                    const dersSayisi = liste.querySelectorAll('li[data-ders-id]').length;
+                    const dersSayisi = liste.querySelectorAll('li[data-ders-id][data-aktif="true"]').length;
 
                     if (placeholder) {
                         placeholder.classList.toggle('hidden', dersSayisi > 0);

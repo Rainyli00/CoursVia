@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Giriþ yapmýþ kullanýcýlarýn bildirimlerini görüntüleme ve yönetme iþlemlerini kontrol eder.
 [Authorize]
 public class BildirimController : Controller
 {
@@ -20,6 +21,7 @@ public class BildirimController : Controller
         _bildirimService = bildirimService;
     }
 
+    // Kullanýcýnýn bildirimlerini durum filtresi ve sayfalama ile listeler.
     [HttpGet]
     public async Task<IActionResult> Bildirimler(string durum = "tum", int sayfa = 1)
     {
@@ -31,6 +33,7 @@ public class BildirimController : Controller
             ? "tum"
             : durum.Trim().ToLower();
 
+        // Geçersiz durum filtresi gelirse tüm bildirimler gösterilir.
         if (durum != "tum" &&
             durum != "okunmamis" &&
             durum != "okunmus")
@@ -49,6 +52,7 @@ public class BildirimController : Controller
             .Where(x => x.KullaniciId == kullaniciId)
             .AsQueryable();
 
+        // Bildirimler okundu veya okunmadý durumuna göre filtrelenir.
         query = durum switch
         {
             "okunmamis" => query.Where(x => !x.OkunduMu),
@@ -70,6 +74,7 @@ public class BildirimController : Controller
             sayfa = toplamSayfa;
         }
 
+        // Bildirimler liste ekranýnda gösterilecek ViewModel'e dönüþtürülür.
         var bildirimler = await query
             .OrderBy(x => x.OkunduMu)
             .ThenByDescending(x => x.OlusturmaTarihi)
@@ -112,6 +117,7 @@ public class BildirimController : Controller
         return View(model);
     }
 
+    // Navbar veya bildirim menüsü için son okunmamýþ bildirimleri JSON olarak döndürür.
     [HttpGet]
     public async Task<IActionResult> GetSonBildirimler()
     {
@@ -134,14 +140,15 @@ public class BildirimController : Controller
             })
             .ToListAsync();
 
-        var bildirimler = querySonuclar.Select(x => new 
-            {
-                bildirimId = x.BildirimId,
-                baslik = x.Baslik,
-                mesaj = x.Mesaj,
-                okunduMu = x.OkunduMu,
-                olusturmaTarihi = x.OlusturmaTarihi.ToString("dd.MM.yyyy HH:mm")
-            }).ToList();
+        // Tarih formatý JSON çýktýsý için kullanýcýya okunabilir hale getirilir.
+        var bildirimler = querySonuclar.Select(x => new
+        {
+            bildirimId = x.BildirimId,
+            baslik = x.Baslik,
+            mesaj = x.Mesaj,
+            okunduMu = x.OkunduMu,
+            olusturmaTarihi = x.OlusturmaTarihi.ToString("dd.MM.yyyy HH:mm")
+        }).ToList();
 
         var okunmamisSayisi = await _context.Bildirimler
             .AsNoTracking()
@@ -150,6 +157,7 @@ public class BildirimController : Controller
         return Json(new { bildirimler, okunmamisSayisi });
     }
 
+    // Kullanýcýnýn seçtiði bildirimi okundu olarak iþaretler.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OkunduYap(int id, string durum = "tum", int sayfa = 1)
@@ -170,6 +178,7 @@ public class BildirimController : Controller
         });
     }
 
+    // Kullanýcýnýn seçtiði bildirimi okunmadý olarak iþaretler.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OkunmadiYap(int id, string durum = "tum", int sayfa = 1)
@@ -190,6 +199,7 @@ public class BildirimController : Controller
         });
     }
 
+    // Kullanýcýnýn tüm bildirimlerini okundu olarak iþaretler.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> TumunuOkunduYap(string durum = "tum")
@@ -205,6 +215,7 @@ public class BildirimController : Controller
         });
     }
 
+    // Kullanýcýnýn kendisine ait seçili bildirimi siler.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sil(int id, string durum = "tum", int sayfa = 1)

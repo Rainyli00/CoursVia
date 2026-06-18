@@ -14,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SertifikaQrTaraScreen() {
     const [permission, requestPermission] = useCameraPermissions();
+
+    // QR okuyucu aynı kodu peş peşe algılayabildiği için ilk başarılı okumadan sonra tarama kapatılır.
     const [tarandiMi, setTarandiMi] = useState(false);
     const [izinKontrolEdiliyor, setIzinKontrolEdiliyor] = useState(false);
 
@@ -21,6 +23,7 @@ export default function SertifikaQrTaraScreen() {
         router.replace("/sertifika-dogrula" as any);
     }
 
+    // Kamera izni yoksa kullanıcıdan izin ister; sonuç olumsuzsa ekranda kalıp uyarı gösterir.
     async function izinIste() {
         try {
             setIzinKontrolEdiliyor(true);
@@ -38,6 +41,7 @@ export default function SertifikaQrTaraScreen() {
         }
     }
 
+    // QR içinden sertifika kodu alınır ve doğrulama ekranına parametre olarak gönderilir.
     function qrOkundu(result: BarcodeScanningResult) {
         if (tarandiMi) {
             return;
@@ -60,6 +64,7 @@ export default function SertifikaQrTaraScreen() {
         } as any);
     }
 
+    // İzin bilgisi ilk render'da henüz hazır olmayabilir.
     if (!permission) {
         return (
             <SafeAreaView style={styles.centerContainer}>
@@ -69,6 +74,7 @@ export default function SertifikaQrTaraScreen() {
         );
     }
 
+    // Kamera izni verilmediyse tarayıcı yerine izin isteme ekranı gösterilir.
     if (!permission.granted) {
         return (
             <SafeAreaView style={styles.centerContainer}>
@@ -111,6 +117,7 @@ export default function SertifikaQrTaraScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Sadece QR okunur; diğer barkod tipleri bu ekran için gerekli değil. */}
             <CameraView
                 style={styles.camera}
                 facing="back"
@@ -165,6 +172,8 @@ export default function SertifikaQrTaraScreen() {
     );
 }
 
+// QR içeriği direkt kod, doğrulama linki veya query parametreli link olabilir.
+// Bu fonksiyon hepsinden ekrana gönderilecek sade sertifika kodunu üretir.
 function sertifikaKodunuAyikla(value: string) {
     const temiz = (value || "").trim();
 
@@ -175,6 +184,7 @@ function sertifikaKodunuAyikla(value: string) {
     try {
         const url = new URL(temiz);
 
+        // Önce bilinen query parametrelerinde sertifika kodu aranır.
         const queryKod =
             url.searchParams.get("kod") ||
             url.searchParams.get("sertifikaKodu") ||
@@ -184,6 +194,7 @@ function sertifikaKodunuAyikla(value: string) {
             return decodeURIComponent(queryKod.trim());
         }
 
+        // Query yoksa doğrulama linkinin son path parçası kod kabul edilir.
         const pathParcalari = url.pathname
             .split("/")
             .map((x) => x.trim())
@@ -198,6 +209,7 @@ function sertifikaKodunuAyikla(value: string) {
         // Webdeki QR direkt sertifika kodu içeriyor.
     }
 
+    // URL gibi parse edilemeyen ama "kod=..." içeren metinler için son kontrol.
     const parametreEslesme = temiz.match(/(?:kod|sertifikaKodu|SertifikaKodu)=([^&]+)/);
 
     if (parametreEslesme?.[1]) {

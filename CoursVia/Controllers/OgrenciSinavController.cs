@@ -9,6 +9,8 @@ using CoursVia.Services;
 
 namespace CoursVia.Controllers;
 
+// Öğrencinin sınav listeleme, sınava girme, cevap kaydetme,
+// sınavı bitirme ve sınav sonucunu görüntüleme işlemlerini yönetir.
 [Authorize(Roles = "Öğrenci")]
 public class OgrenciSinavController : Controller
 {
@@ -17,13 +19,13 @@ public class OgrenciSinavController : Controller
     private readonly AppDbContext _context;
     private readonly BildirimService _bildirimService;
 
-
     public OgrenciSinavController(AppDbContext context, BildirimService bildirimService)
     {
         _context = context;
         _bildirimService = bildirimService;
     }
 
+    // Öğrencinin girebileceği, devam eden, başarılı, başarısız veya kilitli sınavlarını listeler.
     [HttpGet]
     public async Task<IActionResult> Index(string? arama, string durum = "tum", int sayfa = 1)
     {
@@ -39,6 +41,7 @@ public class OgrenciSinavController : Controller
             ? "tum"
             : durum.Trim().ToLower();
 
+        // Geçersiz durum filtresi gelirse tüm sınavlar gösterilir.
         if (durum != "tum" &&
             durum != "girilebilir" &&
             durum != "devam" &&
@@ -54,6 +57,7 @@ public class OgrenciSinavController : Controller
             sayfa = 1;
         }
 
+        // Öğrenci sayfaya girdiğinde süresi dolmuş ama kapanmamış sınavlar varsa otomatik değerlendirilir.
         int suresiDolanSinavSayisi = await SuresiDolanDevamEdenSinavlariKapatAsync(kullaniciId);
 
         if (suresiDolanSinavSayisi > 0)
@@ -61,6 +65,7 @@ public class OgrenciSinavController : Controller
             TempData["OgrenciHata"] = "Süresi dolan sınavlarınız mevcut cevaplarınıza göre otomatik değerlendirilmiştir.";
         }
 
+        // Öğrencinin aktif kayıtlı olduğu ve sınavı bulunan kurslar alınır.
         var kayitliSinavlar = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -105,6 +110,7 @@ public class OgrenciSinavController : Controller
             .Select(x => x.KursKayitId)
             .ToList();
 
+        // Öğrencinin bu kurs kayıtları üzerinden daha önce girdiği sınav denemeleri alınır.
         var sinavKatilimlari = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x => kursKayitIdleri.Contains(x.KursKayitId))
@@ -123,6 +129,7 @@ public class OgrenciSinavController : Controller
 
         var tumSinavlar = new List<OgrenciSinavListeItemViewModel>();
 
+        // Her kurs için sınav durumu, giriş hakkı, başarı durumu ve girilebilirlik hesaplanır.
         foreach (var item in kayitliSinavlar)
         {
             var denemeler = sinavKatilimlari
@@ -156,6 +163,9 @@ public class OgrenciSinavController : Controller
 
             bool kursGuncelleniyorMu = item.KursDurumId == 7;
 
+            // Sınava girebilmek için kurs güncellenmiyor olmalı,
+            // tüm dersler tamamlanmalı, kurs daha önce başarıyla bitmemiş olmalı
+            // ve sınav hakkı bulunmalı veya devam eden sınav olmalıdır.
             bool sinavaGirebilirMi =
                 !kursGuncelleniyorMu &&
                 derslerTamamlandiMi &&
@@ -245,6 +255,7 @@ public class OgrenciSinavController : Controller
 
         IEnumerable<OgrenciSinavListeItemViewModel> filtreliSinavlar = tumSinavlar;
 
+        // Arama filtresi kurs adı veya sınav adına göre uygulanır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             filtreliSinavlar = filtreliSinavlar.Where(x =>
@@ -252,6 +263,7 @@ public class OgrenciSinavController : Controller
                 x.SinavAdi.Contains(arama, StringComparison.OrdinalIgnoreCase));
         }
 
+        // Seçilen durum filtresine göre sınav listesi daraltılır.
         filtreliSinavlar = durum switch
         {
             "girilebilir" => filtreliSinavlar.Where(x =>
@@ -318,6 +330,7 @@ public class OgrenciSinavController : Controller
         return View(model);
     }
 
+    // Öğrencinin sınavı başlatmasını sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Baslat(int kursId)
@@ -370,6 +383,7 @@ public class OgrenciSinavController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Öğrencinin sınava girebilmesi için tüm aktif normal dersleri tamamlamış olması gerekir.
         int toplamDersSayisi = await _context.Dersler
             .AsNoTracking()
             .CountAsync(x =>
@@ -395,6 +409,7 @@ public class OgrenciSinavController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Öğrencinin daha önceki sınav denemeleri alınır.
         var denemeler = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x =>
@@ -406,6 +421,7 @@ public class OgrenciSinavController : Controller
         var devamEdenDeneme = denemeler
             .FirstOrDefault(x => x.BitisTarihi == null);
 
+        // Devam eden sınav varsa yeni sınav açılmaz, mevcut sınava yönlendirilir.
         if (devamEdenDeneme != null)
         {
             return RedirectToAction(nameof(SinavGiris), new { id = devamEdenDeneme.SinavKatilimId });
@@ -416,6 +432,7 @@ public class OgrenciSinavController : Controller
             .OrderByDescending(x => x.BaslamaTarihi)
             .FirstOrDefault(x => x.GectiMi == true);
 
+        // Daha önce sınav geçildiyse sonuç ekranına yönlendirilir.
         if (gecilenDeneme != null)
         {
             return RedirectToAction(nameof(Sonuc), new { id = gecilenDeneme.SinavKatilimId });
@@ -423,6 +440,7 @@ public class OgrenciSinavController : Controller
 
         int bitmisDenemeSayisi = denemeler.Count(x => x.BitisTarihi != null);
 
+        // Maksimum sınav hakkı dolduysa kurs kaydı pasife alınır.
         if (bitmisDenemeSayisi >= MaksimumSinavHakki)
         {
             await BasarisizHakDolduysaKursKaydiniPasifeAlAsync(
@@ -434,6 +452,7 @@ public class OgrenciSinavController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Sınav için geçerli soru havuzundan öğrenciye gösterilecek sorular seçilir.
         var secilenSoruIdleri = await SinavSorulariniSecAsync(
             sinav.SinavId,
             kursKaydi.KursKayitId,
@@ -447,6 +466,8 @@ public class OgrenciSinavController : Controller
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
+        // Transaction içinde tekrar devam eden sınav kontrolü yapılır.
+        // Böylece çift tıklama veya aynı anda iki istek gelmesi durumunda ikinci sınav açılması engellenir.
         var tekrarDevamEdenDeneme = await _context.SinavKatilimlari
             .FirstOrDefaultAsync(x =>
                 x.KursKayitId == kursKaydi.KursKayitId &&
@@ -472,6 +493,7 @@ public class OgrenciSinavController : Controller
         _context.SinavKatilimlari.Add(sinavKatilimi);
         await _context.SaveChangesAsync();
 
+        // Seçilen her soru için boş cevap kaydı oluşturulur.
         foreach (int soruId in secilenSoruIdleri)
         {
             _context.OgrenciCevaplari.Add(new OgrenciCevabi
@@ -490,6 +512,7 @@ public class OgrenciSinavController : Controller
         return RedirectToAction(nameof(SinavGiris), new { id = sinavKatilimi.SinavKatilimId });
     }
 
+    // Öğrencinin devam eden sınav ekranını açar.
     [HttpGet]
     public async Task<IActionResult> SinavGiris(int id)
     {
@@ -533,6 +556,7 @@ public class OgrenciSinavController : Controller
             return RedirectToAction("Kurslarim", "OgrenciKurs");
         }
 
+        // Sınav zaten bitmişse doğrudan sonuç ekranına gidilir.
         if (sinavKatilimi.BitisTarihi != null)
         {
             return RedirectToAction(nameof(Sonuc), new { id = sinavKatilimi.SinavKatilimId });
@@ -541,6 +565,7 @@ public class OgrenciSinavController : Controller
         DateTime sinavBitisLimiti = sinavKatilimi.BaslamaTarihi
             .AddMinutes(sinavKatilimi.SureDakika);
 
+        // Süre dolmuşsa sınav mevcut cevaplarla otomatik değerlendirilir.
         if (DateTime.Now > sinavBitisLimiti)
         {
             var takipliSinavKatilimi = await _context.SinavKatilimlari
@@ -564,6 +589,7 @@ public class OgrenciSinavController : Controller
             return RedirectToAction(nameof(Sonuc), new { id = sinavKatilimi.SinavKatilimId });
         }
 
+        // Sınav başlatılırken oluşturulan cevap kayıtları alınır.
         var cevapKayitlari = await _context.OgrenciCevaplari
             .AsNoTracking()
             .Where(x => x.SinavKatilimId == id)
@@ -585,6 +611,7 @@ public class OgrenciSinavController : Controller
             .Select(x => x.SoruId)
             .ToList();
 
+        // Sınavdaki sorular ve aktif seçenekleri alınır.
         var sorular = await _context.Sorular
             .AsNoTracking()
             .Where(x => soruIdleri.Contains(x.SoruId))
@@ -626,13 +653,16 @@ public class OgrenciSinavController : Controller
 
         int siraNo = 1;
 
+        // Sorular cevap kayıtlarının sırasına göre modele eklenir.
         foreach (var cevap in cevapKayitlari)
         {
+            // Soru kaydı bulunamazsa o soru atlanır.
             if (!soruSozlugu.TryGetValue(cevap.SoruId, out var soru))
             {
                 continue;
             }
 
+            // Soru ve seçenekler modele eklenir.
             model.Sorular.Add(new OgrenciSinavSoruViewModel
             {
                 SoruId = soru.SoruId,
@@ -646,6 +676,7 @@ public class OgrenciSinavController : Controller
         return View(model);
     }
 
+    // Sınav ekranında öğrencinin seçtiği cevabı AJAX ile kaydeder.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CevapKaydet(int sinavKatilimId, int soruId, int? secenekId)
@@ -693,6 +724,7 @@ public class OgrenciSinavController : Controller
         DateTime sinavBitisLimiti = sinavKatilimi.BaslamaTarihi
             .AddMinutes(sinavKatilimi.Sinav.SureDakika);
 
+        // Süre dolduysa cevap kaydedilmez, sınav mevcut cevaplarla değerlendirilir.
         if (DateTime.Now > sinavBitisLimiti)
         {
             await SinavKatiliminiDegerlendirAsync(
@@ -722,6 +754,7 @@ public class OgrenciSinavController : Controller
             });
         }
 
+        // Öğrenci seçimi kaldırdıysa cevap boş olarak kaydedilir.
         if (!secenekId.HasValue)
         {
             cevap.SecenekId = null;
@@ -736,6 +769,7 @@ public class OgrenciSinavController : Controller
             });
         }
 
+        // Seçilen seçeneğin ilgili soruya ait aktif seçenek olup olmadığı kontrol edilir.
         var secenek = await _context.SoruSecenekleri
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
@@ -764,6 +798,7 @@ public class OgrenciSinavController : Controller
         });
     }
 
+    // Öğrenci sınavı bitirdiğinde cevapları değerlendirir ve sonuç ekranına yönlendirir.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Bitir(OgrenciSinavBitirViewModel model)
@@ -798,15 +833,19 @@ public class OgrenciSinavController : Controller
 
         var gelenCevaplar = model.Cevaplar ?? new List<OgrenciSinavCevapViewModel>();
 
+        // Formdan gelen cevaplar soru Id değerine göre sözlüğe çevrilir.
         var gelenCevapSozlugu = gelenCevaplar
             .GroupBy(x => x.SoruId)
             .ToDictionary(x => x.Key, x => x.First().SecenekId);
 
+        // Sınav bitiş limiti hesaplanır ve sürenin dolup dolmadığı kontrol edilir.
         DateTime sinavBitisLimiti = sinavKatilimi.BaslamaTarihi
             .AddMinutes(sinavKatilimi.Sinav.SureDakika);
 
         bool sureDoldu = DateTime.Now > sinavBitisLimiti;
 
+        // Süre dolmadıysa gelen cevaplar değerlendirmeye dahil edilir.
+        // Süre dolduysa sistemde kayıtlı mevcut cevaplar üzerinden değerlendirme yapılır.
         bool degerlendirildi = await SinavKatiliminiDegerlendirAsync(
             sinavKatilimi,
             kullaniciId,
@@ -826,16 +865,17 @@ public class OgrenciSinavController : Controller
         return RedirectToAction(nameof(Sonuc), new { id = sinavKatilimi.SinavKatilimId });
     }
 
+    // Öğrencinin tamamlanan sınav sonucunu gösterir.
     [HttpGet]
     public async Task<IActionResult> Sonuc(int id)
     {
         int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
         var sonuc = await _context.SinavKatilimlari
-        .AsNoTracking()
-        .Where(x =>
-        x.SinavKatilimId == id &&
-        x.KursKaydi.KullaniciId == kullaniciId)
+            .AsNoTracking()
+            .Where(x =>
+                x.SinavKatilimId == id &&
+                x.KursKaydi.KullaniciId == kullaniciId)
             .Select(x => new
             {
                 x.SinavKatilimId,
@@ -860,6 +900,7 @@ public class OgrenciSinavController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Sınav henüz bitmemişse sonuç yerine sınav giriş ekranına yönlendirilir.
         if (sonuc.BitisTarihi == null)
         {
             return RedirectToAction(nameof(SinavGiris), new { id = sonuc.SinavKatilimId });
@@ -918,6 +959,7 @@ public class OgrenciSinavController : Controller
         return View(model);
     }
 
+    // Sınav başlatılırken öğrenciye gösterilecek soruları seçer.
     private async Task<List<int>> SinavSorulariniSecAsync(
         int sinavId,
         int kursKayitId,
@@ -938,6 +980,8 @@ public class OgrenciSinavController : Controller
             return new List<int>();
         }
 
+        // Sınava uygun sorular aktif, yeterli seçenekli, tek doğru cevaplı
+        // ve kursun aktif normal derslerine bağlı olmalıdır.
         var gecerliSoruIdleri = await _context.Sorular
             .AsNoTracking()
             .Where(x =>
@@ -957,6 +1001,7 @@ public class OgrenciSinavController : Controller
             return new List<int>();
         }
 
+        // Öğrencinin önceki bitmiş denemeleri alınır.
         var oncekiBitmisDenemeler = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x =>
@@ -980,6 +1025,7 @@ public class OgrenciSinavController : Controller
             .Select(x => x.SinavKatilimId)
             .ToList();
 
+        // Önceki denemelerde görülen sorular bulunur.
         var dahaOnceGorulenSoruIdleri = oncekiDenemeIdleri.Any()
             ? await _context.OgrenciCevaplari
                 .AsNoTracking()
@@ -991,6 +1037,7 @@ public class OgrenciSinavController : Controller
 
         var sonBitmisDeneme = oncekiBitmisDenemeler.FirstOrDefault();
 
+        // Son denemede yanlış yapılan sorular öncelikli olarak tekrar seçilmeye çalışılır.
         if (sonBitmisDeneme != null)
         {
             var sonDenemeYanlisSoruIdleri = await _context.OgrenciCevaplari
@@ -1009,7 +1056,9 @@ public class OgrenciSinavController : Controller
                 soruSayisi);
         }
 
+        // Daha önce görülmemiş sorular ikinci öncelik olarak eklenir.
         var gorulmemisSoruIdleri = gecerliSoruIdleri
+            // exceptin anlamı verilen iki kümenin farkını almaktır. Yani gecerliSoruIdleri kümesinden dahaOnceGorulenSoruIdleri kümesinde olmayanları alırız.
             .Except(dahaOnceGorulenSoruIdleri)
             .ToList();
 
@@ -1019,6 +1068,7 @@ public class OgrenciSinavController : Controller
             gorulmemisSoruIdleri,
             soruSayisi);
 
+        // Eksik kalırsa daha önce görülmüş geçerli sorulardan tamamlanır.
         var dahaOnceGorulenGecerliSoruIdleri = gecerliSoruIdleri
             .Intersect(dahaOnceGorulenSoruIdleri)
             .ToList();
@@ -1032,6 +1082,7 @@ public class OgrenciSinavController : Controller
         return secilenSoruIdleri;
     }
 
+    // Süresi dolmuş ama bitiş tarihi yazılmamış sınavları otomatik değerlendirir.
     private async Task<int> SuresiDolanDevamEdenSinavlariKapatAsync(int kullaniciId)
     {
         var devamEdenSinavlar = await _context.SinavKatilimlari
@@ -1074,15 +1125,18 @@ public class OgrenciSinavController : Controller
         return kapatilanSinavSayisi;
     }
 
+    // Bir sınav katılımını değerlendirir, puan hesaplar, geçme durumunu belirler
+    // ve başarılıysa kurs tamamlama ile sertifika oluşturma işlemlerini yapar.
     private async Task<bool> SinavKatiliminiDegerlendirAsync(
-    SinavKatilimi sinavKatilimi,
-    int kullaniciId,
-    Dictionary<int, int?>? gelenCevapSozlugu)
+        SinavKatilimi sinavKatilimi,
+        int kullaniciId,
+        Dictionary<int, int?>? gelenCevapSozlugu)
     {
         var cevaplar = await _context.OgrenciCevaplari
             .Where(x => x.SinavKatilimId == sinavKatilimi.SinavKatilimId)
             .ToListAsync();
 
+        // Sınav cevap kayıtları yoksa değerlendirme yapılamaz.
         if (!cevaplar.Any())
         {
             return false;
@@ -1092,17 +1146,22 @@ public class OgrenciSinavController : Controller
 
         if (gelenCevapSozlugu != null)
         {
+            // Formdan gelen cevaplar veritabanındaki cevap kayıtlarına işlenir.
             foreach (var cevap in cevaplar)
             {
+                // Eğer öğrenci o soruya cevap vermediyse secenekId null olarak kalır.
                 gelenCevapSozlugu.TryGetValue(cevap.SoruId, out int? secilenSecenekId);
 
+               
                 cevap.SecenekId = secilenSecenekId;
+            
                 cevap.DogruMu = false;
                 cevap.VerilmeTarihi = simdi;
             }
         }
         else
         {
+            // Süre dolduğunda yeni cevap alınmaz, mevcut kayıtlar üzerinden değerlendirme yapılır.
             foreach (var cevap in cevaplar)
             {
                 cevap.DogruMu = false;
@@ -1116,6 +1175,7 @@ public class OgrenciSinavController : Controller
             .Distinct()
             .ToList();
 
+        // Seçilen seçeneklerin doğru/yanlış bilgisi tek sorguyla alınır.
         var secenekler = await _context.SoruSecenekleri
             .AsNoTracking()
             .Where(x => secilenSecenekIdleri.Contains(x.SecenekId))
@@ -1128,14 +1188,16 @@ public class OgrenciSinavController : Controller
             })
             .ToDictionaryAsync(x => x.SecenekId);
 
+        // Her cevap için seçilen seçeneğin gerçekten o soruya ait ve aktif olup olmadığı kontrol edilir.
         foreach (var cevap in cevaplar)
         {
+            
             if (!cevap.SecenekId.HasValue)
             {
                 cevap.DogruMu = false;
                 continue;
             }
-
+            // Eğer seçilen seçenek veritabanında bulunamazsa secenekId null olarak kalır ve cevap yanlış sayılır.
             if (!secenekler.TryGetValue(cevap.SecenekId.Value, out var secenek))
             {
                 cevap.SecenekId = null;
@@ -1159,6 +1221,7 @@ public class OgrenciSinavController : Controller
 
         int alinanPuan = toplamSoruSayisi == 0
             ? 0
+            // Puan yüzdelik olarak hesaplanır ve tam sayıya yuvarlanır.
             : (int)Math.Round((dogruSayisi * 100.0) / toplamSoruSayisi);
 
         bool gectiMi = alinanPuan >= sinavKatilimi.Sinav.GecmeNotu;
@@ -1169,6 +1232,7 @@ public class OgrenciSinavController : Controller
 
         if (gectiMi)
         {
+            // Öğrenci sınavı geçerse kurs tamamlandı olarak işaretlenir.
             sinavKatilimi.KursKaydi.TamamlandiMi = true;
             sinavKatilimi.KursKaydi.TamamlanmaTarihi ??= simdi;
 
@@ -1179,6 +1243,7 @@ public class OgrenciSinavController : Controller
 
             if (!sertifikaVarMi)
             {
+                // Daha önce sertifika yoksa benzersiz sertifika kodu ile sertifika oluşturulur.
                 var sertifika = new Sertifika
                 {
                     KullaniciId = kullaniciId,
@@ -1195,6 +1260,7 @@ public class OgrenciSinavController : Controller
                     .Select(x => x.KursAdi)
                     .FirstOrDefaultAsync() ?? "Kurs";
 
+                // Sertifika oluşturulduğunda öğrenciye bildirim gönderilir.
                 await _bildirimService.BildirimOlusturAsync(
                     kullaniciId,
                     "Bilgilendirme",
@@ -1208,6 +1274,7 @@ public class OgrenciSinavController : Controller
 
         if (!gectiMi)
         {
+            // Sınav geçilemediyse 3 başarısız hak dolmuş mu kontrol edilir.
             bool kursKaydiPasifeAlindi = await BasarisizHakDolduysaKursKaydiniPasifeAlAsync(
                 sinavKatilimi.KursKayitId,
                 sinavKatilimi.SinavId
@@ -1222,12 +1289,15 @@ public class OgrenciSinavController : Controller
         return true;
     }
 
+    // Verilen aday soru listesinden hedef sayıya ulaşana kadar rastgele ve tekrarsız soru ekler.
     private static void ListeyeRandomEkle(
         List<int> secilenSoruIdleri,
         HashSet<int> secilenSet,
         IEnumerable<int> adaySoruIdleri,
         int hedefSoruSayisi)
     {
+
+        // Aday sorular karıştırılır ve tekrarsız olarak seçilir.
         var karisikAdaylar = adaySoruIdleri
             .Distinct()
             .OrderBy(_ => Guid.NewGuid())
@@ -1240,6 +1310,7 @@ public class OgrenciSinavController : Controller
                 break;
             }
 
+            // Soru zaten seçilmişse tekrar eklenmez.
             if (secilenSet.Add(soruId))
             {
                 secilenSoruIdleri.Add(soruId);
@@ -1247,6 +1318,7 @@ public class OgrenciSinavController : Controller
         }
     }
 
+    // Sertifika için benzersiz sertifika kodu üretir.
     private async Task<string> BenzersizSertifikaKoduUretAsync()
     {
         string kod;
@@ -1260,8 +1332,10 @@ public class OgrenciSinavController : Controller
         return kod;
     }
 
+    // Öğrenci sınavı 3 kez başarısız olursa kurs kaydını pasife alır.
     private async Task<bool> BasarisizHakDolduysaKursKaydiniPasifeAlAsync(int kursKayitId, int sinavId)
     {
+        // Daha önce başarılı bir deneme varsa kurs kaydı pasife alınmaz.
         bool basariliDenemeVar = await _context.SinavKatilimlari
             .AnyAsync(x =>
                 x.KursKayitId == kursKayitId &&
@@ -1297,6 +1371,7 @@ public class OgrenciSinavController : Controller
             return false;
         }
 
+        // 3 başarısız denemeden sonra kurs kaydı pasife alınır.
         kursKaydi.AktifMi = false;
         kursKaydi.TamamlandiMi = false;
         kursKaydi.TamamlanmaTarihi = null;

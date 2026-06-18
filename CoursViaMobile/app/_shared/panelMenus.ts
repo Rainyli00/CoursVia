@@ -1,5 +1,7 @@
 import type { PanelMenuItem } from "@/app/_shared/PanelLayout";
 
+// PanelLayout'a verilen rol bazlı menü listeleri burada merkezi tutulur.
+
 // Öğrenci panelinde kullanılacak sol sidebar menüsü.
 export const OGRENCI_MENU_ITEMS: PanelMenuItem[] = [
     {
@@ -92,6 +94,7 @@ export const EGITMEN_MENU_ITEMS: PanelMenuItem[] = [
     },
 ];
 
+// Admin panelinde kullanılacak sol sidebar menüsü.
 export const ADMIN_MENU_ITEMS: PanelMenuItem[] = [
     {
         key: "dashboard",

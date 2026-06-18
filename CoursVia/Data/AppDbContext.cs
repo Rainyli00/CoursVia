@@ -1,4 +1,4 @@
-﻿using CoursVia.Models;
+using CoursVia.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Data;
@@ -323,7 +323,8 @@ public class AppDbContext : DbContext
                 .HasDefaultValueSql("SYSDATETIME()");
 
             entity.HasIndex(x => new { x.KursId, x.SiraNo })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[AktifMi] = 1 AND [SistemDersiMi] = 0");
 
             entity.HasOne(x => x.Kurs)
                 .WithMany(x => x.Dersler)

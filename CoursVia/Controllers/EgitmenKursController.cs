@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Eğitmenin kurs oluşturma, düzenleme, içerik yönetimi, ön izleme ve yayına gönderme işlemlerini yönetir.
 [Authorize(Roles = "Eğitmen")]
 public class EgitmenKursController : EgitmenBaseController
 {
@@ -22,10 +23,7 @@ public class EgitmenKursController : EgitmenBaseController
         _webHostEnvironment = webHostEnvironment;
     }
 
-    // =========================
-    // KURSLARIM
-    // =========================
-
+    // Eğitmenin kendi kurslarını arama, filtreleme, sıralama ve sayfalama ile listeler.
     [HttpGet]
     public async Task<IActionResult> Kurslarim(
         string? arama,
@@ -51,6 +49,7 @@ public class EgitmenKursController : EgitmenBaseController
             ? kategoriId
             : null;
 
+        // Eski sıralama parametreleri yeni sistemde kullanılan karşılıklarına çevrilir.
         siralama = siralama switch
         {
             "yeni" => "guncel",
@@ -77,6 +76,7 @@ public class EgitmenKursController : EgitmenBaseController
             siralama = "guncel";
         }
 
+        // Sadece onaylanmış eğitmenler kurs yönetim ekranına erişebilir.
         var egitmenProfili = await _context.EgitmenProfilleri
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.KullaniciId == kullaniciId);
@@ -96,6 +96,7 @@ public class EgitmenKursController : EgitmenBaseController
             .Where(x => x.EgitmenId == kullaniciId)
             .AsQueryable();
 
+        // Kurs adı, açıklama veya kategori adına göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             string aramaKucuk = arama.ToLower();
@@ -131,6 +132,7 @@ public class EgitmenKursController : EgitmenBaseController
             sayfa = toplamSayfa;
         }
 
+        // Seçilen sıralama türüne göre kurslar sıralanır.
         var queryOrdered = siralama switch
         {
             "eski" => query
@@ -182,9 +184,10 @@ public class EgitmenKursController : EgitmenBaseController
             .ToListAsync();
 
         var kursIdleri = kurslar
-        .Select(x => x.KursId)
-        .ToList();
+            .Select(x => x.KursId)
+            .ToList();
 
+        // Listelenen kursların ortalama puan ve yorum sayıları hesaplanır.
         var puanOzetleri = await _context.KursDegerlendirmeleri
             .AsNoTracking()
             .Where(x => kursIdleri.Contains(x.KursId))
@@ -209,6 +212,7 @@ public class EgitmenKursController : EgitmenBaseController
                 x => x.YorumSayisi
             );
 
+        // Listelenen kursların aktif öğrenci sayıları hesaplanır.
         var ogrenciSayilari = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x => kursIdleri.Contains(x.KursId) && x.AktifMi)
@@ -226,6 +230,7 @@ public class EgitmenKursController : EgitmenBaseController
                 x => x.OgrenciSayisi
             );
 
+        // Filtre ve sayfalama bilgileri view tarafında kullanılmak üzere ViewBag'e aktarılır.
         ViewBag.Arama = arama;
         ViewBag.DurumId = durumId;
         ViewBag.KategoriId = kategoriId;
@@ -238,6 +243,7 @@ public class EgitmenKursController : EgitmenBaseController
         ViewBag.OncekiSayfaVar = sayfa > 1;
         ViewBag.SonrakiSayfaVar = sayfa < toplamSayfa;
 
+        // Kurs filtrelemede gösterilecek durumlar alınır.
         ViewBag.Durumlar = await _context.Durumlar
             .AsNoTracking()
             .Where(x =>
@@ -250,6 +256,7 @@ public class EgitmenKursController : EgitmenBaseController
             .OrderBy(x => x.DurumId)
             .ToListAsync();
 
+        // Eğitmenin daha önce kurslarında kullandığı kategoriler filtre olarak hazırlanır.
         ViewBag.Kategoriler = await _context.KursKategorileri
             .AsNoTracking()
             .Where(x => x.Kurs.EgitmenId == kullaniciId)
@@ -266,8 +273,7 @@ public class EgitmenKursController : EgitmenBaseController
             .OrderBy(x => x.KategoriAdi)
             .ToListAsync();
 
-
-
+        // Eğitmen panelindeki özet istatistikler hazırlanır.
         ViewBag.ToplamKurs = await _context.Kurslar
             .AsNoTracking()
             .CountAsync(x => x.EgitmenId == kullaniciId);
@@ -287,10 +293,7 @@ public class EgitmenKursController : EgitmenBaseController
         return View(kurslar);
     }
 
-    // =========================
-    // KURS OLUŞTUR
-    // =========================
-
+    // Kurs oluşturma formunu açar.
     [HttpGet]
     public async Task<IActionResult> KursOlustur()
     {
@@ -306,6 +309,7 @@ public class EgitmenKursController : EgitmenBaseController
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Eğitmen sadece kendi onaylı branşlarından kategori seçebilir.
         var model = new KursOlusturViewModel
         {
             Kategoriler = egitmenProfili.EgitmenBranslari
@@ -317,6 +321,7 @@ public class EgitmenKursController : EgitmenBaseController
         return View(model);
     }
 
+    // Yeni kursu taslak olarak oluşturur.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> KursOlustur(KursOlusturViewModel model)
@@ -359,6 +364,7 @@ public class EgitmenKursController : EgitmenBaseController
             );
         }
 
+        // Eğitmenin kendi branşı olmayan kategorilerde kurs açması engellenir.
         bool yetkisizKategoriVarMi = model.SeciliKategoriIdleri
             .Any(kategoriId => !egitmenKategoriIdleri.Contains(kategoriId));
 
@@ -386,8 +392,10 @@ public class EgitmenKursController : EgitmenBaseController
             KapakGorselDosyasiniDogrula(model.KapakGorselDosya!);
         }
 
+      
         if (!ModelState.IsValid)
         {
+            // Kategoriler tekrar yüklenir, çünkü form gönderiminde seçilen kategoriler dışında kalanlar modelde null gelir.
             model.Kategoriler = egitmenProfili.EgitmenBranslari
                 .Select(x => x.Kategori)
                 .OrderBy(x => x.KategoriAdi)
@@ -419,6 +427,7 @@ public class EgitmenKursController : EgitmenBaseController
                     Directory.CreateDirectory(klasorYolu);
                 }
 
+                // Dosya adı çakışmasını önlemek için GUID ile benzersiz dosya adı üretilir.
                 string dosyaAdi = $"{Guid.NewGuid()}{uzanti}";
                 string dosyaYolu = Path.Combine(klasorYolu, dosyaAdi);
 
@@ -427,6 +436,7 @@ public class EgitmenKursController : EgitmenBaseController
                     await model.KapakGorselDosya.CopyToAsync(stream);
                 }
 
+                // Hata durumunda yüklenen dosyanın silinebilmesi için fiziksel yol saklanır.
                 yuklenenDosyaYolu = dosyaYolu;
                 kapakGorselYolu = $"/uploads/kurs-kapaklari/{dosyaAdi}";
             }
@@ -454,6 +464,7 @@ public class EgitmenKursController : EgitmenBaseController
             _context.Kurslar.Add(kurs);
             await _context.SaveChangesAsync();
 
+            // Kurs oluşturulduktan sonra seçilen kategoriler kursa bağlanır.
             foreach (var kategoriId in model.SeciliKategoriIdleri)
             {
                 _context.KursKategorileri.Add(new KursKategorisi
@@ -474,6 +485,7 @@ public class EgitmenKursController : EgitmenBaseController
         {
             await transaction.RollbackAsync();
 
+            // Veritabanı işlemi başarısız olursa yüklenen kapak görseli de silinir.
             if (!string.IsNullOrWhiteSpace(yuklenenDosyaYolu) && System.IO.File.Exists(yuklenenDosyaYolu))
             {
                 System.IO.File.Delete(yuklenenDosyaYolu);
@@ -493,10 +505,7 @@ public class EgitmenKursController : EgitmenBaseController
         }
     }
 
-    // =========================
-    // KURS DÜZENLEME (TEMEL BİLGİLER)
-    // =========================
-
+    // Kurs temel bilgileri düzenleme formunu açar.
     [HttpGet]
     public async Task<IActionResult> KursDuzenle(int id)
     {
@@ -523,6 +532,7 @@ public class EgitmenKursController : EgitmenBaseController
             return RedirectToAction(nameof(Kurslarim));
         }
 
+        // Mevcut kurs bilgileri düzenleme ViewModel'ine aktarılır.
         var model = new KursDuzenleViewModel
         {
             KursId = kurs.KursId,
@@ -536,6 +546,7 @@ public class EgitmenKursController : EgitmenBaseController
         return View(model);
     }
 
+    // Kursun temel bilgilerini ve kapak görselini günceller.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> KursDuzenle(KursDuzenleViewModel model)
@@ -593,6 +604,7 @@ public class EgitmenKursController : EgitmenBaseController
         var silinecekFizikselDosyalar = new List<string>();
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
+
         try
         {
             string sonGorselUrl = kurs.KapakGorselUrl;
@@ -602,11 +614,13 @@ public class EgitmenKursController : EgitmenBaseController
                 string uzanti = Path.GetExtension(model.KapakGorselDosya!.FileName).ToLower();
 
                 string klasorYolu = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "kurs-kapaklari");
-                if (!Directory.Exists(klasorYolu)) Directory.CreateDirectory(klasorYolu);
+
+                if (!Directory.Exists(klasorYolu))
+                    Directory.CreateDirectory(klasorYolu);
 
                 string dosyaAdi = $"{Guid.NewGuid()}{uzanti}";
                 string tamYol = Path.Combine(klasorYolu, dosyaAdi);
-
+                // Yeni yüklenen kapak görseli fiziksel olarak kaydedilir.
                 using (var fileStream = new FileStream(tamYol, FileMode.Create))
                 {
                     await model.KapakGorselDosya.CopyToAsync(fileStream);
@@ -620,6 +634,7 @@ public class EgitmenKursController : EgitmenBaseController
                 sonGorselUrl = model.KapakGorselUrl!.Trim();
             }
 
+            // Kapak görseli değiştiyse eski local görsel dosyası sonradan silinmek üzere listeye alınır.
             if (!string.Equals(sonGorselUrl, eskiKapakGorselUrl, StringComparison.Ordinal))
             {
                 DosyaYoluEkleEgerUploadIse(
@@ -634,16 +649,22 @@ public class EgitmenKursController : EgitmenBaseController
             kurs.KapakGorselUrl = sonGorselUrl;
             kurs.GuncellemeTarihi = DateTime.Now;
 
+            // Kategoriler tamamen yenilenir.
             _context.KursKategorileri.RemoveRange(kurs.KursKategorileri);
+
+            // Yeni seçilen kategoriler kursa eklenir.
             foreach (var katId in model.SeciliKategoriIdleri)
             {
                 _context.KursKategorileri.Add(new KursKategorisi { KursId = kurs.KursId, KategoriId = katId });
             }
 
+            // Yayındaki kurs düzenlenirse tekrar taslağa alınır.
             OnayliKursuTaslakYap(kurs);
+
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // Veritabanı işlemi başarılı olduktan sonra eski görsel dosyası silinir.
             YuklenenDosyalariSil(silinecekFizikselDosyalar);
 
             TempData["KursBasari"] = "Kurs bilgileri başarıyla güncellendi.";
@@ -653,6 +674,7 @@ public class EgitmenKursController : EgitmenBaseController
         {
             await transaction.RollbackAsync();
 
+            // Hata oluşursa yeni yüklenen kapak görseli boşa kalmasın diye silinir.
             if (!string.IsNullOrWhiteSpace(yeniYuklenenKapakFizikselYolu))
             {
                 YuklenenDosyalariSil(new List<string> { yeniYuklenenKapakFizikselYolu });
@@ -665,10 +687,7 @@ public class EgitmenKursController : EgitmenBaseController
         }
     }
 
-    // =========================
-    // KURS İÇERİK YÖNETİMİ
-    // =========================
-
+    // Kurs içerik yönetimi ekranını açar.
     [HttpGet]
     public async Task<IActionResult> KursIcerik(int id)
     {
@@ -680,8 +699,9 @@ public class EgitmenKursController : EgitmenBaseController
                 .ThenInclude(x => x.Kategori)
             .Include(x => x.Bolumler.OrderBy(b => b.SiraNo))
                 .ThenInclude(b => b.Dersler
-                    .Where(d => d.AktifMi && !d.SistemDersiMi)
-                    .OrderBy(d => d.SiraNo))
+                    .Where(d => !d.SistemDersiMi)
+                    .OrderBy(d => d.AktifMi ? 0 : 1)
+                    .ThenBy(d => d.SiraNo))
                     .ThenInclude(d => d.DersMateryalleri)
             .FirstOrDefaultAsync(x => x.KursId == id && x.EgitmenId == kullaniciId);
 
@@ -693,6 +713,7 @@ public class EgitmenKursController : EgitmenBaseController
         return View(kurs);
     }
 
+    // Eğitmenin kursu öğrenci gözünden ön izlemesini sağlar.
     [HttpGet]
     public async Task<IActionResult> OnIzle(int id, int soruSayfa = 1, int yorumSayfa = 1)
     {
@@ -708,6 +729,7 @@ public class EgitmenKursController : EgitmenBaseController
         return View(model);
     }
 
+    // Yayındaki kursu düzenleyebilmek için tekrar taslak durumuna alır.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> YayindakiKursuDuzenle(int id)
@@ -741,6 +763,7 @@ public class EgitmenKursController : EgitmenBaseController
         return RedirectToAction(nameof(KursIcerik), new { id = kurs.KursId });
     }
 
+    // Onay bekleyen kursu admin onay sürecinden geri çeker.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OnaydanGeriCek(int id)
@@ -770,6 +793,47 @@ public class EgitmenKursController : EgitmenBaseController
         return RedirectToAction(nameof(Kurslarim));
     }
 
+    // Eğitmenin kursunu manuel olarak pasife almasını veya taslak olarak aktif etmesini sağlar.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> KursDurumDegistir(int id)
+    {
+        int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        var kurs = await _context.Kurslar
+            .FirstOrDefaultAsync(x => x.KursId == id && x.EgitmenId == kullaniciId);
+
+        if (kurs == null)
+        {
+            return RedirectToAction("AccessDenied", "Account");
+        }
+
+        if (kurs.DurumId == 4)
+        {
+            TempData["KursHata"] = "Onay bekleyen kursun durumu değiştirilemez.";
+            return RedirectToAction(nameof(Kurslarim));
+        }
+
+        if (kurs.DurumId == 2)
+        {
+            // Pasiften aktife alınırken doğrudan admin onayına (4) gönderilir.
+            kurs.DurumId = 4;
+            kurs.GuncellemeTarihi = DateTime.Now;
+            TempData["KursBasari"] = "Kurs aktif edilmek üzere admin onayına gönderildi.";
+        }
+        else
+        {
+            // Kursu pasife al
+            kurs.DurumId = 2;
+            kurs.GuncellemeTarihi = DateTime.Now;
+            TempData["KursBasari"] = "Kurs başarıyla pasife alındı.";
+        }
+
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Kurslarim));
+    }
+
+    // Eğitmenin kursunu silmesini veya geçmiş veri varsa pasife almasını sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> KursSil(int id)
@@ -807,6 +871,7 @@ public class EgitmenKursController : EgitmenBaseController
             return RedirectToAction(nameof(Kurslarim));
         }
 
+        // Kursa ait öğrenci, sınav, sertifika veya değerlendirme geçmişi varsa fiziksel silme yapılmaz.
         bool gecmisVeriVarMi = await KursGecmisVerisiVarMiAsync(kurs.KursId);
 
         if (gecmisVeriVarMi)
@@ -825,9 +890,11 @@ public class EgitmenKursController : EgitmenBaseController
 
         try
         {
+            // Geçmiş veri yoksa kurs ve bağlı tüm içerikler veritabanından silinir.
             await KursuFizikselSilAsync(kurs.KursId, silinecekFizikselDosyalar);
             await transaction.CommitAsync();
 
+            // Veritabanı silme işlemi başarılı olduktan sonra fiziksel dosyalar silinir.
             YuklenenDosyalariSil(silinecekFizikselDosyalar);
 
             TempData["KursBasari"] = "Kurs başarıyla silindi.";
@@ -842,6 +909,7 @@ public class EgitmenKursController : EgitmenBaseController
         }
     }
 
+    // Kursu admin onayına gönderir.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> YayinaGonder(int id)
@@ -859,6 +927,7 @@ public class EgitmenKursController : EgitmenBaseController
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Yayına göndermeden önce kursun eksikleri kontrol edilir.
         var eksikler = await YayinEksikleriniGetirAsync(kurs);
 
         if (eksikler.Any())
@@ -876,11 +945,12 @@ public class EgitmenKursController : EgitmenBaseController
         return RedirectToAction(nameof(Kurslarim));
     }
 
+    // Kurs ön izleme ekranında kullanılacak ViewModel'i hazırlar.
     private async Task<KursOnIzleViewModel?> KursOnIzleModeliOlusturAsync(
-    int kursId,
-    int kullaniciId,
-    int soruSayfa,
-    int yorumSayfa)
+        int kursId,
+        int kullaniciId,
+        int soruSayfa,
+        int yorumSayfa)
     {
         const int soruSayfaBoyutu = 10;
         const int yorumSayfaBoyutu = 5;
@@ -988,6 +1058,7 @@ public class EgitmenKursController : EgitmenBaseController
             .AsNoTracking()
             .CountAsync(x => x.KursId == kurs.KursId && x.AktifMi);
 
+        // Kurs değerlendirmeleri sayfalı olarak modele aktarılır.
         model.Degerlendirmeler = await degerlendirmeQuery
             .OrderByDescending(x => x.DegerlendirmeTarihi)
             .Skip((yorumSayfa - 1) * yorumSayfaBoyutu)
@@ -1004,10 +1075,12 @@ public class EgitmenKursController : EgitmenBaseController
 
         if (kurs.Sinav != null)
         {
+            // Sınav havuzundaki tüm aktif soru sayısı hesaplanır.
             int havuzdakiSoruSayisi = await _context.Sorular
                 .AsNoTracking()
                 .CountAsync(x => x.SinavId == kurs.Sinav.SinavId && x.AktifMi);
 
+            // Yayına uygun sorular; seçenek, doğru cevap ve ders bağlantısı açısından kontrol edilir.
             int gecerliSoruSayisi = await _context.Sorular
                 .AsNoTracking()
                 .CountAsync(x =>
@@ -1033,6 +1106,7 @@ public class EgitmenKursController : EgitmenBaseController
                 soruSayfa = toplamSoruSayfa;
             }
 
+            // Ön izleme ekranında gösterilecek soru Id'leri sayfalı şekilde alınır.
             var soruIdleri = await _context.Sorular
                 .AsNoTracking()
                 .Where(x => x.SinavId == kurs.Sinav.SinavId && x.AktifMi)
@@ -1104,11 +1178,13 @@ public class EgitmenKursController : EgitmenBaseController
         return model;
     }
 
+    // Kursun yayına gönderilebilecek durumda olup olmadığını kontrol eder.
     private static bool KursYayinaGonderilebilirDurumdaMi(int durumId)
     {
         return durumId == 3 || durumId == 6 || durumId == 7;
     }
 
+    // Kurs yayına gönderilmeden önce eksik veya hatalı alanları kontrol eder.
     private async Task<List<string>> YayinEksikleriniGetirAsync(Kurs kurs, bool durumKontroluYap = true)
     {
         var eksikler = new List<string>();
@@ -1156,6 +1232,7 @@ public class EgitmenKursController : EgitmenBaseController
             return eksikler;
         }
 
+        // Geçerli soru: aktif, en az iki seçeneği olan, tek doğru cevabı olan ve aktif normal derse bağlı sorudur.
         int gecerliSoruSayisi = await _context.Sorular
             .AsNoTracking()
             .CountAsync(x =>
@@ -1180,6 +1257,7 @@ public class EgitmenKursController : EgitmenBaseController
         return eksikler;
     }
 
+    // Bir sorunun yayına hazır olup olmadığını kontrol eder.
     private static bool SoruYayinaHazirMi(Soru soru, int kursId)
     {
         return soru.AktifMi &&
@@ -1188,6 +1266,7 @@ public class EgitmenKursController : EgitmenBaseController
                SoruDersBaglantilariGecerliMi(soru, kursId);
     }
 
+    // Sorunun sadece bu kursun aktif normal derslerine bağlı olup olmadığını kontrol eder.
     private static bool SoruDersBaglantilariGecerliMi(Soru soru, int kursId)
     {
         return soru.SoruDersleri.Any(x =>
@@ -1200,6 +1279,7 @@ public class EgitmenKursController : EgitmenBaseController
                    x.Ders.SistemDersiMi);
     }
 
+    // Kursun öğrenci ilerlemesi, kayıt, sınav, yorum veya sertifika gibi geçmiş verisi olup olmadığını kontrol eder.
     private async Task<bool> KursGecmisVerisiVarMiAsync(int kursId)
     {
         return await _context.KursKayitlari.AnyAsync(x => x.KursId == kursId) ||
@@ -1210,12 +1290,14 @@ public class EgitmenKursController : EgitmenBaseController
                await _context.Sertifikalar.AnyAsync(x => x.KursId == kursId);
     }
 
+    // Geçmiş verisi olmayan kursu, ilişkili tüm kayıtlarıyla birlikte fiziksel olarak siler.
     private async Task KursuFizikselSilAsync(int kursId, List<string> silinecekFizikselDosyalar)
     {
         var kurs = await _context.Kurslar
             .Include(x => x.KursKategorileri)
             .FirstAsync(x => x.KursId == kursId);
 
+        // Kurs kapak görseli local upload ise silinecek dosyalar listesine eklenir.
         DosyaYoluEkleEgerUploadIse(
             silinecekFizikselDosyalar,
             kurs.KapakGorselUrl,
@@ -1227,6 +1309,7 @@ public class EgitmenKursController : EgitmenBaseController
             .Where(x => x.KursId == kursId)
             .ToListAsync();
 
+        // Ders videoları ve materyal dosyaları silinmek üzere listeye alınır.
         foreach (var ders in dersler)
         {
             DosyaYoluEkleEgerUploadIse(
@@ -1252,6 +1335,7 @@ public class EgitmenKursController : EgitmenBaseController
                 .ThenInclude(x => x.SoruSecenekleri)
             .FirstOrDefaultAsync(x => x.KursId == kursId);
 
+        // Sınav varsa önce soru ilişkileri ve seçenekleri temizlenir.
         if (sinav != null)
         {
             foreach (var soru in sinav.Sorular)
@@ -1290,6 +1374,7 @@ public class EgitmenKursController : EgitmenBaseController
             .Where(x => x.KursId == kursId)
             .ToListAsync();
 
+        // AI önerileri kurs silinse bile tamamen silinmez, sadece kurs bağlantısı koparılır.
         foreach (var oneri in oneriler)
         {
             oneri.KursId = null;
@@ -1300,6 +1385,7 @@ public class EgitmenKursController : EgitmenBaseController
         await _context.SaveChangesAsync();
     }
 
+    // Yüklenen kapak görselinin uzantı ve boyut kontrolünü yapar.
     private void KapakGorselDosyasiniDogrula(IFormFile dosya)
     {
         string uzanti = Path.GetExtension(dosya.FileName).ToLowerInvariant();
@@ -1321,6 +1407,7 @@ public class EgitmenKursController : EgitmenBaseController
         }
     }
 
+    // URL local upload klasöründeyse güvenli fiziksel dosya yoluna çevirip listeye ekler.
     private void DosyaYoluEkleEgerUploadIse(List<string> dosyaListesi, string? url, string beklenenPrefix)
     {
         if (string.IsNullOrWhiteSpace(url) || !url.StartsWith(beklenenPrefix))
@@ -1329,11 +1416,13 @@ public class EgitmenKursController : EgitmenBaseController
         }
 
         string webRoot = Path.GetFullPath(_webHostEnvironment.WebRootPath);
+
         string fizikselYol = Path.GetFullPath(Path.Combine(
             webRoot,
             url.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString())
         ));
 
+        // Path traversal riskine karşı dosyanın webroot dışına çıkmadığı kontrol edilir.
         if (!fizikselYol.StartsWith(webRoot, StringComparison.OrdinalIgnoreCase))
         {
             return;
@@ -1342,8 +1431,11 @@ public class EgitmenKursController : EgitmenBaseController
         dosyaListesi.Add(fizikselYol);
     }
 
+    // Verilen fiziksel dosya yollarındaki dosyaları siler.
     private static void YuklenenDosyalariSil(List<string> dosyaYollari)
     {
+
+        // Dosya yolları listesinde aynı dosya birden fazla kez bulunabilir, bu yüzden Distinct ile tekrarlar temizlenir.
         foreach (var dosyaYolu in dosyaYollari.Distinct())
         {
             try
@@ -1358,16 +1450,6 @@ public class EgitmenKursController : EgitmenBaseController
                 // Dosya kilitliyse kullanıcı akışını bozmamak için sessiz geçilir.
             }
         }
-    }
-
-    // =========================
-    // ŞİMDİLİK PLACEHOLDER
-    // =========================
-
-    [HttpGet]
-    public IActionResult KursDetay(int id)
-    {
-        return RedirectToAction(nameof(Kurslarim));
     }
 
 

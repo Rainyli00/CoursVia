@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Öğrencinin eğitmen başvurusu yapmasını veya mevcut başvurusunu güncellemesini yönetir.
 [Authorize(Roles = "Öğrenci,Admin")]
 public class OgrenciEgitmenBasvuruController : Controller
 {
@@ -20,6 +21,7 @@ public class OgrenciEgitmenBasvuruController : Controller
         _adminLogService = adminLogService;
     }
 
+    // Öğrencinin eğitmen olmak için gönderdiği başvuru formunu işler.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Basvuru(
@@ -31,6 +33,7 @@ public class OgrenciEgitmenBasvuruController : Controller
     {
         int kullaniciId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        // Formdan gelen metin alanları temizlenir.
         uzmanlikAlani = string.IsNullOrWhiteSpace(uzmanlikAlani)
             ? string.Empty
             : uzmanlikAlani.Trim();
@@ -43,6 +46,7 @@ public class OgrenciEgitmenBasvuruController : Controller
             ? null
             : websiteUrl.Trim();
 
+        // Tekrar eden veya geçersiz branş Id değerleri temizlenir.
         seciliBransIdleri = seciliBransIdleri
             .Distinct()
             .Where(x => x > 0)
@@ -66,8 +70,7 @@ public class OgrenciEgitmenBasvuruController : Controller
             return RedirectToAction("Index", "ProfilAyarlari");
         }
 
-     
-
+        // Deneyim yılı girildiyse mantıklı aralıkta olup olmadığı kontrol edilir.
         if (deneyimYili.HasValue &&
             (deneyimYili.Value < 0 || deneyimYili.Value > 60))
         {
@@ -87,11 +90,13 @@ public class OgrenciEgitmenBasvuruController : Controller
             return RedirectToAction("Index", "ProfilAyarlari");
         }
 
+        // Veritabanındaki geçerli kategori/branş Id değerleri alınır.
         var kategoriIdleri = await _context.Kategoriler
             .AsNoTracking()
             .Select(x => x.KategoriId)
             .ToListAsync();
 
+        // Kullanıcının formdan geçersiz bir branş Id göndermesi engellenir.
         bool gecersizKategoriVar = seciliBransIdleri
             .Any(x => !kategoriIdleri.Contains(x));
 
@@ -101,10 +106,12 @@ public class OgrenciEgitmenBasvuruController : Controller
             return RedirectToAction("Index", "ProfilAyarlari");
         }
 
+        // Kullanıcının daha önce oluşturduğu eğitmen profili varsa branşlarıyla birlikte alınır.
         var mevcutProfil = await _context.EgitmenProfilleri
             .Include(x => x.EgitmenBranslari)
             .FirstOrDefaultAsync(x => x.KullaniciId == kullaniciId);
 
+        // Admin log mesajında kullanmak için kullanıcının temel bilgileri alınır.
         var kullanici = await _context.Kullanicilar
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId)
@@ -121,26 +128,32 @@ public class OgrenciEgitmenBasvuruController : Controller
             : $"{kullanici.Ad} {kullanici.Soyad}".Trim();
 
         string kullaniciEposta = kullanici?.Eposta ?? "-";
+
+        // Profil yoksa bu işlem yeni başvuru, varsa başvuru güncellemedir.
         bool yeniBasvuruMu = mevcutProfil == null;
 
+        // DurumId 4: Onay bekleyen başvuru.
         if (mevcutProfil != null && mevcutProfil.DurumId == 4)
         {
             TempData["OgrenciHata"] = "Zaten onay bekleyen bir eğitmen başvurunuz var.";
             return RedirectToAction("Index", "ProfilAyarlari");
         }
 
+        // DurumId 8: Onaylanmış eğitmen profili.
         if (mevcutProfil != null && mevcutProfil.DurumId == 8)
         {
             TempData["OgrenciHata"] = "Eğitmen başvurunuz zaten onaylanmış.";
             return RedirectToAction("Index", "ProfilAyarlari");
         }
 
+        // Profil, branş ve log işlemleri tek transaction içinde yapılır.
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
             if (mevcutProfil == null)
             {
+                // Kullanıcının daha önce profili yoksa yeni eğitmen profili oluşturulur.
                 mevcutProfil = new EgitmenProfili
                 {
                     KullaniciId = kullaniciId,
@@ -153,19 +166,23 @@ public class OgrenciEgitmenBasvuruController : Controller
 
                 _context.EgitmenProfilleri.Add(mevcutProfil);
 
+                // EgitmenProfilId oluşması için önce profil kaydedilir.
                 await _context.SaveChangesAsync();
             }
             else
             {
+                // Daha önce reddedilmiş veya düzeltmeye düşmüş profil tekrar onay bekleyen duruma alınır.
                 mevcutProfil.DurumId = 4;
                 mevcutProfil.UzmanlikAlani = uzmanlikAlani;
                 mevcutProfil.Biyografi = biyografi;
                 mevcutProfil.DeneyimYili = deneyimYili;
                 mevcutProfil.WebsiteUrl = websiteUrl;
 
+                // Eski branşlar silinip yeni seçilen branşlar tekrar eklenecek.
                 _context.EgitmenBranslari.RemoveRange(mevcutProfil.EgitmenBranslari);
             }
 
+            // Seçilen branşlar eğitmen profiline bağlanır.
             foreach (int kategoriId in seciliBransIdleri)
             {
                 _context.EgitmenBranslari.Add(new EgitmenBransi
@@ -175,6 +192,7 @@ public class OgrenciEgitmenBasvuruController : Controller
                 });
             }
 
+            // Admin panelinde görülebilmesi için başvuru işlemi loglanır.
             await _adminLogService.KaydetAsync(
                 null,
                 AdminLogService.EgitmenBasvurulari,

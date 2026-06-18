@@ -27,8 +27,11 @@ type AiOnerilerScreenProps = {
     activeMenuKey: string;
 };
 
+// API sayfalama isteğinde kullanılacak sabit liste boyutu.
 const SAYFA_BOYUTU = 10;
 
+// Öğrenci ve eğitmen panellerinin ortak AI öneriler ekranı.
+// Başlık ve menü bilgisi dışarıdan gelir, listeleme mantığı burada ortaktır.
 export default function AiOnerilerScreen({
     title,
     subtitle,
@@ -37,20 +40,25 @@ export default function AiOnerilerScreen({
 }: AiOnerilerScreenProps) {
     const [oneriler, setOneriler] = useState<MobileAiOneriItem[]>([]);
 
+    // Listeyi daraltan arama ve sıralama filtreleri.
     const [arama, setArama] = useState("");
     const [siralama, setSiralama] = useState<MobileAiOneriSiralama>("yeni");
 
+    // Backend'den gelen sayfalama özeti.
     const [sayfa, setSayfa] = useState(1);
     const [toplamKayit, setToplamKayit] = useState(0);
     const [toplamSayfa, setToplamSayfa] = useState(0);
 
+    // İlk yükleme, pull-to-refresh ve hata durumları ayrı tutulur.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Kart açma/kapama ve silme sırasında sadece ilgili öneriyi etkileyen UI state'leri.
     const [acikOneriId, setAcikOneriId] = useState<number | null>(null);
     const [silinenOneriId, setSilinenOneriId] = useState<number | null>(null);
 
+    // Sıralama seçenekleri render sırasında yeniden oluşturulmasın diye memoize edilir.
     const siralamaSecenekleri = useMemo(
         () => [
             { key: "yeni" as MobileAiOneriSiralama, label: "Yeni" },
@@ -61,6 +69,7 @@ export default function AiOnerilerScreen({
         []
     );
 
+    // Ekran ilk açıldığında varsayılan filtrelerle ilk sayfa yüklenir.
     useEffect(() => {
         onerileriGetir(false, {
             sayfa: 1,
@@ -69,6 +78,7 @@ export default function AiOnerilerScreen({
         });
     }, []);
 
+    // Listeyi API'den çeker; override verilirse state güncellenmeden o değerlerle istek atar.
     async function onerileriGetir(
         refreshMi = false,
         override?: {
@@ -123,6 +133,7 @@ export default function AiOnerilerScreen({
         }
     }
 
+    // Arama yeni bir liste anlamına geldiği için sayfa ve açık kart sıfırlanır.
     function aramaYap() {
         setSayfa(1);
         setAcikOneriId(null);
@@ -134,6 +145,7 @@ export default function AiOnerilerScreen({
         });
     }
 
+    // Sıralama değişince liste baştan yüklenir.
     function siralamaDegistir(yeniSiralama: MobileAiOneriSiralama) {
         if (yeniSiralama === siralama) {
             return;
@@ -150,6 +162,7 @@ export default function AiOnerilerScreen({
         });
     }
 
+    // Geçersiz veya zaten açık olan sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -165,10 +178,12 @@ export default function AiOnerilerScreen({
         });
     }
 
+    // Aynı anda tek öneri detayı açık kalacak şekilde kart aç/kapat yapar.
     function oneriAcKapat(oneriId: number) {
         setAcikOneriId((prev) => (prev === oneriId ? null : oneriId));
     }
 
+    // Silme işlemi geri alınamadığı için kullanıcıdan açık onay alınır.
     function silOnayiAl(oneri: MobileAiOneriItem) {
         Alert.alert(
             "AI önerisini sil",
@@ -187,6 +202,7 @@ export default function AiOnerilerScreen({
         );
     }
 
+    // Öneri silindikten sonra mevcut filtrelerle liste sessizce yenilenir.
     async function oneriSil(oneri: MobileAiOneriItem) {
         try {
             setSilinenOneriId(oneri.oneriId);
@@ -214,6 +230,7 @@ export default function AiOnerilerScreen({
         }
     }
 
+    // Header'daki özet kartlarında gösterilecek değerler tek yerde hazırlanır.
     const ozet = useMemo(() => {
         return {
             toplam: toplamKayit,
@@ -328,6 +345,7 @@ export default function AiOnerilerScreen({
     );
 }
 
+// Üstteki küçük sayaç kartı.
 function SummaryCard({ title, value }: { title: string; value: number | string }) {
     return (
         <View style={styles.summaryCard}>
@@ -337,6 +355,7 @@ function SummaryCard({ title, value }: { title: string; value: number | string }
     );
 }
 
+// Sıralama seçenekleri için tekrar kullanılan küçük filtre butonu.
 function FilterButton({
     title,
     active,
@@ -367,6 +386,7 @@ function FilterButton({
     );
 }
 
+// AI önerisinin kapalı ön izlemesini ve açık detay halini aynı kartta yönetir.
 function OneriCard({
     oneri,
     acikMi,
@@ -446,6 +466,7 @@ function OneriCard({
     );
 }
 
+// Önceki/sonraki butonlarını sınır sayfalarda pasifleştiren sayfalama alanı.
 function Pagination({
     sayfa,
     toplamSayfa,
@@ -490,6 +511,7 @@ function Pagination({
     );
 }
 
+// Filtreye uyan öneri yoksa gösterilen boş durum.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>
@@ -504,6 +526,7 @@ function EmptyState() {
     );
 }
 
+// İlk veri yüklenirken tam ekran loading gösterilir.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -513,6 +536,7 @@ function LoadingState() {
     );
 }
 
+// İlk yükleme başarısız olursa tekrar deneme butonlu hata ekranı gösterilir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -538,6 +562,7 @@ function ErrorState({
     );
 }
 
+// Geçerli tarihse Türkçe tarih/saat formatına çevirir, değilse ham değeri korur.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 

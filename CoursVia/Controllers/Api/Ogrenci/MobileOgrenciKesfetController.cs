@@ -26,7 +26,6 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
     // Arama, kategori filtresi, sıralama ve sayfalama destekler.
     // Desteklenen sıralama değerleri:
     // guncel, puan-yuksek, populer, degerlendirme-cok, ad-az, ad-za
-    // GET /api/mobile/ogrenci/kesfet?arama=react&kategoriId=1&sirala=populer&sayfa=1&sayfaBasinaKayit=10
     [HttpGet]
     public async Task<ActionResult<MobileOgrenciKesfetResponse>> Kesfet(
         [FromQuery] string? arama,
@@ -37,6 +36,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Filtre ve sayfalama parametreleri güvenli varsayılanlara çekilir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -63,6 +63,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Filtre seçenekleri ve öğrencinin kayıtlı olduğu kurslar listeyle birlikte hazırlanır.
         var kategoriler = await KesfetKategorileriGetirAsync();
 
         var kayitliKursIdleri = await _context.KursKayitlari
@@ -73,12 +74,14 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             .Select(x => x.KursId)
             .ToListAsync();
 
+        // Keşfet ekranında sadece yayında olan kurslar gösterilir.
         var query = _context.Kurslar
             .AsNoTracking()
             .Where(x => x.DurumId == 5);
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama kurs adı, açıklama ve eğitmen adı üzerinden yapılır.
             query = query.Where(x =>
                 x.KursAdi.Contains(arama) ||
                 (x.Aciklama != null && x.Aciklama.Contains(arama)) ||
@@ -88,6 +91,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
 
         if (kategoriId.HasValue)
         {
+            // Kategori filtresi kursun ilişkili kategorileri üzerinden uygulanır.
             query = query.Where(x =>
                 x.KursKategorileri.Any(k => k.KategoriId == kategoriId.Value));
         }
@@ -95,11 +99,13 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
         int toplamKayit = await query.CountAsync();
         int toplamSayfa = ToplamSayfaHesapla(toplamKayit, sayfaBasinaKayit);
 
+        // Sayfa numarası toplam sayfayı aşarsa son sayfaya çekilir.
         if (sayfa > toplamSayfa)
         {
             sayfa = toplamSayfa;
         }
 
+        // Sıralama veritabanı tarafında uygulanır; puan ve popülerlik alt sorgularla hesaplanır.
         query = sirala switch
         {
             "puan-yuksek" => query
@@ -140,6 +146,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             _ => query.OrderByDescending(x => x.OlusturmaTarihi)
         };
 
+        // Mobil liste için yalnızca ekranda ihtiyaç duyulan kurs alanları DTO'ya projekte edilir.
         var kurslar = await query
             .Skip((sayfa - 1) * sayfaBasinaKayit)
             .Take(sayfaBasinaKayit)
@@ -194,6 +201,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
 
         foreach (var kurs in kurslar)
         {
+            // Ad soyad birleştirmesinde oluşabilecek kenar boşlukları temizlenir.
             kurs.EgitmenAdSoyad = kurs.EgitmenAdSoyad.Trim();
         }
 
@@ -225,6 +233,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Önce kursun varlığı ve yayın/güncelleme durumu kontrol edilir.
         var kursDurumu = await _context.Kurslar
             .AsNoTracking()
             .Where(x => x.KursId == kursId)
@@ -247,6 +256,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             });
         }
 
+        // Güncellenen kurslar bulunur ama öğrencinin içeriğe devam etmesi engellenir.
         if (kursDurumu.DurumId == 7)
         {
             return BadRequest(new MobileOgrenciKesfetDetayResponse
@@ -264,6 +274,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             });
         }
 
+        // Yayında olmayan diğer kurslar keşfet detayında gizlenir.
         if (kursDurumu.DurumId != 5)
         {
             return NotFound(new MobileOgrenciKesfetDetayResponse
@@ -273,6 +284,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             });
         }
 
+        // Kayıt bilgisi, detay DTO'sundaki kayıt/devam aksiyonlarını belirlemek için alınır.
         bool kayitliMi = await _context.KursKayitlari
             .AsNoTracking()
             .AnyAsync(x =>
@@ -280,6 +292,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
                 x.KursId == kursId &&
                 x.AktifMi);
 
+        // Kurs içerikleri bölüm ve ders sırasına göre mobil detay modeline dönüştürülür.
         var kurs = await _context.Kurslar
             .AsNoTracking()
             .Where(x =>
@@ -381,6 +394,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
 
         foreach (var bolum in kurs.Bolumler)
         {
+            // Ders sayısı filtrelenmiş aktif ders listesinden hesaplanır.
             bolum.DersSayisi = bolum.Dersler.Count;
         }
 
@@ -395,6 +409,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Sadece yayındaki kurslara kayıt yapılabilir.
         var kurs = await _context.Kurslar
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
@@ -410,6 +425,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             });
         }
 
+        // Eğitmenin kendi kursuna öğrenci olarak yazılması engellenir.
         if (kurs.EgitmenId == kullaniciId)
         {
             return BadRequest(new MobileOgrenciIslemResponse
@@ -419,6 +435,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             });
         }
 
+        // Daha önce pasife alınmış bir kayıt varsa yeniden kullanılabilir.
         var mevcutKayit = await _context.KursKayitlari
             .FirstOrDefaultAsync(x =>
                 x.KullaniciId == kullaniciId &&
@@ -435,6 +452,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
 
         if (mevcutKayit != null && !mevcutKayit.AktifMi)
         {
+            // Eski pasif kayıt canlandırılır ve tamamlanma bilgisi sıfırlanır.
             mevcutKayit.AktifMi = true;
             mevcutKayit.TamamlandiMi = false;
             mevcutKayit.TamamlanmaTarihi = null;
@@ -442,6 +460,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
         }
         else
         {
+            // İlk kez kayıt oluyorsa yeni kurs kaydı oluşturulur.
             _context.KursKayitlari.Add(new KursKaydi
             {
                 KullaniciId = kullaniciId,
@@ -465,6 +484,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
     // Keşfet filtreleri için yayındaki kurs kategorilerini getirir.
     private async Task<List<MobileOgrenciKategoriSecenekResponse>> KesfetKategorileriGetirAsync()
     {
+        // Kategoriler önce ham alınır, sonra aynı kategoriye ait kurs sayıları bellekte gruplanır.
         var kategoriler = await _context.KursKategorileri
             .AsNoTracking()
             .Where(x => x.Kurs.DurumId == 5)
@@ -482,6 +502,7 @@ public class MobileOgrenciKesfetController : MobileOgrenciBaseController
             {
                 KategoriId = x.Key.KategoriId,
                 KategoriAdi = x.Key.KategoriAdi,
+                // Her kategoriye ait kurs sayısı hesaplanır.
                 KayitSayisi = x
                     .Select(k => k.KursId)
                     .Distinct()

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Controllers;
 
+// Eğitmenin kurs sınavını ve soru havuzunu yönetmesini sağlar.
 [Authorize(Roles = "Eğitmen")]
 public class EgitmenSinavController : EgitmenBaseController
 {
@@ -17,6 +18,7 @@ public class EgitmenSinavController : EgitmenBaseController
     {
     }
 
+    // Sınav ayarları ekranını açar.
     [HttpGet]
     public async Task<IActionResult> SinavHazirla(int kursId)
     {
@@ -31,18 +33,21 @@ public class EgitmenSinavController : EgitmenBaseController
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Kurs düzenlenebilir durumda değilse sınav ayarları değiştirilemez.
         if (!KursDuzenlenebilirMi(kurs.DurumId))
         {
             TempData["KursHata"] = "Bu kurs şu an düzenlenebilir durumda değil.";
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = kursId });
         }
 
+        // Daha önce sınav oluşturulduysa aktif soru sayısı hesaplanır.
         int havuzdakiSoruSayisi = kurs.Sinav == null
             ? 0
             : await _context.Sorular.CountAsync(x =>
                 x.SinavId == kurs.Sinav.SinavId &&
                 x.AktifMi);
 
+        // Sınav varsa mevcut bilgiler, yoksa varsayılan değerler ViewModel'e aktarılır.
         var model = new SinavHazirlaViewModel
         {
             KursId = kurs.KursId,
@@ -62,6 +67,7 @@ public class EgitmenSinavController : EgitmenBaseController
         return View(model);
     }
 
+    // Sınav ayarlarını kaydeder veya mevcut sınavı günceller.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SinavHazirla(SinavHazirlaViewModel model)
@@ -93,6 +99,7 @@ public class EgitmenSinavController : EgitmenBaseController
             );
         }
 
+        // Model hatalıysa ekran tekrar doldurularak geri döndürülür.
         if (!ModelState.IsValid)
         {
             model.KursAdi = kurs.KursAdi;
@@ -108,6 +115,7 @@ public class EgitmenSinavController : EgitmenBaseController
 
         if (kurs.Sinav == null)
         {
+            // Kursun sınavı yoksa yeni sınav kaydı oluşturulur.
             var yeniSinav = new Sinav
             {
                 KursId = kurs.KursId,
@@ -123,6 +131,7 @@ public class EgitmenSinavController : EgitmenBaseController
         }
         else
         {
+            // Kursun sınavı varsa mevcut sınav ayarları güncellenir.
             kurs.Sinav.SinavAdi = model.SinavAdi;
             kurs.Sinav.Aciklama = string.IsNullOrWhiteSpace(model.Aciklama) ? null : model.Aciklama.Trim();
             kurs.Sinav.GecmeNotu = model.GecmeNotu;
@@ -130,6 +139,7 @@ public class EgitmenSinavController : EgitmenBaseController
             kurs.Sinav.SoruSayisi = model.SoruSayisi;
         }
 
+        // Yayındaki kurs değiştirildiyse tekrar taslağa alınır.
         OnayliKursuTaslakYap(kurs);
         kurs.GuncellemeTarihi = DateTime.Now;
 
@@ -140,6 +150,7 @@ public class EgitmenSinavController : EgitmenBaseController
         return RedirectToAction(nameof(SoruHavuzu), new { kursId = kurs.KursId });
     }
 
+    // Sınava bağlı soru havuzunu arama, ders filtresi ve sayfalama ile listeler.
     [HttpGet]
     public async Task<IActionResult> SoruHavuzu(int kursId, string? arama, int? dersId, int sayfa = 1)
     {
@@ -156,6 +167,7 @@ public class EgitmenSinavController : EgitmenBaseController
 
         if (sinav == null)
         {
+            // Sınav yoksa önce kursun gerçekten eğitmene ait olup olmadığı kontrol edilir.
             bool kursVarMi = await _context.Kurslar
                 .AnyAsync(x => x.KursId == kursId && x.EgitmenId == kullaniciId);
 
@@ -173,6 +185,7 @@ public class EgitmenSinavController : EgitmenBaseController
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Ders filtresi gönderildiyse dersin bu kursa ait aktif normal ders olup olmadığı doğrulanır.
         if (dersId.HasValue)
         {
             bool dersGecerliMi = await _context.Dersler
@@ -200,6 +213,7 @@ public class EgitmenSinavController : EgitmenBaseController
             .Where(x =>
                 x.SinavId == sinav.SinavId);
 
+        // Soru metnine göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             string aramaMetni = $"%{arama}%";
@@ -208,6 +222,7 @@ public class EgitmenSinavController : EgitmenBaseController
                 EF.Functions.Like(x.SoruMetni, aramaMetni));
         }
 
+        // Ders seçildiyse sadece o derse bağlı sorular listelenir.
         if (dersId.HasValue)
         {
             soruQuery = soruQuery.Where(x =>
@@ -215,12 +230,14 @@ public class EgitmenSinavController : EgitmenBaseController
         }
 
         int toplamSoruSayisi = await soruQuery.CountAsync();
+
         int toplamSayfa = toplamSoruSayisi == 0
             ? 1
             : (int)Math.Ceiling(toplamSoruSayisi / (double)sayfaBoyutu);
 
         sayfa = Math.Min(sayfa, toplamSayfa);
 
+        // Önce sadece sayfada gösterilecek soru Id'leri alınır.
         var soruIdleri = await soruQuery
             .OrderByDescending(x => x.SoruId)
             .Skip((sayfa - 1) * sayfaBoyutu)
@@ -228,10 +245,12 @@ public class EgitmenSinavController : EgitmenBaseController
             .Select(x => x.SoruId)
             .ToListAsync();
 
+        // Include sonrası sıralamanın bozulmaması için Id sırası saklanır.
         var soruSiralari = soruIdleri
             .Select((id, index) => new { id, index })
             .ToDictionary(x => x.id, x => x.index);
 
+        // Sayfadaki sorular seçenekleri ve ders bağlantılarıyla birlikte çekilir.
         var sorular = soruIdleri.Any()
             ? await _context.Sorular
                 .AsNoTracking()
@@ -262,6 +281,7 @@ public class EgitmenSinavController : EgitmenBaseController
             SayfaBoyutu = sayfaBoyutu,
             ToplamSoruSayisi = toplamSoruSayisi,
             Dersler = await DersSecimListesiniGetirAsync(sinav.KursId),
+
             Sorular = sorular
                 .OrderBy(x => soruSiralari[x.SoruId])
                 .Select(x => new SoruHavuzuSoruViewModel
@@ -269,8 +289,12 @@ public class EgitmenSinavController : EgitmenBaseController
                     SoruId = x.SoruId,
                     SoruMetni = x.SoruMetni,
                     AktifMi = x.AktifMi,
+
+                    // Aktif seçenek ve doğru seçenek sayıları yayına uygunluk kontrolünde kullanılır.
                     SecenekSayisi = x.SoruSecenekleri.Count(s => s.AktifMi),
                     DogruSecenekSayisi = x.SoruSecenekleri.Count(s => s.AktifMi && s.DogruMu),
+
+                    // Soru sadece bu kursun aktif normal derslerine bağlıysa ders bağlantısı geçerli kabul edilir.
                     DersBaglantilariGecerliMi =
                         x.SoruDersleri.Any(sd =>
                             sd.Ders.KursId == sinav.KursId &&
@@ -280,6 +304,7 @@ public class EgitmenSinavController : EgitmenBaseController
                             sd.Ders.KursId != sinav.KursId ||
                             !sd.Ders.AktifMi ||
                             sd.Ders.SistemDersiMi),
+
                     DersAdlari = x.SoruDersleri
                         .Where(sd =>
                             sd.Ders.KursId == sinav.KursId &&
@@ -296,6 +321,7 @@ public class EgitmenSinavController : EgitmenBaseController
         return View(model);
     }
 
+    // Soru ekleme formunu açar.
     [HttpGet]
     public async Task<IActionResult> SoruEkle(int kursId)
     {
@@ -307,6 +333,7 @@ public class EgitmenSinavController : EgitmenBaseController
 
         if (sinav == null)
         {
+            // Sınav yoksa önce kursun eğitmene ait olup olmadığı kontrol edilir.
             bool kursVarMi = await _context.Kurslar
                 .AnyAsync(x => x.KursId == kursId && x.EgitmenId == kullaniciId);
 
@@ -335,6 +362,7 @@ public class EgitmenSinavController : EgitmenBaseController
         return View(model);
     }
 
+    // Yeni soruyu, seçeneklerini ve bağlı olduğu dersleri kaydeder.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SoruEkle(SoruEkleViewModel model)
@@ -358,6 +386,7 @@ public class EgitmenSinavController : EgitmenBaseController
             return RedirectToAction(nameof(SoruHavuzu), new { kursId = sinav.KursId });
         }
 
+        // Soru metni, seçenekler, doğru cevap ve ders bağlantıları doğrulanır.
         var secenekMetinleri = await SoruFormunuDogrulaAsync(model, sinav.KursId);
 
         if (!ModelState.IsValid)
@@ -382,6 +411,7 @@ public class EgitmenSinavController : EgitmenBaseController
             _context.Sorular.Add(soru);
             await _context.SaveChangesAsync();
 
+            // Soru seçenekleri eklenir ve seçilen index doğru cevap olarak işaretlenir.
             for (int i = 0; i < secenekMetinleri.Count; i++)
             {
                 _context.SoruSecenekleri.Add(new SoruSecenegi
@@ -393,6 +423,7 @@ public class EgitmenSinavController : EgitmenBaseController
                 });
             }
 
+            // Soru seçilen derslerle ilişkilendirilir.
             foreach (var dersId in model.SeciliDersIdleri)
             {
                 _context.SoruDersleri.Add(new SoruDersi
@@ -422,6 +453,7 @@ public class EgitmenSinavController : EgitmenBaseController
         }
     }
 
+    // Soru düzenleme formunu açar.
     [HttpGet]
     public async Task<IActionResult> SoruDuzenle(int soruId)
     {
@@ -453,6 +485,7 @@ public class EgitmenSinavController : EgitmenBaseController
 
         int? dogruSecenekIndex = null;
 
+        // Mevcut doğru seçeneğin formdaki index değeri bulunur.
         for (int i = 0; i < secenekler.Count; i++)
         {
             if (secenekler[i].DogruMu)
@@ -462,20 +495,26 @@ public class EgitmenSinavController : EgitmenBaseController
             }
         }
 
+        // Mevcut soru bilgileri düzenleme ViewModel'ine aktarılır.
         var model = new SoruDuzenleViewModel
         {
             SoruId = soru.SoruId,
             SoruMetni = soru.SoruMetni,
+
             SecenekMetinleri = secenekler
                 .Select(x => x.SecenekMetni)
                 .ToList(),
+
             SecenekIdleri = secenekler
                 .Select(x => x.SecenekId)
                 .ToList(),
+
             SecenekAktifDurumlari = secenekler
                 .Select(x => x.AktifMi)
                 .ToList(),
+
             DogruSecenekIndex = dogruSecenekIndex,
+
             SeciliDersIdleri = soru.SoruDersleri
                 .Where(x =>
                     x.Ders.KursId == soru.Sinav.KursId &&
@@ -491,6 +530,7 @@ public class EgitmenSinavController : EgitmenBaseController
         return View(model);
     }
 
+    // Mevcut soruyu, seçeneklerini ve ders bağlantılarını günceller.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SoruDuzenle(SoruDuzenleViewModel model)
@@ -521,6 +561,8 @@ public class EgitmenSinavController : EgitmenBaseController
         model.SinavId = soru.SinavId;
 
         var secenekMetinleri = await SoruFormunuDogrulaAsync(model, soru.Sinav.KursId);
+
+        // Formdan gelen seçenek Id'lerinin gerçekten bu soruya ait olup olmadığı kontrol edilir.
         SecenekIdleriniDogrula(model, soru);
 
         if (!ModelState.IsValid)
@@ -530,6 +572,8 @@ public class EgitmenSinavController : EgitmenBaseController
         }
 
         int dogruSecenekIndex = model.DogruSecenekIndex.GetValueOrDefault();
+
+        // Soru öğrenciler tarafından cevaplandıysa seçenekler fiziksel silinmez, pasife alınır.
         bool soruKullanildiMi = await SoruKullanildiMiAsync(soru.SoruId);
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -538,23 +582,28 @@ public class EgitmenSinavController : EgitmenBaseController
         {
             soru.SoruMetni = model.SoruMetni!.Trim();
 
+            // Ders bağlantıları yeniden kurulacağı için önce eski bağlantılar silinir.
             _context.SoruDersleri.RemoveRange(soru.SoruDersleri);
 
             var tumSecenekler = soru.SoruSecenekleri.ToDictionary(x => x.SecenekId);
             var formdanGelenSecenekIdleri = new HashSet<int>();
 
+            // Unique doğru seçenek kuralı için önce tüm seçeneklerin doğru işareti temizlenir.
             foreach (var secenek in tumSecenekler.Values)
             {
                 secenek.DogruMu = false;
             }
+
             await _context.SaveChangesAsync();
 
+            // Formdan gelen seçenekler güncellenir veya yeni seçenek olarak eklenir.
             for (int i = 0; i < secenekMetinleri.Count; i++)
             {
                 int secenekId = model.SecenekIdleri[i];
                 bool dogruMu = i == dogruSecenekIndex;
                 bool aktifMi = model.SecenekAktifDurumlari[i];
 
+                // Secenek Id'si varsa ve bu seçenek gerçekten bu soruya aitse güncelleme yapılır, yoksa yeni seçenek olarak eklenir.
                 if (secenekId > 0 && tumSecenekler.TryGetValue(secenekId, out var mevcutSecenek))
                 {
                     mevcutSecenek.SecenekMetni = secenekMetinleri[i];
@@ -574,12 +623,14 @@ public class EgitmenSinavController : EgitmenBaseController
                 }
             }
 
+            // Formda artık bulunmayan seçenekler tespit edilir.
             var silinecekSecenekler = tumSecenekler.Values
                 .Where(x => !formdanGelenSecenekIdleri.Contains(x.SecenekId))
                 .ToList();
 
             if (soruKullanildiMi)
             {
+                // Cevap geçmişi varsa seçenekler silinmez, geçmiş veriyi korumak için pasife alınır.
                 foreach (var sec in silinecekSecenekler)
                 {
                     sec.AktifMi = false;
@@ -590,6 +641,7 @@ public class EgitmenSinavController : EgitmenBaseController
                 _context.SoruSecenekleri.RemoveRange(silinecekSecenekler);
             }
 
+            // Yeni seçilen ders bağlantıları eklenir.
             foreach (var dersId in model.SeciliDersIdleri)
             {
                 _context.SoruDersleri.Add(new SoruDersi
@@ -619,6 +671,7 @@ public class EgitmenSinavController : EgitmenBaseController
         }
     }
 
+    // Soruyu siler veya daha önce kullanıldıysa pasife alır.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SoruSil(int soruId)
@@ -652,10 +705,12 @@ public class EgitmenSinavController : EgitmenBaseController
         {
             if (soruKullanildiMi)
             {
+                // Öğrenci cevap geçmişi varsa soru fiziksel silinmez, sadece pasife alınır.
                 soru.AktifMi = false;
             }
             else
             {
+                // Soru hiç kullanılmadıysa ilişkileriyle birlikte tamamen silinir.
                 _context.SoruDersleri.RemoveRange(soru.SoruDersleri);
                 _context.SoruSecenekleri.RemoveRange(soru.SoruSecenekleri);
                 _context.Sorular.Remove(soru);
@@ -670,6 +725,7 @@ public class EgitmenSinavController : EgitmenBaseController
             TempData["KursBasari"] = soruKullanildiMi
                 ? "Soru havuzdan kaldırıldı."
                 : "Soru başarıyla silindi.";
+
             return RedirectToAction(nameof(SoruHavuzu), new { kursId = soru.Sinav.KursId });
         }
         catch
@@ -681,6 +737,7 @@ public class EgitmenSinavController : EgitmenBaseController
         }
     }
 
+    // Sorunun aktif/pasif durumunu değiştirir.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SoruDurumDegistir(int soruId)
@@ -704,7 +761,7 @@ public class EgitmenSinavController : EgitmenBaseController
         }
 
         soru.AktifMi = !soru.AktifMi;
-        
+
         OnayliKursuTaslakYap(soru.Sinav.Kurs);
         soru.Sinav.Kurs.GuncellemeTarihi = DateTime.Now;
 
@@ -714,15 +771,17 @@ public class EgitmenSinavController : EgitmenBaseController
         return RedirectToAction(nameof(SoruHavuzu), new { kursId = soru.Sinav.KursId });
     }
 
+    // Yeni soru ekleme ekranı için boş ViewModel oluşturur.
     private async Task<SoruEkleViewModel> SoruEkleModeliOlusturAsync(Sinav sinav)
     {
         var model = new SoruEkleViewModel();
-
+        // Soru ekleme ve düzenleme ekranlarında ortak kullanılan model bilgilerini doldurur.
         await SoruEkleModeliniDoldurAsync(model, sinav);
 
         return model;
     }
 
+    // Soru ekleme/düzenleme ekranlarında ortak kullanılan model bilgilerini doldurur.
     private async Task SoruEkleModeliniDoldurAsync(SoruEkleViewModel model, Sinav sinav)
     {
         model.KursId = sinav.KursId;
@@ -734,9 +793,11 @@ public class EgitmenSinavController : EgitmenBaseController
         model.SecenekMetinleri ??= new List<string>();
     }
 
+    // Soru formundan gelen metin, seçenek, doğru cevap ve ders bağlantılarını doğrular.
     private async Task<List<string>> SoruFormunuDogrulaAsync(SoruEkleViewModel model, int kursId)
     {
         model.SoruMetni = model.SoruMetni?.Trim();
+
         model.SeciliDersIdleri = model.SeciliDersIdleri?
             .Where(x => x > 0)
             .Distinct()
@@ -747,24 +808,28 @@ public class EgitmenSinavController : EgitmenBaseController
             .ToList() ?? new List<string>();
 
         model.SecenekMetinleri = secenekMetinleri;
+
+        // Formdan gelen seçenek Id'leri seçenek sayısıyla hizalanır.
         model.SecenekIdleri = model.SecenekIdleri?
             .Take(secenekMetinleri.Count)
             .Select(x => Math.Max(0, x))
             .ToList() ?? new List<int>();
-
+        // Formdan gelen seçenek aktif durumları seçenek sayısıyla hizalanır.
         while (model.SecenekIdleri.Count < secenekMetinleri.Count)
         {
+            // Yeni eklenen seçeneklerin veritabanında henüz Id değeri olmadığı için 0 atanır.
             model.SecenekIdleri.Add(0);
         }
-
+       
         model.SecenekAktifDurumlari ??= new List<bool>();
+
         while (model.SecenekAktifDurumlari.Count < secenekMetinleri.Count)
-        {
+        {// Aktiflik bilgisi gelmeyen yeni seçenekler varsayılan olarak aktif kabul edilir.
             model.SecenekAktifDurumlari.Add(true);
         }
 
         if (string.IsNullOrWhiteSpace(model.SoruMetni))
-        {
+        { // Soru metni boş bırakıldıysa validasyon hatası eklenir.
             ModelStateHatasiYoksaEkle(
                 nameof(model.SoruMetni),
                 "Soru metni zorunludur."
@@ -774,11 +839,13 @@ public class EgitmenSinavController : EgitmenBaseController
         int aktifSecenekSayisi = 0;
         bool aktifDogruSecenekVarMi = false;
 
+        // Aktif seçenek sayısı ve doğru cevabın aktif seçenekler arasında olup olmadığı kontrol edilir.
         for (int i = 0; i < secenekMetinleri.Count; i++)
         {
             if (model.SecenekAktifDurumlari[i])
             {
                 aktifSecenekSayisi++;
+
                 if (model.DogruSecenekIndex == i)
                 {
                     aktifDogruSecenekVarMi = true;
@@ -820,6 +887,7 @@ public class EgitmenSinavController : EgitmenBaseController
             return secenekMetinleri;
         }
 
+        // Seçilen derslerin gerçekten bu kursa ait aktif normal dersler olup olmadığı kontrol edilir.
         int gecerliDersSayisi = await _context.Dersler
             .AsNoTracking()
             .CountAsync(x =>
@@ -839,12 +907,14 @@ public class EgitmenSinavController : EgitmenBaseController
         return secenekMetinleri;
     }
 
+    // Düzenleme formundan gelen seçenek Id'lerinin bu soruya ait olup olmadığını kontrol eder.
     private void SecenekIdleriniDogrula(SoruDuzenleViewModel model, Soru soru)
     {
         var tumSecenekIdleri = soru.SoruSecenekleri
             .Select(x => x.SecenekId)
             .ToHashSet();
 
+        // Formdan gelen seçenek Id'leri arasında pozitif olanlarda tekrar eden var mı kontrol edilir.
         bool tekrarEdenSecenekIdVarMi = model.SecenekIdleri
             .Where(x => x > 0)
             .GroupBy(x => x)
@@ -857,7 +927,7 @@ public class EgitmenSinavController : EgitmenBaseController
                 "Seçenek bilgisi geçersiz. Lütfen sayfayı yenileyip tekrar deneyin."
             );
         }
-
+        // Formdan gelen seçenek Id'leri arasında pozitif olanlardan en az biri bu soruya ait değilse hata eklenir.
         bool gecersizSecenekIdVarMi = model.SecenekIdleri
             .Any(x => x > 0 && !tumSecenekIdleri.Contains(x));
 
@@ -870,8 +940,10 @@ public class EgitmenSinavController : EgitmenBaseController
         }
     }
 
+    // Aynı alan için tekrar tekrar ModelState hatası eklenmesini önler.
     private void ModelStateHatasiYoksaEkle(string key, string errorMessage)
     {
+        // Belirtilen key için ModelState'de zaten bir hata yoksa yeni hata eklenir.
         if (!ModelState.TryGetValue(key, out var modelStateEntry) ||
             modelStateEntry.Errors.Count == 0)
         {
@@ -879,12 +951,14 @@ public class EgitmenSinavController : EgitmenBaseController
         }
     }
 
+    // Soru öğrenciler tarafından cevaplandı mı kontrol eder.
     private async Task<bool> SoruKullanildiMiAsync(int soruId)
     {
         return await _context.OgrenciCevaplari
             .AnyAsync(x => x.SoruId == soruId);
     }
 
+    // Soru ekleme/düzenleme ekranında seçilebilecek aktif normal dersleri getirir.
     private async Task<List<SoruDersSecimViewModel>> DersSecimListesiniGetirAsync(int kursId)
     {
         return await _context.Dersler

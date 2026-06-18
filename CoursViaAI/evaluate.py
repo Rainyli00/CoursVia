@@ -7,6 +7,7 @@ from generate import Generator, extract_answer, clean_text, validate_output
 
 
 def read_examples(path: Path) -> list[str]:
+    # Test dosyasındaki örnekleri <|endoftext|> sınırına göre ayırır.
     raw = path.read_text(encoding="utf-8")
 
     examples = []
@@ -21,6 +22,7 @@ def read_examples(path: Path) -> list[str]:
 
 
 def parse_prompt_and_expected(example: str):
+    # Örneği model girdisi olan prompt ve beklenen cevap bölümü olarak ikiye ayırır.
     prompt, expected = example.split("[YANIT]", 1)
 
     prompt = prompt.strip() + "\n[YANIT]\n"
@@ -30,6 +32,7 @@ def parse_prompt_and_expected(example: str):
 
 
 def get_tag(prompt: str, tag: str, default=""):
+    # Prompt içindeki [TAG] değerini satır bazlı regex ile okur.
     pattern = rf"^\[{re.escape(tag)}\]\s*(.+)$"
 
     match = re.search(pattern, prompt, flags=re.MULTILINE)
@@ -41,6 +44,7 @@ def get_tag(prompt: str, tag: str, default=""):
 
 
 def parse_data_from_prompt(prompt: str) -> tuple[str, dict]:
+    # Prompt etiketlerinden validate_output fonksiyonunun beklediği data sözlüğü yeniden kurulur.
     mode = "egitmen" if "EGITMEN_KURS_ANALIZI" in prompt else "ogrenci"
 
     dersler = [
@@ -76,6 +80,7 @@ def parse_data_from_prompt(prompt: str) -> tuple[str, dict]:
 
 
 def run_automated_test(num_tests=100):
+    # Test setinden rastgele örnekler seçip modelin format/veri koruma başarısını ölçer.
     if not config.TEST_FILE.exists():
         raise FileNotFoundError("Önce data_generator.py çalıştırılmalı.")
 
@@ -84,6 +89,7 @@ def run_automated_test(num_tests=100):
     if not examples:
         raise RuntimeError("Test dosyasında geçerli örnek bulunamadı.")
 
+    # İstenen test sayısı dosyadaki örnek sayısını aşarsa mevcut örnek sayısı kadar test yapılır.
     selected = random.sample(examples, min(num_tests, len(examples)))
 
     ai = Generator()
@@ -103,6 +109,7 @@ def run_automated_test(num_tests=100):
     print("MiniCoursViaLLM V3 Blind Test")
     print("=" * 70)
 
+    # Her örnekte beklenen cevap kullanılmaz; model prompttan sıfırdan üretim yapar.
     for index, example in enumerate(selected, start=1):
         prompt, _ = parse_prompt_and_expected(example)
         mode, data = parse_data_from_prompt(prompt)
@@ -118,6 +125,7 @@ def run_automated_test(num_tests=100):
 
         errors = validate_output(answer, mode, data)
 
+        # validate_output hata döndürmezse cevap doğrudan kullanılabilir kabul edilir.
         if not errors:
             success += 1
         else:
@@ -135,6 +143,7 @@ def run_automated_test(num_tests=100):
             if any("kısa" in e or "boş" in e for e in errors):
                 short_error += 1
 
+            # İlk birkaç hata örneği sonradan incelemek için saklanır.
             if len(sample_failures) < 5:
                 sample_failures.append(
                     {
@@ -147,6 +156,7 @@ def run_automated_test(num_tests=100):
 
         print(f"[{index}/{total}] test edildi...", end="\r")
 
+    # Başarı oranı fallback gerektirmeyen cevapların toplam teste oranıdır.
     success_rate = success / total * 100
 
     print("\n" + "=" * 70)

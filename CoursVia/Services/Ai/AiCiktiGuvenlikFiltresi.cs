@@ -1,10 +1,12 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace CoursVia.Services.Ai;
 
+// AI çıktısını kullanıcıya göstermeden önce teknik tokenlardan ve gereksiz biçimden temizler.
 public class AiCiktiGuvenlikFiltresi
 {
+    // Prompt sızıntısı veya modelin konuşma rol tokenlarını döndürmesi durumunda temizlenecek ifadeler.
     private static readonly string[] OrtakYasakliIfadeler =
     {
         "<|system|>",
@@ -16,8 +18,10 @@ public class AiCiktiGuvenlikFiltresi
         "Senden istenen:"
     };
 
+    // Ham model çıktısını senaryoya uygun, mobil/web ekranda gösterilebilir metne dönüştürür.
     public AiFiltreSonucu Temizle(string? hamCikti, AiIstekTipi istekTipi)
     {
+        // Boş çıktı kullanıcıya ham hata gibi gitmesin diye güvenli fallback metni döndürülür.
         if (string.IsNullOrWhiteSpace(hamCikti))
         {
             return new AiFiltreSonucu
@@ -30,10 +34,12 @@ public class AiCiktiGuvenlikFiltresi
         var onceki = hamCikti.Trim();
         var temiz = onceki;
 
+        // Temizlik adımları sırayla uygulanır: teknik tokenlar, markdown gürültüsü ve boşluklar.
         temiz = TeknikTokenlariTemizle(temiz);
         temiz = MarkdownGurultusunuAzalt(temiz);
         temiz = GereksizBosluklariTemizle(temiz);
 
+        // Tüm temizlikten sonra metin tamamen boşaldıysa istek tipine uygun güvenli cevap kullanılır.
         if (string.IsNullOrWhiteSpace(temiz))
         {
             temiz = istekTipi == AiIstekTipi.OgrenciCalismaOnerisi
@@ -43,15 +49,19 @@ public class AiCiktiGuvenlikFiltresi
 
         return new AiFiltreSonucu
         {
+            // ham çıktıyıda görmek için temizcikti = hamCikti.Trim() yapılabilir.
+            // temizlendi ibaresini kaldırmak içinde GuvenlikFiltresiUygulandiMi = false yapılabilir.
             TemizCikti = temiz,
             GuvenlikFiltresiUygulandiMi = !string.Equals(onceki, temiz, StringComparison.Ordinal)
         };
     }
 
+    // Modelin çıktı içinde geri basabileceği sistem/user/assistant tokenlarını siler.
     private static string TeknikTokenlariTemizle(string text)
     {
         var temiz = text;
 
+        // Liste küçük olduğu için basit Replace yeterli ve okunabilir.
         foreach (var ifade in OrtakYasakliIfadeler)
         {
             temiz = temiz.Replace(ifade, string.Empty, StringComparison.OrdinalIgnoreCase);
@@ -60,10 +70,12 @@ public class AiCiktiGuvenlikFiltresi
         return temiz;
     }
 
+    // Promptta istenmemesine rağmen gelen markdown işaretlerini azaltır.
     private static string MarkdownGurultusunuAzalt(string text)
     {
         var temiz = text;
 
+        // Kod bloğu ve başlık işaretleri temizlenir; liste satırları sade tire formatına indirilir.
         temiz = temiz.Replace("```", string.Empty);
         temiz = Regex.Replace(temiz, @"^\s*#{1,6}\s*", string.Empty, RegexOptions.Multiline);
         temiz = Regex.Replace(temiz, @"^\s*[-*]\s+", "- ", RegexOptions.Multiline);
@@ -71,6 +83,7 @@ public class AiCiktiGuvenlikFiltresi
         return temiz.Trim();
     }
 
+    // Satır sonlarını normalize eder ve art arda gelen boş satırları tek boş satıra düşürür.
     private static string GereksizBosluklariTemizle(string text)
     {
         var satirlar = text
@@ -81,6 +94,7 @@ public class AiCiktiGuvenlikFiltresi
         var builder = new StringBuilder();
         var oncekiBosMu = false;
 
+        // Metin akışını korurken sadece gereksiz boşluk şişmesini azaltır.
         foreach (var rawSatir in satirlar)
         {
             var satir = rawSatir.TrimEnd();
@@ -103,6 +117,7 @@ public class AiCiktiGuvenlikFiltresi
         return builder.ToString().Trim();
     }
 
+    // Öğrenci önerisi tamamen temizlenirse kullanılacak güvenli varsayılan metin.
     private static string OgrenciGuvenliFallback()
     {
         return """
@@ -124,6 +139,7 @@ Yanlışlarının yoğunlaştığı bölüme odaklanarak temel kavramları tekra
 """;
     }
 
+    // Eğitmen kurs analizi tamamen temizlenirse kullanılacak güvenli varsayılan metin.
     private static string EgitmenGuvenliFallback()
     {
         return """
@@ -146,9 +162,12 @@ Eğitmen için öncelikli aksiyon planı
     }
 }
 
+// Temizlenmiş metinle birlikte filtrenin değişiklik yapıp yapmadığını taşır.
 public class AiFiltreSonucu
 {
+    // Kullanıcıya gösterilecek son metin.
     public string TemizCikti { get; set; } = string.Empty;
 
+    // Ham çıktı ile temiz çıktı farklıysa true olur.
     public bool GuvenlikFiltresiUygulandiMi { get; set; }
 }

@@ -10,6 +10,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Admin panelinde kurs onay başvurularını yönetir.
 [Authorize(Roles = "Admin")]
 public class AdminKursOnayController : Controller
 {
@@ -30,6 +31,7 @@ public class AdminKursOnayController : Controller
         _bildirimService = bildirimService;
     }
 
+    // Kurs başvurularını arama, durum filtresi ve sayfalama ile listeler.
     [HttpGet]
     public async Task<IActionResult> Basvurular(string? arama, string durum = "bekleyen", int sayfa = 1)
     {
@@ -48,6 +50,7 @@ public class AdminKursOnayController : Controller
             sayfa = 1;
         }
 
+        // Seçilen sekmeye göre kurs durum Id değeri belirlenir.
         int? durumId = durum switch
         {
             "bekleyen" => 4,
@@ -74,6 +77,7 @@ public class AdminKursOnayController : Controller
             query = query.Where(x => x.DurumId == durumId.Value);
         }
 
+        // Kurs adı, açıklama veya eğitmen bilgisine göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -98,6 +102,7 @@ public class AdminKursOnayController : Controller
             sayfa = toplamSayfa;
         }
 
+        // Liste ekranında gösterilecek kurs bilgileri ViewModel'e aktarılır.
         var kurslar = await query
             .OrderByDescending(x => x.GuncellemeTarihi ?? x.OlusturmaTarihi)
             .Skip((sayfa - 1) * sayfaBasinaKayit)
@@ -165,6 +170,7 @@ public class AdminKursOnayController : Controller
         return View(model);
     }
 
+    // Adminin kurs başvurusunu detaylı incelemesini sağlar.
     [HttpGet]
     public async Task<IActionResult> Detay(int id)
     {
@@ -191,6 +197,7 @@ public class AdminKursOnayController : Controller
             return RedirectToAction(nameof(Basvurular));
         }
 
+        // Kursun bölüm, ders, materyal, sınav ve kategori bilgileri detay ekranı için hazırlanır.
         var model = new KursOnayDetayViewModel
         {
             KursId = kurs.KursId,
@@ -288,6 +295,7 @@ public class AdminKursOnayController : Controller
         return View(model);
     }
 
+    // Adminin kurs başvurusunu onaylamasını veya reddetmesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Karar(
@@ -301,6 +309,7 @@ public class AdminKursOnayController : Controller
             ? string.Empty
             : karar.Trim().ToLower();
 
+        // Onay veya red kararına göre yeni kurs durumu Id değeri belirlenir.
         int yeniDurumId = karar switch
         {
             "onayla" => 5,
@@ -318,6 +327,7 @@ public class AdminKursOnayController : Controller
             ? null
             : aciklama.Trim();
 
+        // Red kararında eğitmene sebep gösterilebilmesi için açıklama zorunludur.
         if (karar == "reddet")
         {
             if (string.IsNullOrWhiteSpace(aciklama))
@@ -354,6 +364,7 @@ public class AdminKursOnayController : Controller
             return RedirectToAction(nameof(Detay), new { id = kursId });
         }
 
+        // Onaylama işleminden önce kursun yayına hazır olup olmadığı kontrol edilir.
         if (karar == "onayla")
         {
             string? yayinHatasi = KursYayinKontrolEt(kurs);
@@ -377,6 +388,7 @@ public class AdminKursOnayController : Controller
 
         bool islemBasarili = false;
 
+        // Kurs durumu, onay kaydı, bildirim ve log işlemleri tek transaction içinde yapılır.
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
@@ -435,6 +447,7 @@ public class AdminKursOnayController : Controller
             TempData["AdminHata"] = "İşlem sırasında beklenmeyen bir hata oluştu.";
         }
 
+        // Veritabanı işlemi başarılıysa eğitmene bilgilendirme maili gönderilir.
         if (islemBasarili)
         {
             try
@@ -457,6 +470,7 @@ public class AdminKursOnayController : Controller
         return RedirectToAction(nameof(Basvurular));
     }
 
+    // Kursun yayına alınabilmesi için gerekli şartları kontrol eder.
     private string? KursYayinKontrolEt(Kurs kurs)
     {
         bool kategoriVar = kurs.KursKategorileri.Any();
@@ -497,6 +511,7 @@ public class AdminKursOnayController : Controller
         return null;
     }
 
+    // Kurs onay veya red kararına göre eğitmene HTML formatında bilgilendirme maili gönderir.
     private async Task KursOnayMailGonderAsync(
         string toEmail,
         string adSoyad,
@@ -504,6 +519,7 @@ public class AdminKursOnayController : Controller
         string karar,
         string? aciklama)
     {
+        // Mail içeriğinde kullanılan metinler HTML encode edilerek güvenli hale getirilir.
         string guvenliAdSoyad = WebUtility.HtmlEncode(adSoyad);
         string guvenliKursAdi = WebUtility.HtmlEncode(kursAdi);
         string guvenliAciklama = WebUtility.HtmlEncode(aciklama ?? string.Empty);
@@ -576,6 +592,7 @@ public class AdminKursOnayController : Controller
         </div>
         """;
 
+        // Servis aracılığıyla eğitmene bilgilendirme maili gönderilir.
         await _emailService.SendEmailAsync(toEmail, subject, body);
     }
 }

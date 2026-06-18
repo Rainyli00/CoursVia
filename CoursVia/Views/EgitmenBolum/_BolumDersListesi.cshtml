@@ -174,14 +174,15 @@
                                                 materyalUrl = x.MateryalUrl
                                             }));
 
-                                        <li class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-200"
-                                            data-ders-id="@ders.DersId">
+                                        <li class="overflow-hidden rounded-xl border @(ders.AktifMi ? "border-slate-200 bg-white" : "border-amber-200 bg-amber-50 opacity-70") shadow-sm transition hover:border-blue-200"
+                                            data-ders-id="@ders.DersId"
+                                            data-aktif="@(ders.AktifMi.ToString().ToLower())">
 
                                             <div class="flex items-center justify-between p-3">
 
                                                 <div class="flex min-w-0 items-center gap-3">
 
-                                                    @if (isEditable)
+                                                    @if (isEditable && ders.AktifMi)
                                                     {
                                                         <div class="ders-drag-handle cursor-move text-slate-300 hover:text-slate-500"
                                                              title="Dersi sürükle">
@@ -197,8 +198,12 @@
                                                             </svg>
                                                         </div>
                                                     }
+                                                    else if (isEditable && !ders.AktifMi)
+                                                    {
+                                                        <div class="w-5 shrink-0"></div>
+                                                    }
 
-                                                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                                                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg @(ders.AktifMi ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400")">
                                                         <svg xmlns="http://www.w3.org/2000/svg"
                                                              class="h-4 w-4"
                                                              viewBox="0 0 20 20"
@@ -210,10 +215,17 @@
                                                     </div>
 
                                                     <div class="min-w-0">
-                                                        <span class="font-medium text-slate-700">
-                                                            <span class="ders-sira">@ders.SiraNo.</span>
+                                                        <span class="font-medium @(ders.AktifMi ? "text-slate-700" : "text-slate-400 line-through")">
+                                                            <span class="ders-sira">@(ders.AktifMi ? ders.SiraNo + "." : "")</span>
                                                             @ders.DersAdi
                                                         </span>
+
+                                                        @if (!ders.AktifMi)
+                                                        {
+                                                            <span class="ml-2 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                                                                Pasif
+                                                            </span>
+                                                        }
 
                                                         @if (ders.DersMateryalleri.Any())
                                                         {
@@ -256,38 +268,57 @@
                                                         </button>
                                                     }
 
-                                                     @if (isEditable)
-{
-    <button type="button"
-       class="btn btn-xs btn-outline rounded-lg btn-ders-duzenle"
-       data-ders-id="@ders.DersId"
-       data-kurs-id="@Model.KursId"
-       data-bolum-id="@ders.BolumId"
-       data-ders-adi="@ders.DersAdi"
-       data-aciklama="@ders.Aciklama"
-       data-video-url="@ders.VideoUrl"
-       data-materyaller="@materyallerJson">
-        Düzenle
-    </button>
+                                                    @if (isEditable)
+                                                    {
+                                                        if (ders.AktifMi)
+                                                        {
+                                                            <button type="button"
+                                                                    class="btn btn-xs btn-outline rounded-lg btn-ders-duzenle"
+                                                                    data-ders-id="@ders.DersId"
+                                                                    data-kurs-id="@Model.KursId"
+                                                                    data-bolum-id="@ders.BolumId"
+                                                                    data-ders-adi="@ders.DersAdi"
+                                                                    data-aciklama="@ders.Aciklama"
+                                                                    data-video-url="@ders.VideoUrl"
+                                                                    data-materyaller="@materyallerJson">
+                                                                Düzenle
+                                                            </button>
+                                                        }
 
-    <form asp-controller="EgitmenDers"
-          asp-action="DersSil"
-          method="post"
-          class="form-ders-sil">
+                                                        <form asp-controller="EgitmenDers"
+                                                              asp-action="DersDurumDegistir"
+                                                              method="post"
+                                                              class="inline">
 
-        @Html.AntiForgeryToken()
+                                                            @Html.AntiForgeryToken()
 
-        <input type="hidden"
-               name="dersId"
-               value="@ders.DersId" />
+                                                            <input type="hidden" name="dersId" value="@ders.DersId" />
+                                                            <input type="hidden" name="aktifMi" value="@(!ders.AktifMi ? "true" : "false")" />
 
-        <button type="submit"
-                class="btn btn-xs btn-outline btn-error rounded-lg">
-            Sil
-        </button>
-    </form>
-}                      
- 
+                                                            <button type="submit"
+                                                                    class="btn btn-xs @(ders.AktifMi ? "btn-outline btn-warning" : "btn-outline btn-success") rounded-lg">
+                                                                @(ders.AktifMi ? "Pasife Al" : "Aktif Yap")
+                                                            </button>
+                                                        </form>
+
+                                                        <form asp-controller="EgitmenDers"
+                                                              asp-action="DersSil"
+                                                              method="post"
+                                                              class="form-ders-sil">
+
+                                                            @Html.AntiForgeryToken()
+
+                                                            <input type="hidden"
+                                                                   name="dersId"
+                                                                   value="@ders.DersId" />
+
+                                                            <button type="submit"
+                                                                    class="btn btn-xs btn-outline btn-error rounded-lg">
+                                                                Sil
+                                                            </button>
+                                                        </form>
+                                                    }
+
                                                 </div>
 
                                             </div>

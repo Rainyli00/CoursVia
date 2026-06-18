@@ -9,6 +9,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Admin panelinde kullanıcı listeleme, detay, düzenleme ve silme işlemlerini yönetir.
 [Authorize(Roles = "Admin")]
 public class AdminKullaniciController : Controller
 {
@@ -22,170 +23,174 @@ public class AdminKullaniciController : Controller
     }
 
     [HttpGet]
-public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum", string durum = "tum", int sayfa = 1)
-{
-    const int sayfaBasinaKayit = 10;
-
-    arama = string.IsNullOrWhiteSpace(arama)
-        ? null
-        : arama.Trim();
-
-    rol = string.IsNullOrWhiteSpace(rol)
-        ? "tum"
-        : rol.Trim().ToLower();
-
-    durum = string.IsNullOrWhiteSpace(durum)
-        ? "tum"
-        : durum.Trim().ToLower();
-
-    if (sayfa < 1)
+    // Kullanıcıları arama, rol, durum ve sayfalama bilgilerine göre listeler.
+    public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum", string durum = "tum", int sayfa = 1)
     {
-        sayfa = 1;
-    }
+        const int sayfaBasinaKayit = 10;
 
-    var query = _context.Kullanicilar
-        .AsNoTracking()
-        .AsSplitQuery()
-        .Include(x => x.Durum)
-        .Include(x => x.KullaniciRolleri)
-            .ThenInclude(x => x.Rol)
-        .Include(x => x.EgitmenProfili)
-            .ThenInclude(x => x!.EgitmenBranslari)
-                .ThenInclude(x => x.Kategori)
-        .AsQueryable();
+        arama = string.IsNullOrWhiteSpace(arama)
+            ? null
+            : arama.Trim();
 
-    if (!string.IsNullOrWhiteSpace(arama))
-    {
-        query = query.Where(x =>
-            x.Ad.Contains(arama) ||
-            x.Soyad.Contains(arama) ||
-            x.Eposta.Contains(arama) ||
-            (x.Telefon != null && x.Telefon.Contains(arama)) ||
-            (x.SonIpAdresi != null && x.SonIpAdresi.Contains(arama)));
-    }
+        rol = string.IsNullOrWhiteSpace(rol)
+            ? "tum"
+            : rol.Trim().ToLower();
 
-    query = rol switch
-    {
-        "admin" => query.Where(x => x.KullaniciRolleri.Any(r => r.RolId == 1)),
-        "egitmen" => query.Where(x =>
-            x.KullaniciRolleri.Any(r => r.RolId == 2) ||
-            x.EgitmenProfili != null),
-        "ogrenci" => query.Where(x => x.KullaniciRolleri.Any(r => r.RolId == 3)),
-        _ => query
-    };
+        durum = string.IsNullOrWhiteSpace(durum)
+            ? "tum"
+            : durum.Trim().ToLower();
 
-    query = durum switch
-    {
-        "aktif" => query.Where(x => x.DurumId == 1),
-        "pasif" => query.Where(x => x.DurumId == 2),
-        _ => query
-    };
-
-    int toplamKayit = await query.CountAsync();
-
-    int toplamSayfa = (int)Math.Ceiling(toplamKayit / (double)sayfaBasinaKayit);
-
-    if (toplamSayfa < 1)
-    {
-        toplamSayfa = 1;
-    }
-
-    if (sayfa > toplamSayfa)
-    {
-        sayfa = toplamSayfa;
-    }
-
-    var kullaniciKayitlari = await query
-        .OrderByDescending(x => x.KayitTarihi)
-        .Skip((sayfa - 1) * sayfaBasinaKayit)
-        .Take(sayfaBasinaKayit)
-        .ToListAsync();
-
-    var kullanicilar = kullaniciKayitlari
-        .Select(x => new KullaniciListeItemViewModel
+        if (sayfa < 1)
         {
-            KullaniciId = x.KullaniciId,
-            AdSoyad = $"{x.Ad} {x.Soyad}".Trim(),
-            Eposta = x.Eposta,
-            ProfilFotoUrl = x.ProfilFotoUrl,
+            sayfa = 1;
+        }
 
-            DurumId = x.DurumId,
-            DurumAdi = x.Durum.DurumAdi,
-            OnlineMi = x.OnlineMi,
-
-            SonIpAdresi = x.SonIpAdresi,
-            KayitTarihi = x.KayitTarihi,
-            SonGirisTarihi = x.SonGirisTarihi,
-
-            Roller = x.KullaniciRolleri
-                .Select(r => r.Rol.RolAdi)
-                .OrderBy(r => r)
-                .ToList(),
-
-            EgitmenMi =
-                x.KullaniciRolleri.Any(r => r.RolId == 2) ||
-                x.EgitmenProfili != null,
-
-            UzmanlikAlani = x.EgitmenProfili?.UzmanlikAlani,
-
-            Branslar = x.EgitmenProfili == null
-                ? new List<string>()
-                : x.EgitmenProfili.EgitmenBranslari
-                    .Select(b => b.Kategori.KategoriAdi)
-                    .OrderBy(b => b)
-                    .ToList()
-        })
-        .ToList();
-
-    var model = new KullaniciYonetimiViewModel
-    {
-        Arama = arama,
-        Rol = rol,
-        Durum = durum,
-
-        Kullanicilar = kullanicilar,
-
-        ToplamKullaniciSayisi = await _context.Kullanicilar
+        var query = _context.Kullanicilar
             .AsNoTracking()
-            .CountAsync(),
+            .AsSplitQuery()
+            .Include(x => x.Durum)
+            .Include(x => x.KullaniciRolleri)
+                .ThenInclude(x => x.Rol)
+            .Include(x => x.EgitmenProfili)
+                .ThenInclude(x => x!.EgitmenBranslari)
+                    .ThenInclude(x => x.Kategori)
+            .AsQueryable();
 
-        OnlineKullaniciSayisi = await _context.Kullanicilar
-            .AsNoTracking()
-            .CountAsync(x => x.OnlineMi),
+        if (!string.IsNullOrWhiteSpace(arama))
+        {
+            query = query.Where(x =>
+                x.Ad.Contains(arama) ||
+                x.Soyad.Contains(arama) ||
+                x.Eposta.Contains(arama) ||
+                (x.Telefon != null && x.Telefon.Contains(arama)) ||
+                (x.SonIpAdresi != null && x.SonIpAdresi.Contains(arama)));
+        }
 
-        AktifKullaniciSayisi = await _context.Kullanicilar
-            .AsNoTracking()
-            .CountAsync(x => x.DurumId == 1),
-
-        PasifKullaniciSayisi = await _context.Kullanicilar
-            .AsNoTracking()
-            .CountAsync(x => x.DurumId == 2),
-
-        AdminSayisi = await _context.Kullanicilar
-            .AsNoTracking()
-            .CountAsync(x => x.KullaniciRolleri.Any(r => r.RolId == 1)),
-
-        EgitmenSayisi = await _context.Kullanicilar
-            .AsNoTracking()
-            .CountAsync(x =>
+        // Rol filtresine göre admin, eğitmen veya öğrenci kullanıcıları seçilir.
+        query = rol switch
+        {
+            "admin" => query.Where(x => x.KullaniciRolleri.Any(r => r.RolId == 1)),
+            "egitmen" => query.Where(x =>
                 x.KullaniciRolleri.Any(r => r.RolId == 2) ||
                 x.EgitmenProfili != null),
+            "ogrenci" => query.Where(x => x.KullaniciRolleri.Any(r => r.RolId == 3)),
+            _ => query
+        };
 
-        OgrenciSayisi = await _context.Kullanicilar
-            .AsNoTracking()
-            .CountAsync(x => x.KullaniciRolleri.Any(r => r.RolId == 3)),
+        // Kullanıcı aktif/pasif durumuna göre filtrelenir.
+        query = durum switch
+        {
+            "aktif" => query.Where(x => x.DurumId == 1),
+            "pasif" => query.Where(x => x.DurumId == 2),
+            _ => query
+        };
 
-        ToplamKayit = toplamKayit,
-        Sayfa = sayfa,
-        ToplamSayfa = toplamSayfa,
-        SayfaBasinaKayit = sayfaBasinaKayit
-    };
+        int toplamKayit = await query.CountAsync();
 
-    return View(model);
-    
-  }
+        int toplamSayfa = (int)Math.Ceiling(toplamKayit / (double)sayfaBasinaKayit);
+
+        if (toplamSayfa < 1)
+        {
+            toplamSayfa = 1;
+        }
+
+        if (sayfa > toplamSayfa)
+        {
+            sayfa = toplamSayfa;
+        }
+
+        var kullaniciKayitlari = await query
+            .OrderByDescending(x => x.KayitTarihi)
+            .Skip((sayfa - 1) * sayfaBasinaKayit)
+            .Take(sayfaBasinaKayit)
+            .ToListAsync();
+
+        // Veritabanından gelen kullanıcı kayıtları liste ekranında kullanılacak ViewModel'e dönüştürülür.
+        var kullanicilar = kullaniciKayitlari
+            .Select(x => new KullaniciListeItemViewModel
+            {
+                KullaniciId = x.KullaniciId,
+                AdSoyad = $"{x.Ad} {x.Soyad}".Trim(),
+                Eposta = x.Eposta,
+                ProfilFotoUrl = x.ProfilFotoUrl,
+
+                DurumId = x.DurumId,
+                DurumAdi = x.Durum.DurumAdi,
+                OnlineMi = x.OnlineMi,
+
+                SonIpAdresi = x.SonIpAdresi,
+                KayitTarihi = x.KayitTarihi,
+                SonGirisTarihi = x.SonGirisTarihi,
+
+                Roller = x.KullaniciRolleri
+                    .Select(r => r.Rol.RolAdi)
+                    .OrderBy(r => r)
+                    .ToList(),
+
+                EgitmenMi =
+                    x.KullaniciRolleri.Any(r => r.RolId == 2) ||
+                    x.EgitmenProfili != null,
+
+                UzmanlikAlani = x.EgitmenProfili?.UzmanlikAlani,
+
+                Branslar = x.EgitmenProfili == null
+                    ? new List<string>()
+                    : x.EgitmenProfili.EgitmenBranslari
+                        .Select(b => b.Kategori.KategoriAdi)
+                        .OrderBy(b => b)
+                        .ToList()
+            })
+            .ToList();
+
+        var model = new KullaniciYonetimiViewModel
+        {
+            Arama = arama,
+            Rol = rol,
+            Durum = durum,
+
+            Kullanicilar = kullanicilar,
+
+            ToplamKullaniciSayisi = await _context.Kullanicilar
+                .AsNoTracking()
+                .CountAsync(),
+
+            OnlineKullaniciSayisi = await _context.Kullanicilar
+                .AsNoTracking()
+                .CountAsync(x => x.OnlineMi),
+
+            AktifKullaniciSayisi = await _context.Kullanicilar
+                .AsNoTracking()
+                .CountAsync(x => x.DurumId == 1),
+
+            PasifKullaniciSayisi = await _context.Kullanicilar
+                .AsNoTracking()
+                .CountAsync(x => x.DurumId == 2),
+
+            AdminSayisi = await _context.Kullanicilar
+                .AsNoTracking()
+                .CountAsync(x => x.KullaniciRolleri.Any(r => r.RolId == 1)),
+
+            EgitmenSayisi = await _context.Kullanicilar
+                .AsNoTracking()
+                .CountAsync(x =>
+                    x.KullaniciRolleri.Any(r => r.RolId == 2) ||
+                    x.EgitmenProfili != null),
+
+            OgrenciSayisi = await _context.Kullanicilar
+                .AsNoTracking()
+                .CountAsync(x => x.KullaniciRolleri.Any(r => r.RolId == 3)),
+
+            ToplamKayit = toplamKayit,
+            Sayfa = sayfa,
+            ToplamSayfa = toplamSayfa,
+            SayfaBasinaKayit = sayfaBasinaKayit
+        };
+
+        return View(model);
+    }
 
     [HttpGet]
+    // Seçilen kullanıcının genel bilgilerini, kayıtlı kurslarını ve verdiği kursları gösterir.
     public async Task<IActionResult> Detay(int id)
     {
         var kullanici = await _context.Kullanicilar
@@ -207,6 +212,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             return RedirectToAction(nameof(Kullanicilar));
         }
 
+        // Kullanıcının öğrenci olarak kayıt olduğu kurslar ve ilerleme bilgileri hazırlanır.
         var kayitliKurslarQuery = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x => x.KullaniciId == id)
@@ -231,6 +237,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
 
         var kursKayitIdleri = kayitliKurslarQuery.Select(x => x.KursKayitId).ToList();
 
+        // Kayıtlı kurslara ait sınav katılım bilgileri ayrı olarak çekilir.
         var sinavKatilimlari = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x => kursKayitIdleri.Contains(x.KursKayitId))
@@ -275,6 +282,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
                     : 0
             };
 
+            // Kullanıcının ilgili kurstaki son sınav durumu hesaplanır.
             if (sonSinavlar.TryGetValue(kayit.KursKayitId, out var sonSinav))
             {
                 kursModel.SonSinavPuani = sonSinav.AlinanPuan;
@@ -297,6 +305,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             kayitliKurslar.Add(kursModel);
         }
 
+        // Kullanıcı eğitmense oluşturduğu kurslar da detay ekranında gösterilir.
         var verdigiKurslar = await _context.Kurslar
             .AsNoTracking()
             .AsSplitQuery()
@@ -368,6 +377,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
     }
 
     [HttpGet]
+    // Kullanıcı düzenleme formunu mevcut kullanıcı bilgileriyle açar.
     public async Task<IActionResult> Duzenle(int id)
     {
         var kullanici = await _context.Kullanicilar
@@ -431,10 +441,12 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Admin tarafından kullanıcı bilgilerini, rollerini ve eğitmen detaylarını günceller.
     public async Task<IActionResult> Duzenle(KullaniciDuzenleViewModel model)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        // Formdan gelen rollerin geçerliliği kontrol edilir.
         bool istenenAdminYetkisiVarMi = model.AdminYetkisiVarMi;
         bool istenenEgitmenRoluVarMi = model.EgitmenRoluVarMi;
         bool istenenOgrenciRoluVarMi = model.OgrenciRoluVarMi;
@@ -528,6 +540,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
         model.EgitmenProfilId = kullanici.EgitmenProfili?.EgitmenProfilId;
         model.EgitmenDurumId = kullanici.EgitmenProfili?.DurumId;
 
+        // Admin kendi hesabını pasife alamaz ve kendi admin yetkisini kaldıramaz.
         if (model.KullaniciId == adminId && model.DurumId == 2)
         {
             ModelState.AddModelError(nameof(model.DurumId), "Kendi hesabınızı pasife alamazsınız.");
@@ -562,6 +575,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
         kullanici.Telefon = model.Telefon;
         kullanici.DurumId = model.DurumId;
 
+        // Admin rolü eklenir veya kaldırılır.
         var adminRolu = kullanici.KullaniciRolleri
             .FirstOrDefault(x => x.RolId == 1);
 
@@ -578,7 +592,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             _context.KullaniciRolleri.Remove(adminRolu);
         }
 
-        // Eğitmen rolü
+        // Eğitmen rolü eklenir veya kaldırılır.
         var egitmenRolu = kullanici.KullaniciRolleri
             .FirstOrDefault(x => x.RolId == 2);
 
@@ -595,7 +609,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             _context.KullaniciRolleri.Remove(egitmenRolu);
         }
 
-        // Öğrenci rolü
+        // Öğrenci rolü eklenir veya kaldırılır.
         var ogrenciRolu = kullanici.KullaniciRolleri
             .FirstOrDefault(x => x.RolId == 3);
 
@@ -612,6 +626,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             _context.KullaniciRolleri.Remove(ogrenciRolu);
         }
 
+        // Kullanıcı eğitmense eğitmen profili ve branş bilgileri de güncellenir.
         if (model.EgitmenMi && kullanici.EgitmenProfili != null)
         {
             kullanici.EgitmenProfili.UzmanlikAlani = model.UzmanlikAlani;
@@ -653,6 +668,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // Kullanıcıyı kalıcı olarak siler veya kritik bağlı kayıt varsa pasife alır.
     public async Task<IActionResult> Sil(int id)
     {
         int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -688,6 +704,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
 
         bool yonetimGecmisiVar = await YonetimGecmisiVarMiAsync(kullanici.KullaniciId);
 
+        // Sadece öğrenci olan ve yönetim geçmişi bulunmayan kullanıcı tamamen silinebilir.
         if (sadeceOgrenciMi && !yonetimGecmisiVar)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -730,6 +747,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
 
         bool kritikBagliKayitVar = await KritikBagliKayitVarMiAsync(kullanici.KullaniciId);
 
+        // Kritik bağlı kaydı olmayan kullanıcı kalıcı olarak silinir.
         if (!kritikBagliKayitVar)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -770,6 +788,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             }
         }
 
+        // Kurs, sertifika, kayıt veya yönetim geçmişi varsa veri kaybını önlemek için kullanıcı pasife alınır.
         kullanici.DurumId = 2;
 
         await _adminLogService.KaydetAsync(
@@ -784,6 +803,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
         return RedirectToAction(nameof(Detay), new { id = kullanici.KullaniciId });
     }
 
+    // Kullanıcı düzenleme ekranındaki durum ve branş seçeneklerini doldurur.
     private async Task DuzenleSecenekleriniDoldurAsync(KullaniciDuzenleViewModel model)
     {
         model.DurumSecenekleri = await _context.Durumlar
@@ -809,6 +829,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             .ToListAsync();
     }
 
+    // Belirtilen kullanıcı sistemde kalan son aktif admin mi kontrol eder.
     private async Task<bool> SonAktifAdminMiAsync(int kullaniciId)
     {
         bool hedefAktifAdminMi = await _context.Kullanicilar
@@ -833,9 +854,15 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
         return digerAktifAdminSayisi == 0;
     }
 
+    // Kullanıcının kalıcı silinmesini engelleyen önemli bağlı kaydı var mı kontrol eder.
     private async Task<bool> KritikBagliKayitVarMiAsync(int kullaniciId)
     {
         if (await _context.Kurslar.AsNoTracking().AnyAsync(x => x.EgitmenId == kullaniciId))
+        {
+            return true;
+        }
+
+        if (await YonetimGecmisiVarMiAsync(kullaniciId))
         {
             return true;
         }
@@ -850,14 +877,12 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
             return true;
         }
 
-        if (await YonetimGecmisiVarMiAsync(kullaniciId))
-        {
-            return true;
-        }
+   
 
         return false;
     }
 
+    // Kullanıcının admin veya onay işlemleriyle ilişkili geçmişi var mı kontrol eder.
     private async Task<bool> YonetimGecmisiVarMiAsync(int kullaniciId)
     {
         if (await _context.AdminLoglari.AsNoTracking().AnyAsync(x => x.AdminId == kullaniciId))
@@ -878,6 +903,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
         return false;
     }
 
+    // Öğrencinin kurs kayıtları, sınavları, ilerlemeleri ve sertifikalarını siler.
     private async Task OgrenciVerileriniSilAsync(int kullaniciId)
     {
         var kursKayitIdleri = await _context.KursKayitlari
@@ -919,6 +945,7 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
         await KullaniciYanBagliVerileriniSilAsync(kullaniciId);
     }
 
+    // Kullanıcıya bağlı yan kayıtları siler.
     private async Task KullaniciYanBagliVerileriniSilAsync(int kullaniciId)
     {
         var bildirimler = await _context.Bildirimler
@@ -952,5 +979,4 @@ public async Task<IActionResult> Kullanicilar(string? arama, string rol = "tum",
         _context.KursDegerlendirmeleri.RemoveRange(degerlendirmeler);
         _context.EgitmenOnaylari.RemoveRange(egitmenOnaylari);
     }
-
 }

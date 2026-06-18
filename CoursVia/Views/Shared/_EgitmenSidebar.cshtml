@@ -1,4 +1,4 @@
-﻿@{
+@{
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
 
@@ -8,7 +8,6 @@
     bool kurslarimAktif =
         (currentController == "EgitmenKurs" &&
             (currentAction == "Kurslarim" ||
-             currentAction == "KursDetay" ||
              currentAction == "KursDuzenle" ||
              currentAction == "KursIcerik" ||
              currentAction == "OnIzle")) ||

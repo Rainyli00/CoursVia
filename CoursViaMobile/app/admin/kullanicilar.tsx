@@ -26,16 +26,20 @@ import type {
 // Admin kullanıcılar ekranı.
 // Arama, rol filtresi, durum filtresi ve sayfalama destekler.
 export default function AdminKullanicilarScreen() {
+    // Liste verisi ve filtre dropdownlarında kullanılacak rol/durum seçenekleri.
     const [kullanicilar, setKullanicilar] = useState<MobileAdminKullaniciItem[]>([]);
     const [roller, setRoller] = useState<MobileAdminSecenek[]>([]);
     const [durumlar, setDurumlar] = useState<MobileAdminSecenek[]>([]);
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış aktif filtredir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Aktif rol ve kullanıcı durum filtreleri.
     const [rolId, setRolId] = useState<number | null>(null);
     const [durumId, setDurumId] = useState<number | null>(null);
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -46,6 +50,7 @@ export default function AdminKullanicilarScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Ekran açıldığında varsayılan filtrelerle ilk kullanıcı listesi çekilir.
     useEffect(() => {
         kullanicilariGetir(false, {
             arama: null,
@@ -55,6 +60,7 @@ export default function AdminKullanicilarScreen() {
         });
     }, []);
 
+    // Kullanıcı listesini API'den çeker; override ile state güncellenmeden yeni filtrelerle istek yapılabilir.
     async function kullanicilariGetir(
         refreshMi = false,
         override?: {
@@ -123,6 +129,7 @@ export default function AdminKullanicilarScreen() {
         }
     }
 
+    // Arama uygulandığında liste ilk sayfadan yeniden yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -139,6 +146,7 @@ export default function AdminKullanicilarScreen() {
         });
     }
 
+    // Tüm filtreleri temizleyip kullanıcı listesini varsayılana döndürür.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -156,6 +164,7 @@ export default function AdminKullanicilarScreen() {
         });
     }
 
+    // Rol filtresi değişince aktif arama korunur ve sayfa bire döner.
     function rolSec(yeniRolId: number | null) {
         Keyboard.dismiss();
 
@@ -173,6 +182,7 @@ export default function AdminKullanicilarScreen() {
         });
     }
 
+    // Durum filtresi değişince aktif arama/rol korunur ve liste baştan çekilir.
     function durumSec(yeniDurumId: number | null) {
         Keyboard.dismiss();
 
@@ -190,6 +200,7 @@ export default function AdminKullanicilarScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -268,6 +279,7 @@ export default function AdminKullanicilarScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -277,6 +289,7 @@ function LoadingState() {
     );
 }
 
+// Liste alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -296,6 +309,7 @@ function ErrorState({
     );
 }
 
+// Arama, rol ve durum filtrelerini tek panelde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -388,6 +402,7 @@ function FilterPanel({
     );
 }
 
+// Rol ve durum gibi id-ad seçeneklerini ortak modal dropdown olarak gösterir.
 function SecenekDropdown({
     title,
     tumLabel,
@@ -406,6 +421,7 @@ function SecenekDropdown({
     const seciliSecenek = secenekler.find((x) => x.id === seciliId);
     const seciliMetin = seciliSecenek ? seciliSecenek.ad : tumLabel;
 
+    // null seçimi ilgili filtrede "tümü" anlamına gelir.
     function secimYap(value: number | null) {
         setModalAcik(false);
         sec(value);
@@ -460,6 +476,7 @@ function SecenekDropdown({
     );
 }
 
+// Dropdown seçimlerini ortak modal içinde gösterir.
 function SelectionModal({
     visible,
     title,
@@ -500,6 +517,7 @@ function SelectionModal({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -533,6 +551,7 @@ function DropdownItem({
     );
 }
 
+// Kullanıcı özet kartı; tıklandığında kullanıcı detayına gider.
 function KullaniciKart({ kullanici }: { kullanici: MobileAdminKullaniciItem }) {
     return (
         <Pressable
@@ -587,6 +606,7 @@ function KullaniciKart({ kullanici }: { kullanici: MobileAdminKullaniciItem }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -645,6 +665,7 @@ function PaginationControls({
     );
 }
 
+// Arama veya filtrelere uygun kullanıcı yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

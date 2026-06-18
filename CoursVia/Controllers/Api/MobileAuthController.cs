@@ -12,9 +12,6 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-
-    
-
 namespace CoursVia.Controllers.Api;
 
 [ApiController]
@@ -84,7 +81,7 @@ public class MobileAuthController : ControllerBase
                 Mesaj = "Hesabınız aktif değil."
             });
         }
-
+        // Şifre doğrulama kısmı
         bool sifreDogruMu = _passwordService.VerifyPassword(request.Sifre, kullanici.SifreHash);
 
         if (!sifreDogruMu)
@@ -163,7 +160,7 @@ public class MobileAuthController : ControllerBase
 
     // Access token süresi dolduğunda yeni access token üretir.
     // Refresh token DB'deki aktif MobilOturum kaydıyla kontrol edilir.
-    // Güvenlik için refresh token her yenilemede yeniden üretilir".
+    // Güvenlik için refresh token her yenilemede yeniden üretilir.
     [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<ActionResult<MobileRefreshTokenResponse>> Refresh([FromBody] MobileRefreshTokenRequest? request)
@@ -228,7 +225,7 @@ public class MobileAuthController : ControllerBase
             .Distinct()
             .ToList();
 
-        // Normal şartlarda böyle bir durum olmamalı ama yine de kontrol ediyoruz. sonuçta roller olmadan token üretmek anlamsız olurdu.
+        // Normal şartlarda böyle bir durum olmamalı; roller olmadan token üretmek anlamsız olacağı için oturum kapatılır.
         if (!roller.Any())
         {
             oturum.AktifMi = false;
@@ -241,7 +238,7 @@ public class MobileAuthController : ControllerBase
                 Mesaj = "Bu kullanıcıya ait rol bulunamadı."
             });
         }
-
+        // Yeni access token ve refresh token oluşturulur, eski refresh token pasife çekilir.
         int accessTokenDakika = AccessTokenDakikaGetir();
         int refreshTokenGun = RefreshTokenGunGetir();
 
@@ -258,6 +255,7 @@ public class MobileAuthController : ControllerBase
             yeniAccessTokenBitisTarihi
         );
 
+        // Refresh token rotasyonu: kullanılan token artık geçersiz olur, yerine yeni hash kaydedilir.
         string yeniRefreshToken = RefreshTokenOlustur();
         string yeniRefreshTokenHash = TokenHashOlustur(yeniRefreshToken);
 
@@ -291,6 +289,7 @@ public class MobileAuthController : ControllerBase
     {
         string? kullaniciIdDegeri = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        // id değeri JWT içinde yoksa veya int'e çevrilemiyorsa geçersiz token olarak kabul edilir.
         if (!int.TryParse(kullaniciIdDegeri, out int kullaniciId))
         {
             return Unauthorized(new MobileLoginResponse
@@ -328,10 +327,13 @@ public class MobileAuthController : ControllerBase
         });
     }
 
+    // Şifresini unutan kullanıcı için 6 haneli doğrulama kodu oluşturur ve e-posta ile gönderir.
+    // Aynı kullanıcıya ait kullanılmamış eski kodlar pasife çekilir.
+    // POST /api/mobile/auth/sifremi-unuttum
     [AllowAnonymous]
     [HttpPost("sifremi-unuttum")]
     public async Task<ActionResult<MobileSifremiUnuttumResponseDto>> SifremiUnuttum(
-    [FromBody] MobileSifremiUnuttumRequestDto request)
+        [FromBody] MobileSifremiUnuttumRequestDto request)
     {
         if (string.IsNullOrWhiteSpace(request.Eposta))
         {
@@ -370,6 +372,7 @@ public class MobileAuthController : ControllerBase
             });
         }
 
+        // Yeni kod üretilmeden önce eski açık kodlar kullanılmış sayılır.
         var eskiKodlar = await _context.SifreSifirlamalari
             .Where(x => x.KullaniciId == kullanici.KullaniciId && !x.KullanildiMi)
             .ToListAsync();
@@ -379,6 +382,7 @@ public class MobileAuthController : ControllerBase
             eskiKod.KullanildiMi = true;
         }
 
+        // 100000-999999 aralığında tahmin edilmesi zor, 6 haneli kod oluşturulur.
         var kod = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
 
         var sifreSifirlama = new SifreSifirlama
@@ -438,6 +442,9 @@ public class MobileAuthController : ControllerBase
         });
     }
 
+    // Kullanıcının e-posta adresine gönderilen doğrulama koduyla yeni şifre belirlemesini sağlar.
+    // Kod tek kullanımlıktır ve yalnızca geçerlilik süresi dolmamışsa kabul edilir.
+    // POST /api/mobile/auth/sifre-sifirla
     [AllowAnonymous]
     [HttpPost("sifre-sifirla")]
     public async Task<ActionResult<MobileSifreSifirlaResponseDto>> SifreSifirla(
@@ -487,6 +494,7 @@ public class MobileAuthController : ControllerBase
             });
         }
 
+        // En güncel, kullanılmamış ve süresi dolmamış kod aranır.
         var sifreSifirlama = await _context.SifreSifirlamalari
             .Where(x =>
                 x.KullaniciId == kullanici.KullaniciId &&
@@ -505,6 +513,7 @@ public class MobileAuthController : ControllerBase
             });
         }
 
+        // Şifre hashlenerek kaydedilir; doğrulama kodu tekrar kullanılamasın diye kapatılır.
         kullanici.SifreHash = _passwordService.HashPassword(request.YeniSifre);
         sifreSifirlama.KullanildiMi = true;
 
@@ -542,6 +551,7 @@ public class MobileAuthController : ControllerBase
                 x.RefreshTokenHash == refreshTokenHash &&
                 x.AktifMi);
 
+        // Oturum bulunamasa bile logout idempotent kabul edilir ve başarılı cevap döndürülür.
         if (oturum == null)
         {
             return Ok(new MobileAuthIslemResponse
@@ -560,6 +570,7 @@ public class MobileAuthController : ControllerBase
 
         if (kullanici != null)
         {
+            // Kullanıcının başka geçerli mobil oturumu varsa online durumu korunur.
             bool baskaAktifMobilOturumVarMi = await _context.MobilOturumlari
                 .AnyAsync(x =>
                     x.KullaniciId == kullaniciId &&
@@ -584,6 +595,8 @@ public class MobileAuthController : ControllerBase
         });
     }
 
+    // Mobil uygulamanın kullanıcının online/offline durumunu güncellemesi için kullanılır.
+    // POST /api/mobile/auth/online-durum
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpPost("online-durum")]
     public async Task<ActionResult<MobileAuthIslemResponse>> OnlineDurumGuncelle([FromBody] MobileOnlineDurumRequest? request)
@@ -625,6 +638,7 @@ public class MobileAuthController : ControllerBase
         });
     }
 
+    // Kullanıcı bilgileri ve rolleriyle JWT access token oluşturur.
     private string AccessTokenOlustur(
         int kullaniciId,
         string ad,
@@ -649,6 +663,7 @@ public class MobileAuthController : ControllerBase
             new Claim("ProfilFotoUrl", profilFotoUrl ?? "")
         };
 
+        // ASP.NET authorization mekanizmasının rol kontrolü yapabilmesi için roller ClaimTypes.Role olarak eklenir.
         foreach (string rol in roller)
         {
             claims.Add(new Claim(ClaimTypes.Role, rol));
@@ -669,6 +684,7 @@ public class MobileAuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    // Mobil oturum için kriptografik olarak güçlü rastgele refresh token üretir.
     private static string RefreshTokenOlustur()
     {
         byte[] bytes = RandomNumberGenerator.GetBytes(64);
@@ -685,6 +701,7 @@ public class MobileAuthController : ControllerBase
         return Convert.ToHexString(hashBytes);
     }
 
+    // Access token süresi appsettings üzerinden alınır; değer yoksa 15 dakika kullanılır.
     private int AccessTokenDakikaGetir()
     {
         return int.TryParse(_configuration["Jwt:AccessTokenMinutes"], out int dakika)
@@ -692,6 +709,7 @@ public class MobileAuthController : ControllerBase
             : 15;
     }
 
+    // Refresh token süresi appsettings üzerinden alınır; değer yoksa 7 gün kullanılır.
     private int RefreshTokenGunGetir()
     {
         return int.TryParse(_configuration["Jwt:RefreshTokenDays"], out int gun)
@@ -699,6 +717,7 @@ public class MobileAuthController : ControllerBase
             : 7;
     }
 
+    // Mobil istemciye dönecek kullanıcı özet modelini oluşturur.
     private static MobileKullaniciResponse KullaniciResponseOlustur(
         Kullanici kullanici,
         List<string> roller)
@@ -713,10 +732,12 @@ public class MobileAuthController : ControllerBase
         };
     }
 
+    // JWT içindeki kullanıcı id bilgisini okur; geçersiz token bilgisinde hata fırlatır.
     private int KullaniciIdGetir()
     {
         string? kullaniciIdDegeri = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        // id değeri JWT içinde yoksa veya int'e çevrilemiyorsa geçersiz token olarak kabul edilir.
         if (!int.TryParse(kullaniciIdDegeri, out int kullaniciId))
         {
             throw new UnauthorizedAccessException("Geçersiz kullanıcı bilgisi.");

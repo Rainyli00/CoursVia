@@ -24,6 +24,7 @@ import type {
 
 type SiralamaValue = "yeni" | "eski";
 
+// Log listesinin desteklediği tarih sıralama seçenekleri.
 const SIRALAMA_SECENEKLERI: { label: string; value: SiralamaValue }[] = [
     {
         label: "Yeni",
@@ -38,15 +39,19 @@ const SIRALAMA_SECENEKLERI: { label: string; value: SiralamaValue }[] = [
 // Admin logları ekranı.
 // Arama, kategori filtresi, yeni/eski sıralama ve sayfalama destekler.
 export default function AdminLoglarScreen() {
+    // Log listesi ve kategori dropdown seçenekleri.
     const [loglar, setLoglar] = useState<MobileAdminLogItem[]>([]);
     const [kategoriler, setKategoriler] = useState<MobileAdminLogKategori[]>([]);
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış aktif filtredir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Aktif kategori ve tarih sıralaması.
     const [kategori, setKategori] = useState("tum");
     const [sirala, setSirala] = useState<SiralamaValue>("yeni");
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -57,6 +62,7 @@ export default function AdminLoglarScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Ekran açıldığında en yeni loglar varsayılan filtreyle çekilir.
     useEffect(() => {
         loglariGetir(false, {
             arama: null,
@@ -66,6 +72,7 @@ export default function AdminLoglarScreen() {
         });
     }, []);
 
+    // Log listesini API'den çeker; override ile filtre state'i güncellenmeden istek yapılabilir.
     async function loglariGetir(
         refreshMi = false,
         override?: {
@@ -129,6 +136,7 @@ export default function AdminLoglarScreen() {
         }
     }
 
+    // Arama uygulandığında liste ilk sayfadan yeniden yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -145,6 +153,7 @@ export default function AdminLoglarScreen() {
         });
     }
 
+    // Arama, kategori ve sıralamayı varsayılana döndürür.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -162,6 +171,7 @@ export default function AdminLoglarScreen() {
         });
     }
 
+    // Kategori değişince aktif arama korunur ve liste baştan yüklenir.
     function kategoriSec(yeniKategori: string) {
         Keyboard.dismiss();
 
@@ -179,6 +189,7 @@ export default function AdminLoglarScreen() {
         });
     }
 
+    // Sıralama değişince mevcut arama/kategoriyle ilk sayfa çekilir.
     function siralamaSec(yeniSirala: SiralamaValue) {
         Keyboard.dismiss();
 
@@ -196,6 +207,7 @@ export default function AdminLoglarScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -273,6 +285,7 @@ export default function AdminLoglarScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -282,6 +295,7 @@ function LoadingState() {
     );
 }
 
+// Liste alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -301,6 +315,7 @@ function ErrorState({
     );
 }
 
+// Arama, kategori ve sıralama kontrollerini tek panelde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -385,6 +400,7 @@ function FilterPanel({
     );
 }
 
+// Log kategorilerini modal dropdown olarak gösterir.
 function KategoriDropdown({
     kategoriler,
     kategori,
@@ -402,6 +418,7 @@ function KategoriDropdown({
 
     const seciliMetin = seciliKategori?.kategoriAdi ?? "Tüm Kategoriler";
 
+    // Seçilen kategori değeri API'nin beklediği kategori parametresidir.
     function sec(value: string) {
         setModalAcik(false);
         kategoriSec(value);
@@ -444,6 +461,7 @@ function KategoriDropdown({
     );
 }
 
+// Log tarih sıralamasını modal dropdown olarak gösterir.
 function SiralamaDropdown({
     sirala,
     siralamaSec,
@@ -457,6 +475,7 @@ function SiralamaDropdown({
         SIRALAMA_SECENEKLERI.find((x) => x.value === sirala) ??
         SIRALAMA_SECENEKLERI[0];
 
+    // Seçilen value doğrudan API'nin beklediği sirala parametresidir.
     function sec(value: SiralamaValue) {
         setModalAcik(false);
         siralamaSec(value);
@@ -499,6 +518,7 @@ function SiralamaDropdown({
     );
 }
 
+// Dropdown seçimlerini ortak modal içinde gösterir.
 function SelectionModal({
     visible,
     title,
@@ -539,6 +559,7 @@ function SelectionModal({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -572,6 +593,7 @@ function DropdownItem({
     );
 }
 
+// Tek admin log kaydını işlem, admin, tarih ve IP bilgisiyle gösterir.
 function LogKart({ log }: { log: MobileAdminLogItem }) {
     return (
         <View style={styles.logCard}>
@@ -614,6 +636,7 @@ function LogKart({ log }: { log: MobileAdminLogItem }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -672,6 +695,7 @@ function PaginationControls({
     );
 }
 
+// Arama veya filtrelere uygun log yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>
@@ -683,6 +707,7 @@ function EmptyState() {
     );
 }
 
+// Geçerli tarihse Türkçe kısa tarih formatına çevirir.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 
@@ -693,6 +718,7 @@ function tarihFormatla(value: string) {
     return tarih.toLocaleDateString("tr-TR");
 }
 
+// Geçerli tarihse Türkçe tarih/saat formatına çevirir.
 function tarihSaatFormatla(value: string) {
     const tarih = new Date(value);
 

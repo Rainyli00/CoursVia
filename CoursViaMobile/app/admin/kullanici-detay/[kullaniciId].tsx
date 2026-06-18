@@ -22,14 +22,17 @@ export default function AdminKullaniciDetayScreen() {
         kullaniciId?: string | string[];
     }>();
 
+    // Kullanıcı detay cevabı tek state'te tutulur; hesap ve eğitmen alanları buradan okunur.
     const [detay, setDetay] = useState<MobileAdminKullaniciDetayResponse | null>(
         null
     );
 
+    // İlk yükleme, pull-to-refresh ve hata ekranı ayrı ayrı yönetilir.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Expo Router parametresi string gelebileceği için güvenli sayıya çevrilir.
     const kullaniciId = useMemo(() => {
         const rawValue = Array.isArray(params.kullaniciId)
             ? params.kullaniciId[0]
@@ -40,6 +43,7 @@ export default function AdminKullaniciDetayScreen() {
         return Number.isFinite(id) && id > 0 ? id : null;
     }, [params.kullaniciId]);
 
+    // Geçerli kullanıcı id varsa detay yüklenir, yoksa kullanıcıya hata ekranı gösterilir.
     useEffect(() => {
         if (!kullaniciId) {
             setYukleniyor(false);
@@ -50,6 +54,7 @@ export default function AdminKullaniciDetayScreen() {
         detayGetir();
     }, [kullaniciId]);
 
+    // Kullanıcı detayını API'den getirir; refresh sırasında tam ekran loading göstermez.
     async function detayGetir(refreshMi = false) {
         if (!kullaniciId) {
             return;
@@ -263,6 +268,7 @@ export default function AdminKullaniciDetayScreen() {
     );
 }
 
+// Detay verisi gelene kadar gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -272,6 +278,7 @@ function LoadingState() {
     );
 }
 
+// Detay alınamazsa tekrar deneme ve geri dönme aksiyonlarını gösterir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -296,6 +303,7 @@ function ErrorState({
     );
 }
 
+// Kullanıcı özet sayılarını göstermek için kullanılan küçük kart.
 function SummaryCard({ title, value }: { title: string; value: number }) {
     return (
         <View style={styles.summaryCard}>
@@ -305,6 +313,7 @@ function SummaryCard({ title, value }: { title: string; value: number }) {
     );
 }
 
+// Hesap bilgilerindeki kısa label/value satırı.
 function DetailRow({ label, value }: { label: string; value: string }) {
     return (
         <View style={styles.detailRow}>
@@ -314,6 +323,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     );
 }
 
+// Uzun metinli eğitmen profil alanları için kullanılır.
 function DetailBlock({ label, value }: { label: string; value: string }) {
     return (
         <View style={styles.detailBlock}>
@@ -323,6 +333,7 @@ function DetailBlock({ label, value }: { label: string; value: string }) {
     );
 }
 
+// Geçerli tarihse Türkçe kısa tarih formatına çevirir.
 function tarihFormatla(value: string) {
     const tarih = new Date(value);
 

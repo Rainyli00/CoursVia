@@ -6,6 +6,7 @@ using OpenAI.Chat;
 
 namespace CoursVia.Services.Ai;
 
+// Lokal OpenAI uyumlu endpoint üzerinden Gemma modeliyle cevap üreten servis.
 public class LocalGemmaAiService
 {
     private readonly AiSettings _settings;
@@ -19,19 +20,23 @@ public class LocalGemmaAiService
         _guvenlikFiltresi = guvenlikFiltresi;
     }
 
+    // Promptu lokal model sunucusuna gönderir, cevabı filtreleyip standart analiz sonucu döndürür.
     public async Task<AiAnalizSonucu> CevapUretAsync(
         string prompt,
         AiIstekTipi istekTipi,
         CancellationToken cancellationToken = default)
     {
+        // Model karşılaştırmalarında süre bilgisi göstermek için çağrı süresi ölçülür.
         var stopwatch = Stopwatch.StartNew();
 
+        // appsettings içinde model adı yoksa bilinen lokal Gemma varsayılanı kullanılır.
         var model = string.IsNullOrWhiteSpace(_settings.LocalGemma.Model)
             ? "gemma-3-12b-it"
             : _settings.LocalGemma.Model;
 
         try
         {
+            // BaseUrl olmadan lokal OpenAI uyumlu servise bağlanılamaz.
             if (string.IsNullOrWhiteSpace(_settings.LocalGemma.BaseUrl))
             {
                 stopwatch.Stop();
@@ -45,6 +50,7 @@ public class LocalGemmaAiService
 
             var endpoint = _settings.LocalGemma.BaseUrl.TrimEnd('/');
 
+            // OpenAI SDK, LM Studio gibi lokal servislerle Endpoint verilerek kullanılabilir.
             var chatClient = new ChatClient(
                 model: model,
                 credential: new ApiKeyCredential("lm-studio"),
@@ -53,6 +59,7 @@ public class LocalGemmaAiService
                     Endpoint = new Uri(endpoint)
                 });
 
+            // System mesajı modelin CoursVia bağlamından ve kurallardan sapmasını azaltır.
             var messages = new List<ChatMessage>
             {
                 new SystemChatMessage(
@@ -61,6 +68,7 @@ public class LocalGemmaAiService
                 new UserChatMessage(prompt)
             };
 
+            // Düşük temperature ve sınırlı token sayısı kısa, daha tutarlı öneriler içindir.
             var options = new ChatCompletionOptions
             {
                 Temperature = 0.1f,
@@ -77,6 +85,7 @@ public class LocalGemmaAiService
 
             var completion = response.Value;
 
+            // OpenAI chat response içindeki ilk content text'i ana cevap kabul edilir.
             var hamCikti = completion.Content.Count > 0
                 ? completion.Content[0].Text?.Trim() ?? string.Empty
                 : string.Empty;
@@ -87,9 +96,10 @@ public class LocalGemmaAiService
                     AiModelTipi.LocalGemma,
                     model,
                     "Local Gemma boş çıktı döndürdü.",
-                    stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds);
             }
 
+            // Lokal model cevabı da Gemini ile aynı temizlik filtresinden geçer.
             var filtreSonucu = _guvenlikFiltresi.Temizle(hamCikti, istekTipi);
 
             return AiAnalizSonucu.Basarili(
@@ -104,6 +114,7 @@ public class LocalGemmaAiService
         {
             stopwatch.Stop();
 
+            // Lokal servis kapalıysa veya model hata verirse kontrollü hata sonucu döndürülür.
             return AiAnalizSonucu.Hatali(
                 AiModelTipi.LocalGemma,
                 model,
@@ -112,6 +123,7 @@ public class LocalGemmaAiService
         }
     }
 
+    // Lokal model hatasını çok uzatmadan ekranda/logda gösterilecek hale getirir.
     private static string LocalGemmaHataMesajiTemizle(Exception ex)
     {
         var message = ex.Message;

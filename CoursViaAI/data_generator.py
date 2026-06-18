@@ -11,6 +11,7 @@ from course_bank import (
 
 
 def temiz_ad(text: str) -> str:
+    # Eğitim verisine girecek isimlerde prompt etiketlerini bozabilecek karakterleri temizler.
     return " ".join(
         str(text)
         .replace("\n", " ")
@@ -21,6 +22,7 @@ def temiz_ad(text: str) -> str:
 
 
 def tum_kurslar() -> list[dict]:
+    # Kategori bazlı kurs havuzunu tek düz listeye indirir.
     result = []
 
     for items in KURS_VERITABANI.values():
@@ -30,6 +32,7 @@ def tum_kurslar() -> list[dict]:
 
 
 def benzersiz_kurs_uret(index: int) -> dict:
+    # Her örneğe özel CVX kodu vererek modelin alan adlarını birebir kopyalamayı öğrenmesi hedeflenir.
     kod = f"CVX-{index:05d}"
 
     kurs_kok = random.choice(BENZERSIZ_KURS_KOKLERI)
@@ -73,6 +76,7 @@ def prompt_egitmen(
     dersler: list[str],
     yanlis_orani: int,
 ) -> str:
+    # Eğitmen görevinde modelin göreceği sistematik prompt formatı.
     return f"""[GOREV] EGITMEN_KURS_ANALIZI
 [KURS] {kurs}
 [OGRENCI_SAYISI] {ogrenci_sayisi}
@@ -92,6 +96,7 @@ def prompt_ogrenci(
     bolum: str,
     dersler: list[str],
 ) -> str:
+    # Öğrenci görevinde modelin göreceği sistematik prompt formatı.
     return f"""[GOREV] OGRENCI_CALISMA_ONERISI
 [KURS] {kurs}
 [SINAV_PUANI] {sinav_puani}
@@ -102,6 +107,8 @@ def prompt_ogrenci(
 """
 
 
+# Eğitmen çıktısı için farklı cümle kalıpları.
+# Amaç aynı başlık yapısını korurken modelin tek bir metni ezberlemesini azaltmak.
 EGITMEN_SABLONLARI = [
     {
         "genel": "{kurs} kursundaki veriler incelendiğinde öğrencilerin genel ilerleyişi değerlendirilmiştir. Ortalama puan {ortalama_puan} ve tamamlanma oranı %{tamamlanma} seviyesindedir.",
@@ -124,6 +131,7 @@ EGITMEN_SABLONLARI = [
 ]
 
 
+# Sınavdan kalan öğrenci için üretilecek çalışma önerisi şablonları.
 OGRENCI_SABLONLARI_BASARISIZ = [
     {
         "genel": "{kurs} sınavında geçme puanına ulaşamadın. Bu sonuç, özellikle {bolum} bölümündeki temel kavramları tekrar gözden geçirmen gerektiğini gösteriyor.",
@@ -140,6 +148,7 @@ OGRENCI_SABLONLARI_BASARISIZ = [
 ]
 
 
+# Sınavı geçmiş ama hata yaptığı konulara tekrar önerisi alacak öğrenci şablonları.
 OGRENCI_SABLONLARI_BASARILI = [
     {
         "genel": "{kurs} sınavında geçme puanını aşmış olsan da {bolum} bölümündeki bazı noktalar gelişim alanı olarak görünüyor.",
@@ -159,6 +168,7 @@ def completion_egitmen(
     dersler: list[str],
     yanlis_orani: int,
 ) -> str:
+    # Rastgele bir eğitmen şablonu seçilir ve prompttaki değerler birebir kullanılır.
     sablon = random.choice(EGITMEN_SABLONLARI)
 
     d1 = dersler[0]
@@ -196,6 +206,7 @@ def completion_ogrenci(
     bolum: str,
     dersler: list[str],
 ) -> str:
+    # Puan geçme puanına göre başarılı/başarısız öğrenci şablon havuzu seçilir.
     basarili = sinav_puani >= gecme_puani
 
     sablonlar = OGRENCI_SABLONLARI_BASARILI if basarili else OGRENCI_SABLONLARI_BASARISIZ
@@ -231,6 +242,7 @@ Tekrar Etmen Gereken Bölüm:
 
 
 def generate_egitmen_analizi(index: int) -> str:
+    # Tek bir eğitmen analiz örneği: prompt + beklenen completion + end token.
     kurs_data = kurs_sec(index)
 
     kurs = temiz_ad(kurs_data["kurs"])
@@ -266,6 +278,7 @@ def generate_egitmen_analizi(index: int) -> str:
 
 
 def generate_ogrenci_onerisi(index: int) -> str:
+    # Tek bir öğrenci çalışma önerisi örneği: prompt + beklenen completion + end token.
     kurs_data = kurs_sec(index)
 
     kurs = temiz_ad(kurs_data["kurs"])
@@ -303,11 +316,13 @@ def generate_ogrenci_onerisi(index: int) -> str:
 
 
 def save_items(items: list[str], path: Path) -> None:
+    # Üretilen örnekleri UTF-8 metin dosyası olarak kaydeder.
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(items), encoding="utf-8")
 
 
 def build_dataset(num_samples: int = 40000, seed: int = 42) -> None:
+    # Eğitmen ve öğrenci örneklerini dengeli üretip train/val/test dosyalarına böler.
     random.seed(seed)
 
     dataset = []
@@ -325,6 +340,7 @@ def build_dataset(num_samples: int = 40000, seed: int = 42) -> None:
 
     random.shuffle(dataset)
 
+    # 80/10/10 oranında train, validation ve test ayrımı yapılır.
     train_end = int(len(dataset) * 0.80)
     val_end = int(len(dataset) * 0.90)
 

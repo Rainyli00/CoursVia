@@ -32,14 +32,18 @@ export default function EgitmenOgrencilerimScreen() {
         kursId?: string | string[];
     }>();
 
+    // Öğrenci listesi ve kurs filtresinde kullanılacak eğitmen kursları.
     const [ogrenciler, setOgrenciler] = useState<MobileEgitmenOgrenciItem[]>([]);
     const [kurslar, setKurslar] = useState<MobileEgitmenKursItem[]>([]);
 
+    // aramaInput ekrandaki yazı, arama ise API'ye uygulanmış değerdir.
     const [aramaInput, setAramaInput] = useState("");
     const [arama, setArama] = useState<string | null>(null);
 
+    // Seçili kurs filtresi; null tüm kursları ifade eder.
     const [kursId, setKursId] = useState<number | null>(null);
 
+    // Backend sayfalama bilgileri.
     const [sayfa, setSayfa] = useState(1);
     const [sayfaBasinaKayit] = useState(10);
 
@@ -50,6 +54,7 @@ export default function EgitmenOgrencilerimScreen() {
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
 
+    // Kurs detayından gelindiyse query'deki kursId ilk filtre olarak kullanılır.
     const routeKursId = useMemo(() => {
         const rawValue = Array.isArray(params.kursId)
             ? params.kursId[0]
@@ -60,6 +65,7 @@ export default function EgitmenOgrencilerimScreen() {
         return Number.isFinite(id) && id > 0 ? id : null;
     }, [params.kursId]);
 
+    // Route filtresi değişirse hem dropdown kursları hem öğrenci listesi yenilenir.
     useEffect(() => {
         const ilkKursId = routeKursId;
 
@@ -74,6 +80,7 @@ export default function EgitmenOgrencilerimScreen() {
         });
     }, [routeKursId]);
 
+    // Üst özet kartları toplam kayıt ve mevcut sayfadaki öğrenci sayısından oluşur.
     const ozet = useMemo(() => {
         return {
             toplamOgrenci: toplamKayit,
@@ -81,6 +88,7 @@ export default function EgitmenOgrencilerimScreen() {
         };
     }, [ogrenciler.length, toplamKayit]);
 
+    // Kurs dropdown'ı için eğitmenin kurslarından kısa bir liste alınır.
     async function kurslariGetir() {
         try {
             const response = await api.get<MobileEgitmenKurslarimResponse>(
@@ -100,6 +108,7 @@ export default function EgitmenOgrencilerimScreen() {
         }
     }
 
+    // Öğrencileri aktif arama/kurs filtresi ve sayfaya göre getirir.
     async function ogrencileriGetir(
         refreshMi = false,
         override?: {
@@ -158,6 +167,7 @@ export default function EgitmenOgrencilerimScreen() {
         }
     }
 
+    // Arama uygulandığında liste ilk sayfadan yeniden yüklenir.
     function aramaUygula() {
         const temizArama = aramaInput.trim() || null;
 
@@ -173,6 +183,7 @@ export default function EgitmenOgrencilerimScreen() {
         });
     }
 
+    // Arama ve kurs filtresini kaldırıp listeyi varsayılana döndürür.
     function filtreleriTemizle() {
         Keyboard.dismiss();
 
@@ -188,6 +199,7 @@ export default function EgitmenOgrencilerimScreen() {
         });
     }
 
+    // Kurs seçimi değişince aktif arama korunur ve sayfa bire çekilir.
     function kursSec(yeniKursId: number | null) {
         Keyboard.dismiss();
 
@@ -204,6 +216,7 @@ export default function EgitmenOgrencilerimScreen() {
         });
     }
 
+    // Geçersiz veya mevcut sayfaya tekrar istek atılmaz.
     function sayfaDegistir(yeniSayfa: number) {
         if (yeniSayfa < 1 || yeniSayfa > toplamSayfa || yeniSayfa === sayfa) {
             return;
@@ -283,6 +296,7 @@ export default function EgitmenOgrencilerimScreen() {
     );
 }
 
+// İlk liste yüklenirken gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -292,6 +306,7 @@ function LoadingState() {
     );
 }
 
+// Öğrenci listesi alınamazsa tekrar deneme butonlu hata ekranı.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -311,6 +326,7 @@ function ErrorState({
     );
 }
 
+// Üstteki küçük özet kartı.
 function SummaryCard({
     title,
     value,
@@ -326,6 +342,7 @@ function SummaryCard({
     );
 }
 
+// Arama ve kurs filtresini tek panelde toplar.
 function FilterPanel({
     aramaInput,
     setAramaInput,
@@ -394,6 +411,7 @@ function FilterPanel({
     );
 }
 
+// Eğitmenin kurslarını modal dropdown olarak gösterir.
 function KursDropdown({
     kurslar,
     kursId,
@@ -408,6 +426,7 @@ function KursDropdown({
     const seciliKurs = kurslar.find((x) => x.kursId === kursId);
     const seciliMetin = seciliKurs ? seciliKurs.kursAdi : "Tüm Kurslar";
 
+    // null seçimi tüm kurslar filtresine döner.
     function sec(value: number | null) {
         setModalAcik(false);
         kursSec(value);
@@ -462,6 +481,7 @@ function KursDropdown({
     );
 }
 
+// Dropdown seçimlerini ortak modal içinde gösterir.
 function SelectionModal({
     visible,
     title,
@@ -505,6 +525,7 @@ function SelectionModal({
     );
 }
 
+// Modal içindeki tek seçim satırı.
 function DropdownItem({
     label,
     active,
@@ -538,6 +559,7 @@ function DropdownItem({
     );
 }
 
+// Öğrenci adını ve kaç kursa kayıtlı olduğunu gösteren liste kartı.
 function OgrenciKart({ ogrenci }: { ogrenci: MobileEgitmenOgrenciItem }) {
     return (
         <View style={styles.studentCard}>
@@ -568,6 +590,7 @@ function OgrenciKart({ ogrenci }: { ogrenci: MobileEgitmenOgrenciItem }) {
     );
 }
 
+// Sayfa sınırlarında önceki/sonraki butonlarını pasifleştirir.
 function PaginationControls({
     sayfa,
     toplamSayfa,
@@ -626,6 +649,7 @@ function PaginationControls({
     );
 }
 
+// Arama veya kurs filtresine uygun öğrenci yoksa gösterilir.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

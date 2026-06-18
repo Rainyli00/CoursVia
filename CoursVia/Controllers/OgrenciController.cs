@@ -7,6 +7,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Öğrenci panelinde kayıtlı kursları, ilerleme durumunu ve sınav özetlerini yönetir.
 [Authorize(Roles = "Öğrenci")]
 public class OgrenciController : Controller
 {
@@ -17,6 +18,7 @@ public class OgrenciController : Controller
         _context = context;
     }
 
+    // Öğrencinin ana panelini hazırlar.
     [HttpGet]
     public async Task<IActionResult> Index()
     {
@@ -31,6 +33,7 @@ public class OgrenciController : Controller
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Öğrencinin aktif olarak kayıtlı olduğu kurslar alınır.
         var kurslar = await _context.KursKayitlari
             .AsNoTracking()
             .Where(x =>
@@ -54,17 +57,20 @@ public class OgrenciController : Controller
 
                 KursTamamlandiMi = x.TamamlandiMi,
 
+                // Kursun aktif ve normal ders sayısı hesaplanır.
                 ToplamDersSayisi = x.Kurs.Dersler
                     .Count(d =>
                         d.AktifMi &&
                         !d.SistemDersiMi),
 
+                // Öğrencinin tamamladığı aktif ders sayısı hesaplanır.
                 TamamlananDersSayisi = x.DersIlerlemeleri
                     .Count(i =>
                         i.TamamlandiMi &&
                         i.Ders.AktifMi &&
                         !i.Ders.SistemDersiMi),
 
+                // Kursun öğrencinin favorilerinde olup olmadığı kontrol edilir.
                 FavorideMi = _context.Favoriler.Any(f =>
                     f.KullaniciId == kullaniciId &&
                     f.KursId == x.KursId)
@@ -75,6 +81,7 @@ public class OgrenciController : Controller
             .Select(x => x.KursKayitId)
             .ToList();
 
+        // Öğrencinin kayıtlı kurslarındaki sınav katılımları tek sorguda alınır.
         var sinavKatilimlari = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x => kursKayitIdleri.Contains(x.KursKayitId))
@@ -88,6 +95,7 @@ public class OgrenciController : Controller
             })
             .ToListAsync();
 
+        // Her kurs kaydı için en son sınav sonucu bulunur.
         var sonSinavlar = sinavKatilimlari
             .GroupBy(x => x.KursKayitId)
             .ToDictionary(
@@ -95,14 +103,16 @@ public class OgrenciController : Controller
                 x => x.First()
             );
 
+        // Her kurs için ilerleme yüzdesi ve sınav durumu hesaplanır.
         foreach (var kurs in kurslar)
         {
+            // İlerleme yüzdesi, tamamlanan ders sayısının toplam ders sayısına oranı olarak hesaplanır.
             kurs.IlerlemeYuzdesi = kurs.ToplamDersSayisi == 0
                 ? 0
                 : (int)Math.Round((kurs.TamamlananDersSayisi * 100.0) / kurs.ToplamDersSayisi);
-
+           
             if (sonSinavlar.TryGetValue(kurs.KursKayitId, out var sonSinav))
-            {
+            { // Son sınav bilgileri kurs özetine eklenir.
                 kurs.SonSinavPuani = sonSinav.AlinanPuan;
                 kurs.SinavdanGectiMi = sonSinav.GectiMi;
 
@@ -118,6 +128,7 @@ public class OgrenciController : Controller
             }
         }
 
+        // Öğrenci panelinde gösterilecek kurs listesi ve özet istatistikler hazırlanır.
         var model = new OgrenciPanelViewModel
         {
             OgrenciAdSoyad = $"{ogrenci.Ad} {ogrenci.Soyad}".Trim(),

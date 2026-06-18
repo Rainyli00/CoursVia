@@ -41,6 +41,7 @@ export type MobileEgitmenDashboardKursItem = {
 };
 
 // GET /api/mobile/egitmen/dashboard response tipi.
+// Ana ekrandaki sayaçlar ve son kurs listesi tek cevapta toplanır.
 export type MobileEgitmenDashboardResponse = {
     basarili: boolean;
     mesaj: string;
@@ -86,6 +87,7 @@ export type MobileEgitmenKursItem = {
 };
 
 // GET /api/mobile/egitmen/kurslarim response tipi.
+// Filtrelerin seçili değerleri response içinde geri döner.
 export type MobileEgitmenKurslarimResponse = {
     basarili: boolean;
     mesaj: string;
@@ -214,6 +216,7 @@ export type MobileEgitmenOgrencilerimResponse = {
 };
 
 // Kurs taslağa çekme gibi işlem response tipi.
+// Detay gerektirmeyen eğitmen aksiyonlarında bu ortak yapı kullanılır.
 export type MobileEgitmenIslemResponse = {
     basarili: boolean;
     mesaj: string;

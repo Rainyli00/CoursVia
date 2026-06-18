@@ -9,6 +9,7 @@ using System.Security.Claims;
 
 namespace CoursVia.Controllers;
 
+// Admin panelinde kurs yorumlarını listeleme, filtreleme ve silme işlemlerini yönetir.
 [Authorize(Roles = "Admin")]
 public class AdminYorumController : Controller
 {
@@ -21,6 +22,7 @@ public class AdminYorumController : Controller
         _adminLogService = adminLogService;
     }
 
+    // Kurs yorumlarını arama, puan filtresi, sıralama ve sayfalama bilgilerine göre listeler.
     [HttpGet]
     public async Task<IActionResult> Yorumlar(
         string? arama,
@@ -38,11 +40,13 @@ public class AdminYorumController : Controller
             ? "yeni"
             : siralama.Trim().ToLower();
 
+        // Geçersiz sıralama değeri gelirse en yeni yorumlar önce gösterilir.
         if (siralama != "yeni" && siralama != "eski")
         {
             siralama = "yeni";
         }
 
+        // Puan filtresi sadece 1 ile 5 arasındaki değerlerde geçerli kabul edilir.
         if (puan.HasValue && (puan.Value < 1 || puan.Value > 5))
         {
             puan = null;
@@ -57,6 +61,7 @@ public class AdminYorumController : Controller
             .AsNoTracking()
             .AsQueryable();
 
+        // Yorum metni, kurs adı, öğrenci ve eğitmen bilgilerine göre arama yapılır.
         if (!string.IsNullOrWhiteSpace(arama))
         {
             query = query.Where(x =>
@@ -70,6 +75,7 @@ public class AdminYorumController : Controller
                 x.Kurs.Egitmen.Eposta.Contains(arama));
         }
 
+        // Puan seçildiyse sadece o puana sahip yorumlar listelenir.
         if (puan.HasValue)
         {
             query = query.Where(x => x.Puan == puan.Value);
@@ -89,10 +95,12 @@ public class AdminYorumController : Controller
             sayfa = toplamSayfa;
         }
 
+        // Yorumlar seçilen sıralama tipine göre eski veya yeni olarak sıralanır.
         query = siralama == "eski"
             ? query.OrderBy(x => x.DegerlendirmeTarihi)
             : query.OrderByDescending(x => x.DegerlendirmeTarihi);
 
+        // Yorum kayıtları liste ekranında kullanılacak ViewModel'e dönüştürülür.
         var yorumlar = await query
             .Skip((sayfa - 1) * sayfaBasinaKayit)
             .Take(sayfaBasinaKayit)
@@ -115,12 +123,14 @@ public class AdminYorumController : Controller
             })
             .ToListAsync();
 
+        // Tüm yorumlar üzerinden genel ortalama puan hesaplanır.
         double ortalamaPuan = await _context.KursDegerlendirmeleri
             .AsNoTracking()
             .AverageAsync(x => (double?)x.Puan) ?? 0;
 
         var bugun = DateTime.Today;
 
+        // Yorum listesi, filtre bilgileri ve özet istatistikler view tarafına gönderilir.
         var model = new AdminYorumYonetimiViewModel
         {
             Arama = arama,
@@ -148,6 +158,7 @@ public class AdminYorumController : Controller
         return View(model);
     }
 
+    // Adminin seçilen kurs yorumunu silmesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sil(int id)
@@ -170,6 +181,7 @@ public class AdminYorumController : Controller
 
         _context.KursDegerlendirmeleri.Remove(degerlendirme);
 
+        // Silinen yorum işlemi admin loglarına kaydedilir.
         await _adminLogService.KaydetAsync(
             adminId,
             AdminLogService.YorumIslemleri,
@@ -181,5 +193,4 @@ public class AdminYorumController : Controller
 
         return RedirectToAction(nameof(Yorumlar));
     }
-
 }

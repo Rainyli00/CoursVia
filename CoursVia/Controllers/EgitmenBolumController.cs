@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Controllers;
 
+// Eğitmen panelinde kurs bölümlerini ekleme, düzenleme, silme ve sıralama işlemlerini yönetir.
 [Authorize(Roles = "Eğitmen")]
 public class EgitmenBolumController : EgitmenBaseController
 {
@@ -13,6 +14,7 @@ public class EgitmenBolumController : EgitmenBaseController
     {
     }
 
+    // Eğitmenin kendi kursuna yeni bölüm eklemesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BolumEkle(int kursId, string bolumAdi)
@@ -28,6 +30,7 @@ public class EgitmenBolumController : EgitmenBaseController
             return RedirectToAction("AccessDenied", "Account");
         }
 
+        // Kurs onay bekliyorsa veya düzenlemeye kapalı durumdaysa bölüm eklenemez.
         if (!KursDuzenlenebilirMi(kurs.DurumId))
         {
             TempData["KursHata"] = "Bu kurs şu an düzenlenebilir durumda değil (Örn: Onay bekliyor).";
@@ -42,6 +45,7 @@ public class EgitmenBolumController : EgitmenBaseController
 
         bolumAdi = bolumAdi.Trim();
 
+        // Aynı kurs içinde aynı isimde bölüm oluşması engellenir.
         if (kurs.Bolumler.Any(x => x.BolumAdi.Equals(bolumAdi, StringComparison.OrdinalIgnoreCase)))
         {
             TempData["KursHata"] = "Bu kursta aynı isimde bir bölüm zaten mevcut.";
@@ -49,6 +53,8 @@ public class EgitmenBolumController : EgitmenBaseController
         }
 
         int yeniSiraNo = 1;
+
+        // Yeni bölüm mevcut bölümlerin sonuna eklenir.
         if (kurs.Bolumler.Any())
         {
             yeniSiraNo = kurs.Bolumler.Max(x => x.SiraNo) + 1;
@@ -63,6 +69,7 @@ public class EgitmenBolumController : EgitmenBaseController
 
         _context.Bolumler.Add(yeniBolum);
 
+        // Yayındaki kurs düzenlenirse tekrar taslak durumuna alınır.
         OnayliKursuTaslakYap(kurs);
         kurs.GuncellemeTarihi = DateTime.Now;
 
@@ -72,6 +79,7 @@ public class EgitmenBolumController : EgitmenBaseController
         return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = kursId });
     }
 
+    // Eğitmenin kendi kursundaki bölüm adını düzenlemesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BolumDuzenle(int bolumId, string bolumAdi)
@@ -107,6 +115,7 @@ public class EgitmenBolumController : EgitmenBaseController
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = bolum.KursId });
         }
 
+        // Aynı kurs içinde başka bir bölümün aynı adı kullanması engellenir.
         bool ayniIsimdeBaskaBolumVarMi = await _context.Bolumler
             .AnyAsync(x =>
                 x.KursId == bolum.KursId &&
@@ -119,6 +128,7 @@ public class EgitmenBolumController : EgitmenBaseController
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = bolum.KursId });
         }
 
+        // Bölüm adı gerçekten değiştiyse güncelleme yapılır.
         if (!string.Equals(bolum.BolumAdi, bolumAdi, StringComparison.Ordinal))
         {
             bolum.BolumAdi = bolumAdi;
@@ -134,6 +144,7 @@ public class EgitmenBolumController : EgitmenBaseController
         return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = bolum.KursId });
     }
 
+    // Eğitmenin kendi kursundaki boş bir bölümü silmesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BolumSil(int bolumId)
@@ -152,10 +163,11 @@ public class EgitmenBolumController : EgitmenBaseController
 
         if (!KursDuzenlenebilirMi(bolum.Kurs.DurumId))
         {
-            TempData["KursHata"] = "Bu kurs şu an düzenlenebilir durumda değil (Örn: Onay bekliyor).";
+            TempData["KursHata"] = "Bu kurs şu an düzenlenebilir durumda değil .";
             return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = bolum.KursId });
         }
 
+        // İçinde ders olan bölümler doğrudan silinmez.
         if (bolum.Dersler.Any())
         {
             TempData["KursHata"] = "İçerisinde ders bulunan bölümler silinemez. Önce dersleri silmeli veya başka bir bölüme taşımalısınız.";
@@ -174,8 +186,10 @@ public class EgitmenBolumController : EgitmenBaseController
             .ToListAsync();
 
         int yeniSira = 1;
+
+        // Silme işleminden sonra kalan bölümlerin sıra numaraları yeniden düzenlenir.
         foreach (var b in digerBolumler)
-        {
+        { 
             b.SiraNo = yeniSira++;
         }
 
@@ -188,6 +202,7 @@ public class EgitmenBolumController : EgitmenBaseController
         return RedirectToAction("KursIcerik", "EgitmenKurs", new { id = kursId });
     }
 
+    // Bölümlerin sürükle-bırak gibi işlemlerle AJAX üzerinden yeniden sıralanmasını sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BolumSiralaAjax([FromBody] List<int> bolumIds)
@@ -197,6 +212,7 @@ public class EgitmenBolumController : EgitmenBaseController
             return BadRequest(new { success = false, message = "Bölüm listesi boş olamaz." });
         }
 
+        // Aynı bölüm Id'sinin tekrar gönderilmesi engellenir.
         bolumIds = bolumIds.Distinct().ToList();
 
         int kullaniciId = AktifKullaniciId;
@@ -220,11 +236,13 @@ public class EgitmenBolumController : EgitmenBaseController
             .Where(x => bolumIds.Contains(x.BolumId))
             .ToList();
 
+        // Gönderilen bölüm Id'lerinden herhangi biri bu kursa ait değilse işlem durdurulur.
         if (guncellenecekBolumler.Count != bolumIds.Count)
         {
             return BadRequest(new { success = false, message = "Geçersiz bölüm tespit edildi." });
         }
 
+        // Unique sıra çakışması yaşanmaması için önce geçici negatif sıra değerleri atanır.
         foreach (var b in guncellenecekBolumler)
         {
             b.SiraNo = -b.BolumId;
@@ -233,6 +251,8 @@ public class EgitmenBolumController : EgitmenBaseController
         await _context.SaveChangesAsync();
 
         int sira = 1;
+
+        // Gelen Id sırasına göre bölümlere yeni sıra numarası verilir.
         foreach (var id in bolumIds)
         {
             var b = guncellenecekBolumler.First(x => x.BolumId == id);

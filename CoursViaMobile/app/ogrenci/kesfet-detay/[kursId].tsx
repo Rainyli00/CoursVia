@@ -27,16 +27,19 @@ export default function OgrenciKesfetDetayScreen() {
         kursId?: string | string[];
     }>();
 
+    // Keşfet detay cevabı tek state'te tutulur; hero, sınav ve içerik alanları buradan beslenir.
     const [detay, setDetay] = useState<MobileOgrenciKesfetDetayResponse | null>(
         null
     );
 
+    // Güncelleniyor ve kayıt olma durumları ayrı UI davranışları için tutulur.
     const [yukleniyor, setYukleniyor] = useState(true);
     const [yenileniyor, setYenileniyor] = useState(false);
     const [hata, setHata] = useState<string | null>(null);
     const [guncelleniyorHatasi, setGuncelleniyorHatasi] = useState(false);
     const [kayitOlunuyor, setKayitOlunuyor] = useState(false);
 
+    // Expo Router parametresi string gelebileceği için güvenli sayıya çevrilir. çünkü API çağrıları kursId'nin geçerli bir sayı olmasını bekler.
     const kursId = useMemo(() => {
         const rawValue = Array.isArray(params.kursId)
             ? params.kursId[0]
@@ -47,6 +50,7 @@ export default function OgrenciKesfetDetayScreen() {
         return Number.isFinite(id) && id > 0 ? id : null;
     }, [params.kursId]);
 
+    // Geçerli kursId varsa detay yüklenir, yoksa kullanıcıya hata ekranı gösterilir.
     useEffect(() => {
         if (!kursId) {
             setYukleniyor(false);
@@ -57,6 +61,7 @@ export default function OgrenciKesfetDetayScreen() {
         detayGetir();
     }, [kursId]);
 
+    // Keşfet detayını API'den alır; refresh sırasında tam ekran loading göstermez.
     async function detayGetir(refreshMi = false) {
         if (!kursId) {
             return;
@@ -96,6 +101,7 @@ export default function OgrenciKesfetDetayScreen() {
         }
     }
 
+    // Kayıt mümkünse kullanıcıdan açık onay alır.
     function kayitOlOnayiAl() {
         if (!detay || !detay.kayitOlabilirMi) {
             return;
@@ -117,6 +123,7 @@ export default function OgrenciKesfetDetayScreen() {
         );
     }
 
+    // Kayıt başarılı olursa detay verisi yenilenir ve kullanıcıya kurslarım yönlendirmesi sunulur.
     async function kayitOl() {
         if (!kursId) {
             return;
@@ -294,6 +301,7 @@ export default function OgrenciKesfetDetayScreen() {
     );
 }
 
+// Detay verisi gelene kadar gösterilen tam ekran loading.
 function LoadingState() {
     return (
         <View style={styles.centerContainer}>
@@ -303,6 +311,7 @@ function LoadingState() {
     );
 }
 
+// Detay alınamazsa tekrar deneme ya da keşfete dönüş aksiyonu gösterir.
 function ErrorState({
     mesaj,
     tekrarDene,
@@ -342,6 +351,7 @@ function ErrorState({
     );
 }
 
+// Hero alanındaki küçük kurs metrik kartı. 
 function InfoCard({ title, value }: { title: string; value: string }) {
     return (
         <View style={styles.infoCard}>
@@ -351,6 +361,7 @@ function InfoCard({ title, value }: { title: string; value: string }) {
     );
 }
 
+// Keşfet detayındaki tek bölüm ve ders listesini gösterir.
 function BolumKart({ bolum }: { bolum: MobileOgrenciKesfetBolum }) {
     return (
         <View style={styles.sectionCard}>
@@ -383,6 +394,7 @@ function BolumKart({ bolum }: { bolum: MobileOgrenciKesfetBolum }) {
     );
 }
 
+// Keşfet detayında ders adı ve materyal sayısını gösterir.
 function DersSatiri({ ders }: { ders: MobileOgrenciKesfetDers }) {
     return (
         <View style={styles.lessonRow}>
@@ -405,6 +417,7 @@ function DersSatiri({ ders }: { ders: MobileOgrenciKesfetDers }) {
     );
 }
 
+// Kurs içeriği henüz girilmediyse gösterilen boş durum.
 function EmptyState() {
     return (
         <View style={styles.emptyCard}>

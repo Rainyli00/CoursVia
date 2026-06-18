@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Controllers;
 
+// Öğrencinin sınav sonuçlarına göre yapay zekadan çalışma önerisi almasını yönetir.
 [Authorize(Roles = "Öğrenci")]
 public class OgrenciAiController : Controller
 {
@@ -26,6 +27,7 @@ public class OgrenciAiController : Controller
         _aiOneriService = aiOneriService;
     }
 
+    // Öğrencinin tamamladığı sınavları ve daha önce aldığı AI önerilerini listeler.
     [HttpGet]
     public async Task<IActionResult> Oneriler(CancellationToken cancellationToken = default)
     {
@@ -34,7 +36,7 @@ public class OgrenciAiController : Controller
         if (ogrenciId == null)
             return RedirectToAction("OgrenciLogin", "Account");
 
-        // Tamamlanmış sınavlar (sınav bitmiş ve puanı var)
+        // Öğrencinin tamamlanmış, bitiş tarihi ve puanı olan sınavları alınır.
         var tamamlananSinavlar = await _context.SinavKatilimlari
             .AsNoTracking()
             .Where(x =>
@@ -53,6 +55,7 @@ public class OgrenciAiController : Controller
             .OrderByDescending(x => x.BitisTarihi)
             .ToListAsync(cancellationToken);
 
+        // Öğrencinin daha önce aldığı AI önerileri geçmiş olarak listelenir.
         var gecmisOneriler = await _context.Oneriler
             .AsNoTracking()
             .Where(o => o.KullaniciId == ogrenciId.Value)
@@ -69,6 +72,7 @@ public class OgrenciAiController : Controller
             })
             .ToListAsync(cancellationToken);
 
+        // Sayfada kullanılacak tamamlanan sınavlar ve öneri geçmişi ViewModel'e aktarılır.
         var viewModel = new OgrenciAiOnerilerViewModel
         {
             TamamlananSinavlar = tamamlananSinavlar,
@@ -78,11 +82,12 @@ public class OgrenciAiController : Controller
         return View(viewModel);
     }
 
+    // Seçilen sınav sonucuna göre AJAX üzerinden AI çalışma önerisi üretir.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CalismaOnerisiAjax(
         int sinavKatilimId,
-        AiModelTipi modelTipi = AiModelTipi.Gemini,
+        AiModelTipi modelTipi = AiModelTipi.Gemini,// İsteğe bağlı olarak farklı AI modeli seçilebilir, default Gemini'dir.
         CancellationToken cancellationToken = default)
     {
         var ogrenciId = AktifKullaniciIdGetir();
@@ -90,6 +95,7 @@ public class OgrenciAiController : Controller
         if (ogrenciId == null)
             return Json(new { basarili = false, hata = "Oturum bulunamadı." });
 
+        // Sınav katılımının giriş yapan öğrenciye ait olup olmadığı kontrol edilir.
         var sinavKatilimi = await _context.SinavKatilimlari
             .AsNoTracking()
             .Include(x => x.KursKaydi)
@@ -103,14 +109,18 @@ public class OgrenciAiController : Controller
         if (sinavKatilimi == null)
             return Json(new { basarili = false, hata = "Sınav sonucu bulunamadı veya yetkiniz yok." });
 
+        // AI önerisi sadece tamamlanmış ve puanı oluşmuş sınavlar için üretilir.
         if (sinavKatilimi.BitisTarihi == null || sinavKatilimi.AlinanPuan == null)
             return Json(new { basarili = false, hata = "Sınavın tamamlanmış olması gerekir." });
 
+        // AI servisine gönderilecek öğrenci sınav analizi verisi hazırlanır.
         var aiVerisi = await OgrenciAiVerisiHazirlaAsync(sinavKatilimi, cancellationToken);
 
+        // Seçilen AI modeliyle çalışma önerisi üretilir.
         var sonuclar = await _aiAnalizService.OgrenciCalismaOnerisiAsync(
             aiVerisi, modelTipi, cancellationToken);
 
+        // Üretilen AI önerileri daha sonra geçmişte gösterilebilmesi için veritabanına kaydedilir.
         await _aiOneriService.OnerileriKaydetAsync(
             kullaniciId: ogrenciId.Value,
             kursId: sinavKatilimi.Sinav.KursId,
@@ -118,6 +128,7 @@ public class OgrenciAiController : Controller
             sonuclar: sonuclar,
             cancellationToken: cancellationToken);
 
+        // AJAX tarafına dönecek sade JSON sonuç listesi hazırlanır.
         var sonuclarJson = sonuclar.Select(x => new
         {
             modelTipi = x.ModelTipi.ToString(),
@@ -133,6 +144,7 @@ public class OgrenciAiController : Controller
         return Json(new { basarili = true, sonuclar = sonuclarJson });
     }
 
+    // Öğrencinin kendi AI önerisini silmesini sağlar.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OneriSil(int oneriId, CancellationToken cancellationToken = default)
@@ -144,6 +156,7 @@ public class OgrenciAiController : Controller
             return Unauthorized(new { basarili = false, mesaj = "Oturum bulunamadı." });
         }
 
+        // Silme işlemi service tarafında kullanıcı Id ile kontrol edilerek yapılır.
         var silindiMi = await _aiOneriService.OneriSilAsync(
             kullaniciId: ogrenciId.Value,
             oneriId: oneriId,
@@ -157,6 +170,7 @@ public class OgrenciAiController : Controller
         return Json(new { basarili = true, mesaj = "Öneri silindi." });
     }
 
+    // AI modelinin cevap üretme süresini okunabilir metne çevirir.
     private static string FormatSure(long sureMs)
     {
         if (sureMs <= 0) return "-";
@@ -164,10 +178,12 @@ public class OgrenciAiController : Controller
         return $"{sureMs / 1000.0:0.00} sn";
     }
 
+    // Öğrencinin sınav sonucundan AI çalışma önerisi için gerekli analiz verisini hazırlar.
     private async Task<AiOgrenciCalismaVerisi> OgrenciAiVerisiHazirlaAsync(
         SinavKatilimi sinavKatilimi,
         CancellationToken cancellationToken)
     {
+        // Öğrencinin yanlış yaptığı soruların en çok hangi bölümde yoğunlaştığı bulunur.
         var yanlislarinYogunlastigiBolum = await _context.OgrenciCevaplari
             .AsNoTracking()
             .Where(x =>
@@ -184,6 +200,7 @@ public class OgrenciAiController : Controller
             .Select(x => x.BolumAdi)
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Yanlış yapılan soruların bağlı olduğu dersler yanlış sayısına göre listelenir.
         var yanlisYapilanDersler = await _context.OgrenciCevaplari
             .AsNoTracking()
             .Where(x =>
@@ -207,9 +224,11 @@ public class OgrenciAiController : Controller
             .Take(5)
             .ToListAsync(cancellationToken);
 
+        // Belirgin bir bölüm bulunamazsa AI çıktısında boş veri gitmemesi için varsayılan metin atanır.
         if (string.IsNullOrWhiteSpace(yanlislarinYogunlastigiBolum))
             yanlislarinYogunlastigiBolum = "Belirgin yoğunlaşan bölüm bulunamadı";
 
+        // Yanlış ders bulunamadıysa yine AI için anlamlı bir varsayılan kayıt eklenir.
         if (!yanlisYapilanDersler.Any())
         {
             yanlisYapilanDersler.Add(new AiYanlisDersVerisi
@@ -221,6 +240,7 @@ public class OgrenciAiController : Controller
             });
         }
 
+        // AI analiz servisine gönderilecek ana veri nesnesi hazırlanır.
         return new AiOgrenciCalismaVerisi
         {
             SinavKatilimId = sinavKatilimi.SinavKatilimId,
@@ -233,11 +253,14 @@ public class OgrenciAiController : Controller
         };
     }
 
+    // Claim içinden giriş yapan kullanıcının Id değerini güvenli şekilde alır.
     private int? AktifKullaniciIdGetir()
     {
         var kullaniciIdText = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
         if (int.TryParse(kullaniciIdText, out var kullaniciId))
             return kullaniciId;
+
         return null;
     }
 }

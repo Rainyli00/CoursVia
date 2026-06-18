@@ -29,6 +29,7 @@ public class MobileOgrenciSertifikalarimController : MobileOgrenciBaseController
     {
         int kullaniciId = KullaniciIdGetir();
 
+        // Arama ve sayfalama değerleri liste sorgusundan önce düzenlenir.
         arama = string.IsNullOrWhiteSpace(arama)
             ? null
             : arama.Trim();
@@ -36,12 +37,14 @@ public class MobileOgrenciSertifikalarimController : MobileOgrenciBaseController
         sayfa = SayfaNormalizeEt(sayfa);
         sayfaBasinaKayit = SayfaBasinaKayitNormalizeEt(sayfaBasinaKayit);
 
+        // Öğrenci yalnızca kendi adına oluşturulan sertifikaları görebilir.
         var query = _context.Sertifikalar
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId);
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
+            // Arama kurs, eğitmen ve sertifika kodu üzerinden yapılır.
             query = query.Where(x =>
                 x.Kurs.KursAdi.Contains(arama) ||
                 x.Kurs.Egitmen.Ad.Contains(arama) ||
@@ -57,6 +60,7 @@ public class MobileOgrenciSertifikalarimController : MobileOgrenciBaseController
             sayfa = toplamSayfa;
         }
 
+        // Mobil liste için sertifika ve kurs özet alanları seçilir.
         var sertifikalar = await query
             .OrderByDescending(x => x.VerilmeTarihi)
             .Skip((sayfa - 1) * sayfaBasinaKayit)
@@ -78,6 +82,7 @@ public class MobileOgrenciSertifikalarimController : MobileOgrenciBaseController
 
         foreach (var sertifika in sertifikalar)
         {
+            // Eğitmen ad soyadında boşluk kalmaması için son temizlik yapılır.
             sertifika.EgitmenAdSoyad = sertifika.EgitmenAdSoyad.Trim();
         }
 

@@ -6,6 +6,7 @@ namespace CoursVia.Services;
 
 public class AdminLogService
 {
+    // Admin loglarında kullanılan işlem tipi adları.
     public const string KullaniciIslemleri = "Kullanıcı İşlemleri";
     public const string EgitmenBasvurulari = "Eğitmen Başvuruları";
     public const string KursOnaylari = "Kurs Onayları";
@@ -22,9 +23,10 @@ public class AdminLogService
         _context = context;
         _ipAdresService = ipAdresService;
     }
-
+    // Admin log kaydı oluşturur, eğer işlem tipi tabloda yoksa otomatik ekler.
     public async Task KaydetAsync(int? adminId, string islemTipiAdi, string? aciklama)
     {
+        // İşlem tipi olmadan anlamlı log üretilemeyeceği için kayıt yapılmaz.
         if (string.IsNullOrWhiteSpace(islemTipiAdi))
         {
             return;
@@ -32,6 +34,7 @@ public class AdminLogService
 
         islemTipiAdi = islemTipiAdi.Trim();
 
+        // İşlem tipi daha önce oluşturulmamışsa otomatik eklenir.
         var islemTipi = await _context.IslemTipleri
             .FirstOrDefaultAsync(x => x.IslemTipAdi == islemTipiAdi);
 
@@ -45,6 +48,7 @@ public class AdminLogService
             _context.IslemTipleri.Add(islemTipi);
         }
 
+        // SaveChanges burada çağrılmaz; log genelde ana işlemle aynı transaction içinde kaydedilir.
         _context.AdminLoglari.Add(new AdminLog
         {
             AdminId = adminId,

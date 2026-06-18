@@ -1,4 +1,4 @@
-﻿using CoursVia.Models;
+using CoursVia.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CoursVia.Data.Seed;
@@ -191,6 +191,24 @@ public class DemoKursSeeder
             mevcutBolumler,
             hedefBolumAdlari
         );
+
+        // IX_Bolumler_KursId_SiraNo çakışmasını önlemek için bölümleri geçici sıraya al
+        foreach (var mevcutBolum in mevcutBolumler)
+        {
+            mevcutBolum.SiraNo = -mevcutBolum.BolumId;
+        }
+        await _context.SaveChangesAsync();
+
+        // IX_Dersler_KursId_SiraNo çakışmasını önlemek için aktif dersleri geçici sıraya al
+        var tumAktifDersler = await _context.Dersler
+            .Where(x => x.KursId == kursId && x.AktifMi && !x.SistemDersiMi)
+            .ToListAsync();
+            
+        foreach (var ders in tumAktifDersler)
+        {
+            ders.SiraNo = -ders.DersId;
+        }
+        await _context.SaveChangesAsync();
 
         int dersGenelSiraNo = 1;
 

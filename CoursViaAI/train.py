@@ -12,11 +12,13 @@ import config
 from model import MiniCoursViaLLM
 
 
+# Ampere ve üstü GPU'larda matmul/cudnn için TF32 hız avantajı sağlar.
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
 
 def seed_everything(seed: int):
+    # Tekrarlanabilir eğitim için Python, NumPy ve Torch random seedleri eşitlenir.
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -26,6 +28,7 @@ def seed_everything(seed: int):
 
 
 def config_namespace():
+    # Model sınıfı config'i attribute olarak beklediği için SimpleNamespace'e çevrilir.
     return SimpleNamespace(
         VOCAB_SIZE=int(config.VOCAB_SIZE),
         BLOCK_SIZE=int(config.BLOCK_SIZE),
@@ -37,17 +40,20 @@ def config_namespace():
 
 
 def read_token_ids(path, tokenizer: Tokenizer) -> np.ndarray:
+    # Metin veri dosyası tek token id dizisine çevrilir.
     text = path.read_text(encoding="utf-8")
     ids = tokenizer.encode(text).ids
     return np.array(ids, dtype=np.int32)
 
 
 def get_batch(data, block_size, batch_size, device):
+    # Dil modeli eğitimi için rastgele ardışık bloklar seçilir.
     if len(data) <= block_size + 1:
         raise ValueError("Veri block_size değerinden kısa.")
 
     ix = torch.randint(len(data) - block_size - 1, (batch_size,))
 
+    # x mevcut tokenlar, y ise bir token kaydırılmış hedef dizidir.
     x = torch.stack([
         torch.from_numpy(data[i:i + block_size].astype(np.int64))
         for i in ix
@@ -63,6 +69,7 @@ def get_batch(data, block_size, batch_size, device):
 
 @torch.no_grad()
 def estimate_loss(model, train_data, val_data, device, ctx):
+    # Eval sırasında gradient hesaplanmaz; train ve validation loss ortalaması alınır.
     out = {}
     model.eval()
 
@@ -89,6 +96,7 @@ def estimate_loss(model, train_data, val_data, device, ctx):
 
 
 def save_checkpoint(path, model, optimizer, iter_no, best_val_loss, model_config):
+    # Model ağırlıklarıyla birlikte eğitim durumu ve mimari config'i saklanır.
     payload = {
         "iter_no": iter_no,
         "best_val_loss": best_val_loss,
@@ -116,6 +124,7 @@ def save_checkpoint(path, model, optimizer, iter_no, best_val_loss, model_config
 
 
 def train():
+    # Eğitim giriş noktası: veri, tokenizer, model, optimizer ve döngü burada hazırlanır.
     seed_everything(config.RANDOM_SEED)
 
     if not config.TRAIN_FILE.exists():
@@ -134,6 +143,7 @@ def train():
     print("=" * 70)
     print(f"Device: {device}")
 
+    # CUDA varsa mixed precision ile bellek kullanımı ve hız iyileştirilir.
     if device.type == "cuda":
         print(f"GPU: {torch.cuda.get_device_name(0)}")
 
@@ -159,6 +169,7 @@ def train():
 
     print("Train/Val verisi token id olarak yükleniyor...")
 
+    # Train/val dosyaları token id dizilerine çevrilir ve RAM'de tutulur.
     train_data = read_token_ids(config.TRAIN_FILE, tokenizer)
     val_data = read_token_ids(config.VAL_FILE, tokenizer)
 
@@ -170,6 +181,7 @@ def train():
     param_count = sum(p.numel() for p in model.parameters())
     print(f"Parametre sayısı: {param_count:,}")
 
+    # CUDA destekliyorsa fused AdamW kullanılır; destek yoksa klasik AdamW'a düşülür.
     try:
         optimizer = torch.optim.AdamW(
             model.parameters(),
@@ -189,6 +201,7 @@ def train():
 
     model.train()
 
+    # Ana eğitim döngüsü.
     for iter_no in range(config.MAX_ITERS):
         if iter_no % config.EVAL_INTERVAL == 0 or iter_no == config.MAX_ITERS - 1:
             losses = estimate_loss(
@@ -205,6 +218,7 @@ def train():
                 f"Val Loss: {losses['val']:.4f}"
             )
 
+            # Validation loss iyileşirse best checkpoint güncellenir.
             if losses["val"] < best_val_loss:
                 best_val_loss = losses["val"]
 
@@ -223,6 +237,7 @@ def train():
 
         total_loss = 0.0
 
+        # Küçük batch'ler birkaç adım biriktirilerek etkili batch büyütülür.
         for _ in range(config.GRAD_ACCUM_STEPS):
             x, y = get_batch(
                 data=train_data,
@@ -238,6 +253,7 @@ def train():
             scaler.scale(loss).backward()
             total_loss += loss.item()
 
+        # Gradient clip patlayan gradientleri sınırlamak için optimizer step öncesi uygulanır.
         scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRAD_CLIP)
 
@@ -254,6 +270,7 @@ def train():
             )
             t0 = t1
 
+    # Eğitim bitince son model ayrıca final checkpoint olarak kaydedilir.
     save_checkpoint(
         path=config.FINAL_MODEL_FILE,
         model=model,
@@ -263,6 +280,7 @@ def train():
         model_config=model_config,
     )
 
+    # Eğitim özeti entegrasyon ve takip için JSON olarak yazılır.
     summary = {
         "final_model": str(config.FINAL_MODEL_FILE),
         "best_model": str(config.BEST_MODEL_FILE),
