@@ -2,7 +2,7 @@
 
 # 🎓 CoursVia
 
-### Yapay Zekâ Destekli Web ve Mobil Çevrim İçi Eğitim Platformu
+### Yapay Zekâ Destekli Çevrim İçi Eğitim Platformu
 
 CoursVia; öğrenci, eğitmen ve yönetici rollerine sahip, web ve mobil destekli, yapay zekâ tabanlı öneri ve analiz özellikleri sunan modern bir çevrim içi eğitim platformudur.
 
