@@ -1,78 +1,195 @@
-# CoursVia
+<div align="center">
 
-**CoursVia**, web ve mobil destekli, yapay zekâ özellikleriyle güçlendirilmiş çevrim içi eğitim platformudur. Sistem; öğrenci, eğitmen ve yönetici rollerine göre farklı paneller sunar. Kurs oluşturma, ders takibi, sınav yönetimi, sertifika doğrulama, bildirimler, eğitmen başvuru/onay süreçleri ve yapay zekâ destekli öneri üretimi gibi temel eğitim platformu işlevlerini tek bir yapı altında toplar.
+# 🎓 CoursVia
 
-Proje; ASP.NET Core MVC/Web API tabanlı backend, Expo React Native mobil uygulama ve Python/PyTorch ile geliştirilen MiniCoursViaLLM yapay zekâ modülünden oluşmaktadır.
+### Yapay Zekâ Destekli Web ve Mobil Çevrim İçi Eğitim Platformu
 
----
+CoursVia; öğrenci, eğitmen ve yönetici rollerine sahip, web ve mobil destekli, yapay zekâ tabanlı öneri ve analiz özellikleri sunan modern bir çevrim içi eğitim platformudur.
 
-## İçindekiler
+<br/>
 
-* [Proje Hakkında](#proje-hakkında)
-* [Temel Özellikler](#temel-özellikler)
-* [Teknolojiler](#teknolojiler)
-* [Proje Mimarisi](#proje-mimarisi)
-* [Yapay Zekâ Modülü](#yapay-zekâ-modülü)
-* [Kurulum](#kurulum)
-* [Klasör Yapısı](#klasör-yapısı)
-* [Ekran Görüntüleri](#ekran-görüntüleri)
-* [Geliştirici](#geliştirici)
+![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-8.0-512BD4?style=for-the-badge\&logo=dotnet\&logoColor=white)
+![React Native](https://img.shields.io/badge/React%20Native-Expo-61DAFB?style=for-the-badge\&logo=react\&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-Mobile-3178C6?style=for-the-badge\&logo=typescript\&logoColor=white)
+![SQL Server](https://img.shields.io/badge/SQL%20Server-Database-CC2927?style=for-the-badge\&logo=microsoftsqlserver\&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-AI%20Module-EE4C2C?style=for-the-badge\&logo=pytorch\&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini%20API-AI-4285F4?style=for-the-badge\&logo=google\&logoColor=white)
 
----
-
-## Proje Hakkında
-
-CoursVia, çevrim içi eğitim süreçlerini daha düzenli, erişilebilir ve akıllı hale getirmek amacıyla geliştirilmiştir. Platformda öğrenciler kurslara katılabilir, dersleri takip edebilir, sınavlara girebilir, sertifika kazanabilir ve yapay zekâ destekli çalışma önerileri alabilir.
-
-Eğitmenler kurs oluşturabilir, ders ve sınav yönetimi yapabilir, öğrencilerinin performansını takip edebilir ve yapay zekâ destekli kurs analizi alabilir. Yönetici paneli ise kullanıcı, kurs, eğitmen başvurusu, yorum, bildirim ve sistem kayıtlarını yönetmek için kullanılır.
-
-Bu proje yalnızca klasik bir eğitim platformu değildir. Aynı zamanda farklı yapay zekâ yaklaşımlarını aynı eğitim senaryolarında kullanabilen ve karşılaştırabilen bütünleşik bir sistemdir.
+</div>
 
 ---
 
-## Temel Özellikler
+## 📌 Proje Hakkında
 
-### Öğrenci Özellikleri
+**CoursVia**, çevrim içi eğitim süreçlerini daha erişilebilir, yönetilebilir ve akıllı hale getirmek amacıyla geliştirilmiş bütünleşik bir eğitim platformudur.
 
-* Kurs keşfetme ve kurslara katılma
-* Kayıtlı kursları görüntüleme
+Platform; klasik kurs yönetimi işlevlerinin yanında yapay zekâ destekli öğrenci çalışma önerileri ve eğitmen kurs analizleri sunar. Böylece öğrenci yalnızca sınav sonucunu görmekle kalmaz, hangi konulara çalışması gerektiğine yönelik öneriler alır. Eğitmen ise kurs performansını analiz ederek içerik geliştirme sürecinde yapay zekâ desteğinden yararlanabilir.
+
+CoursVia; **web uygulaması**, **mobil uygulama**, **REST API**, **SQL Server veritabanı** ve **MiniCoursViaLLM yapay zekâ modülü** olmak üzere birden fazla bileşenden oluşmaktadır.
+
+---
+
+## ✨ Öne Çıkan Özellikler
+
+<table>
+<tr>
+<td width="50%">
+
+### 👨‍🎓 Öğrenci Paneli
+
+* Kurslara katılma
 * Ders ilerleme takibi
-* Sınav sonuçlarını görüntüleme
-* Sertifika görüntüleme ve doğrulama
+* Sınavlara girme
+* Sertifika görüntüleme
 * Bildirimleri takip etme
 * Yapay zekâ destekli çalışma önerileri alma
 
-### Eğitmen Özellikleri
+</td>
+<td width="50%">
 
-* Eğitmen başvurusu oluşturma
-* Kurs oluşturma ve düzenleme
-* Bölüm, ders ve materyal yönetimi
+### 👨‍🏫 Eğitmen Paneli
+
+* Kurs oluşturma
+* Bölüm ve ders yönetimi
 * Sınav ve soru yönetimi
-* Öğrenci performansını takip etme
-* Yapay zekâ destekli kurs analizi alma
+* Öğrenci performansı takibi
+* Kurs analizi görüntüleme
+* Yapay zekâ destekli geliştirme önerileri alma
 
-### Yönetici Özellikleri
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🛠️ Yönetici Paneli
 
 * Kullanıcı yönetimi
 * Kurs onay süreçleri
 * Eğitmen başvuru yönetimi
 * Kategori yönetimi
 * Yorum ve değerlendirme yönetimi
-* Bildirim ve sistem log takibi
-* Mobil admin paneli desteği
+* Sistem kayıtları ve bildirim yönetimi
 
-### Mobil Uygulama Özellikleri
+</td>
+<td width="50%">
 
-* Öğrenci, eğitmen ve admin rol seçimi
-* JWT tabanlı mobil oturum yönetimi
+### 📱 Mobil Uygulama
+
+* Expo React Native mimarisi
+* JWT tabanlı oturum yönetimi
 * Refresh token desteği
-* Kurslar, bildirimler, sertifikalar ve AI önerileri ekranları
-* QR kod ile sertifika doğrulama
-* Expo Router tabanlı sayfa yapısı
+* Rol bazlı mobil ekranlar
+* Sertifika doğrulama
+* AI önerilerini mobilde görüntüleme
+
+</td>
+</tr>
+</table>
 
 ---
 
-## Teknolojiler
+## 🧠 Yapay Zekâ Modülü
+
+CoursVia içinde üç farklı yapay zekâ yaklaşımı kullanılmıştır:
+
+| Model                    | Kullanım Amacı                                                              |
+| ------------------------ | --------------------------------------------------------------------------- |
+| **MiniCoursViaLLM**      | CoursVia senaryolarına özel öğrenci önerisi ve eğitmen kurs analizi üretimi |
+| **Gemma 3 12B Instruct** | Yerel ortamda güçlü alternatif çıktı üretimi                                |
+| **Google Gemini API**    | Bulut tabanlı güçlü dil modeli çıktısı üretimi                              |
+
+### MiniCoursViaLLM
+
+MiniCoursViaLLM, genel amaçlı sohbet modeli olarak değil, CoursVia içindeki eğitim senaryolarına özel öneri üretmek amacıyla geliştirilmiş küçük ölçekli Transformer tabanlı bir dil modelidir.
+
+Model iki temel görev için kullanılır:
+
+* Öğrenci sınav sonucuna göre çalışma önerisi üretme
+* Eğitmen kurs verilerine göre kurs analizi oluşturma
+
+---
+
+## 📊 MiniCoursViaLLM Test Sonuçları
+
+MiniCoursViaLLM, test kümesinden rastgele seçilen 100 örnek üzerinde otomatik kör testten geçirilmiştir.
+
+| Ölçüt                     |  Sonuç |
+| ------------------------- | -----: |
+| Test sayısı               |    100 |
+| Doğrudan geçerli çıktı    |     85 |
+| Başarı oranı              | %85,00 |
+| Fallback gerektiren çıktı |     15 |
+| Format hatası             |      0 |
+| Sistem etiketi sızıntısı  |      0 |
+| Kısa/boş çıktı            |      0 |
+| Veri kopyalama hatası     |     15 |
+
+Bu sonuç, modelin format ve güvenlik kurallarını genel olarak koruduğunu; ancak bazı durumlarda kurs kodu veya ders kodu gibi alanları birebir korumakta zorlandığını göstermektedir. Bu nedenle sistemde güvenlik filtresi ve fallback mekanizması kullanılmıştır.
+
+---
+
+## 🏗️ Sistem Mimarisi
+
+CoursVia genel olarak üç ana katmandan oluşur:
+
+```text
+┌─────────────────────────────┐
+│        Web Uygulaması       │
+│   ASP.NET Core MVC Views    │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│          Backend API        │
+│ ASP.NET Core Web API + MVC  │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│        SQL Server DB        │
+│ Entity Framework Core ORM   │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│      Yapay Zekâ Modülü      │
+│ MiniCoursViaLLM / Gemini    │
+└─────────────────────────────┘
+```
+
+Mobil uygulama ise backend API ile haberleşerek öğrenci, eğitmen ve yönetici işlemlerini mobil cihazlar üzerinden kullanılabilir hale getirir.
+
+---
+
+## 🖼️ Ekran Görüntüleri
+
+> Aşağıdaki klasöre ekran görüntüleri ekleyerek README görünümünü daha profesyonel hale getirebilirsin.
+
+```text
+docs/screenshots/
+├── web-home.png
+├── student-dashboard.png
+├── instructor-dashboard.png
+├── admin-dashboard.png
+├── mobile-login.png
+├── mobile-student.png
+└── ai-recommendation.png
+```
+
+### Web Arayüzü
+
+<p align="center">
+  <img src="docs/screenshots/web-home.png" width="700" alt="CoursVia Web Ana Sayfa"/>
+</p>
+
+### Mobil Uygulama
+
+<p align="center">
+  <img src="docs/screenshots/mobile-login.png" width="220" alt="CoursVia Mobil Giriş"/>
+  <img src="docs/screenshots/mobile-student.png" width="220" alt="CoursVia Mobil Öğrenci Paneli"/>
+  <img src="docs/screenshots/ai-recommendation.png" width="220" alt="CoursVia AI Öneri Ekranı"/>
+</p>
+
+---
+
+## 🧰 Kullanılan Teknolojiler
 
 ### Backend
 
@@ -102,90 +219,51 @@ Bu proje yalnızca klasik bir eğitim platformu değildir. Aynı zamanda farklı
 
 * Python
 * PyTorch
-* Transformer tabanlı MiniCoursViaLLM
+* Transformer mimarisi
 * BPE tokenizer
+* MiniCoursViaLLM
 * Google Gemini API
-* Local Gemma 3 12B Instruct
-* LM Studio / OpenAI uyumlu local API yapısı
+* Gemma 3 12B Instruct
+* LM Studio / OpenAI uyumlu local API
 
 ---
 
-## Proje Mimarisi
+## 📁 Proje Yapısı
 
-CoursVia üç ana bileşenden oluşur:
-
-1. **CoursVia Web & API**
-
-   * Web arayüzleri
-   * Rol bazlı paneller
-   * Mobil uygulama için REST API endpointleri
-   * Kimlik doğrulama ve yetkilendirme
-   * Veritabanı işlemleri
-
-2. **CoursViaMobile**
-
-   * Expo React Native mobil uygulaması
-   * Öğrenci, eğitmen ve admin mobil ekranları
-   * JWT access token ve refresh token yönetimi
-   * Backend API ile haberleşme
-
-3. **CoursViaAI**
-
-   * MiniCoursViaLLM modeli
-   * Veri üretimi
-   * Tokenizer eğitimi
-   * Model eğitimi
-   * Model değerlendirme
-   * Backend tarafından çağrılabilen üretim scripti
-
----
-
-## Yapay Zekâ Modülü
-
-CoursVia içinde üç farklı yapay zekâ yaklaşımı kullanılmıştır:
-
-| Model                | Kullanım Amacı                                                              |
-| -------------------- | --------------------------------------------------------------------------- |
-| MiniCoursViaLLM      | CoursVia senaryolarına özel öğrenci önerisi ve eğitmen kurs analizi üretimi |
-| Gemma 3 12B Instruct | Yerel ortamda güçlü alternatif çıktı üretimi                                |
-| Gemini API           | Bulut tabanlı güçlü dil modeli çıktısı üretimi                              |
-
-MiniCoursViaLLM, genel amaçlı bir sohbet modeli olarak değil, CoursVia içindeki eğitim senaryolarına özel kontrollü öneriler üretmek amacıyla geliştirilmiştir.
-
-### MiniCoursViaLLM Eğitim Bilgileri
-
-* Veri seti: 40.000 sentetik örnek
-* Eğitim / doğrulama / test ayrımı: %80 / %10 / %10
-* Sözlük boyutu: 12.000 token
-* Bağlam uzunluğu: 512 token
-* Embedding boyutu: 512
-* Attention head sayısı: 8
-* Transformer katmanı: 8
-* Dropout: 0,10
-* Learning rate: 2.5e-4
-* Eğitim iterasyonu: 4000
-* En iyi validation loss: yaklaşık 0,3145
-
-### Otomatik Kör Test Sonucu
-
-MiniCoursViaLLM, test kümesinden rastgele seçilen 100 örnek üzerinde otomatik kör testten geçirilmiştir.
-
-| Ölçüt                     |  Sonuç |
-| ------------------------- | -----: |
-| Test sayısı               |    100 |
-| Doğrudan geçerli çıktı    |     85 |
-| Başarı oranı              | %85,00 |
-| Fallback gerektiren çıktı |     15 |
-| Format hatası             |      0 |
-| Sistem etiketi sızıntısı  |      0 |
-| Kısa/boş çıktı            |      0 |
-| Veri kopyalama hatası     |     15 |
-
-Bu sonuç, modelin çıktı formatını ve güvenlik kurallarını genel olarak koruduğunu; ancak bazı durumlarda kurs kodu veya ders kodu gibi alanları birebir korumakta zorlandığını göstermektedir. Bu nedenle sistemde fallback ve çıktı güvenlik filtresi kullanılmıştır.
+```text
+CoursVia/
+│
+├── CoursVia/                 # ASP.NET Core MVC + Web API
+│   ├── Controllers/          # Web ve API controllerları
+│   ├── Data/                 # DbContext ve seed işlemleri
+│   ├── Migrations/           # Entity Framework migration dosyaları
+│   ├── Models/               # Veritabanı modelleri
+│   ├── Services/             # İş servisleri ve AI servisleri
+│   ├── ViewModels/           # ViewModel sınıfları
+│   └── Views/                # Razor view dosyaları
+│
+├── CoursViaMobile/           # Expo React Native mobil uygulaması
+│   ├── app/                  # Expo Router ekranları
+│   ├── src/api/              # Axios API client
+│   ├── src/auth/             # Token ve oturum yönetimi
+│   └── src/types/            # TypeScript tipleri
+│
+├── CoursViaAI/               # MiniCoursViaLLM yapay zekâ modülü
+│   ├── data/                 # Eğitim, doğrulama ve test verileri
+│   ├── models/               # Eğitilmiş model dosyaları
+│   ├── config.py             # Model eğitim ayarları
+│   ├── data_generator.py     # Sentetik veri üretimi
+│   ├── model.py              # Transformer model mimarisi
+│   ├── train.py              # Eğitim scripti
+│   ├── evaluate.py           # Test scripti
+│   └── generate.py           # Çıktı üretim işlemleri
+│
+└── CoursVia.sln              # Visual Studio çözüm dosyası
+```
 
 ---
 
-## Kurulum
+## 🚀 Kurulum
 
 ### 1. Depoyu Klonlama
 
@@ -196,18 +274,16 @@ cd CoursVia
 
 ---
 
-## Backend Kurulumu
-
-Backend projesi `CoursVia` klasörü altında yer alır.
+## ⚙️ Backend Kurulumu
 
 ```bash
 cd CoursVia
 dotnet restore
+dotnet ef database update
+dotnet run
 ```
 
-### Veritabanı Ayarı
-
-`appsettings.json` içindeki bağlantı cümlesini kendi SQL Server ayarınıza göre düzenleyin:
+`appsettings.json` içindeki bağlantı cümlesini kendi SQL Server ayarına göre düzenle:
 
 ```json
 "ConnectionStrings": {
@@ -215,19 +291,7 @@ dotnet restore
 }
 ```
 
-Migration işlemleri için:
-
-```bash
-dotnet ef database update
-```
-
-Uygulamayı çalıştırmak için:
-
-```bash
-dotnet run
-```
-
-Varsayılan olarak backend şu adreste çalışır:
+Varsayılan backend adresi:
 
 ```text
 http://localhost:5024
@@ -235,36 +299,21 @@ http://localhost:5024
 
 ---
 
-## Mobil Uygulama Kurulumu
-
-Mobil uygulama `CoursViaMobile` klasörü altında yer alır.
+## 📱 Mobil Kurulum
 
 ```bash
 cd CoursViaMobile
 npm install
+npm start
 ```
 
-Backend API adresini `src/api/client.ts` dosyasından düzenleyin:
+Android emülatörde backend bağlantısı için:
 
 ```ts
 export const API_BASE_URL = "http://10.0.2.2:5024";
 ```
 
-Android emülatör için:
-
-```bash
-npm run android
-```
-
-Expo başlatmak için:
-
-```bash
-npm start
-```
-
-Gerçek cihazda test yapılacaksa `10.0.2.2` yerine bilgisayarın yerel IPv4 adresi yazılmalıdır.
-
-Örnek:
+Gerçek cihazda test yapılacaksa bilgisayarın yerel IPv4 adresi kullanılmalıdır:
 
 ```ts
 export const API_BASE_URL = "http://192.168.1.25:5024";
@@ -272,28 +321,26 @@ export const API_BASE_URL = "http://192.168.1.25:5024";
 
 ---
 
-## Yapay Zekâ Modülü Kurulumu
-
-Yapay zekâ modülü `CoursViaAI` klasörü altında yer alır.
+## 🤖 Yapay Zekâ Modülü Kurulumu
 
 ```bash
 cd CoursViaAI
 python -m venv .venv
 ```
 
-Windows için sanal ortamı etkinleştirme:
+Windows için:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-Gerekli paketleri yükleme:
+Paket kurulumu:
 
 ```bash
 pip install torch numpy tokenizers
 ```
 
-Veri seti üretimi:
+Veri üretimi:
 
 ```bash
 python data_generator.py
@@ -317,115 +364,86 @@ Model testi:
 python evaluate.py
 ```
 
-Backend tarafında MiniCoursViaLLM entegrasyonu için `appsettings.json` içindeki yollar kendi bilgisayarınıza göre düzenlenmelidir:
-
-```json
-"MiniCoursVia": {
-  "PythonExePath": "C:\\Path\\To\\CoursViaAI\\.venv\\Scripts\\python.exe",
-  "ScriptPath": "C:\\Path\\To\\CoursViaAI\\demo_generate_api.py",
-  "WorkingDirectory": "C:\\Path\\To\\CoursViaAI",
-  "TimeoutSeconds": 180
-}
-```
-
 ---
 
-## Gemini ve Local Gemma Ayarları
+## 🔐 Güvenlik Notu
 
-Gemini API kullanılacaksa:
+API anahtarları, JWT secret değerleri, e-posta şifreleri, veritabanı bağlantı bilgileri ve kişisel erişim tokenları doğrudan GitHub reposuna yüklenmemelidir.
 
-```json
-"Gemini": {
-  "ApiKey": "GEMINI_API_KEY",
-  "Model": "gemini-3-flash-preview"
-}
-```
-
-Local Gemma için LM Studio veya OpenAI uyumlu local endpoint kullanılabilir:
-
-```json
-"LocalGemma": {
-  "BaseUrl": "http://localhost:1234/v1",
-  "Model": "gemma-3-12b-it"
-}
-```
-
-> Güvenlik notu: API anahtarları, e-posta şifreleri ve JWT secret değerleri doğrudan GitHub reposuna yüklenmemelidir. Gerçek projede environment variable veya user secrets kullanılması önerilir.
-
----
-
-## Klasör Yapısı
+Önerilen kullanım:
 
 ```text
-CoursVia/
-│
-├── CoursVia/                 # ASP.NET Core MVC + Web API projesi
-│   ├── Controllers/          # Web ve mobil API controllerları
-│   ├── Data/                 # DbContext ve seed dosyaları
-│   ├── Migrations/           # Entity Framework migration dosyaları
-│   ├── Models/               # Veritabanı modelleri
-│   ├── Services/             # İş servisleri ve AI servisleri
-│   ├── ViewModels/           # ViewModel sınıfları
-│   └── Views/                # MVC Razor view dosyaları
-│
-├── CoursViaMobile/           # Expo React Native mobil uygulaması
-│   ├── app/                  # Expo Router ekranları
-│   ├── src/api/              # Axios API client
-│   ├── src/auth/             # Mobil oturum ve token işlemleri
-│   └── src/types/            # TypeScript API tipleri
-│
-├── CoursViaAI/               # MiniCoursViaLLM yapay zekâ modülü
-│   ├── data/                 # Eğitim, doğrulama ve test verileri
-│   ├── models/               # Eğitilmiş model ve tokenizer dosyaları
-│   ├── config.py             # Model ve eğitim ayarları
-│   ├── data_generator.py     # Sentetik veri üretimi
-│   ├── model.py              # Transformer model mimarisi
-│   ├── train.py              # Model eğitim scripti
-│   ├── evaluate.py           # Model test scripti
-│   └── generate.py           # Model çıktı üretim işlemleri
-│
-└── CoursVia.sln              # Visual Studio çözüm dosyası
+appsettings.Development.json
+.env
+dotnet user-secrets
+environment variables
 ```
 
 ---
 
-## Ekran Görüntüleri
-
-> Bu alana proje ekran görüntüleri eklenebilir.
+## 🧪 Örnek AI Girdisi
 
 ```text
-docs/screenshots/
-├── web-home.png
-├── ogrenci-panel.png
-├── egitmen-panel.png
-├── admin-panel.png
-├── mobile-login.png
-├── mobile-ogrenci.png
-└── ai-oneri.png
+[GOREV] OGRENCI_CALISMA_ONERISI
+[KURS] Türkçe Dil Bilgisi
+[SINAV_PUANI] 7
+[GECME_PUANI] 50
+[ZORLANILAN_BOLUM] Yazım Kuralları
+[ZORLANILAN_DERSLER] Paragrafta Yardımcı Düşünce, Sözcükte Çok Anlamlılık
+[YANIT]
 ```
 
-Örnek kullanım:
+Örnek çıktı:
 
-```md
-![CoursVia Ana Sayfa](docs/screenshots/web-home.png)
+```text
+Öğrenci, Yazım Kuralları bölümünü tekrar etmeli ve özellikle Paragrafta Yardımcı Düşünce ile Sözcükte Çok Anlamlılık konularına yönelik ek çalışma yapmalıdır. Sınav puanı geçme puanının altında olduğu için konu tekrarı ve örnek soru çözümü önerilmektedir.
 ```
 
 ---
 
-## Öne Çıkan Teknik Noktalar
+## 🧭 Yol Haritası
 
-* Web ve mobil uygulama aynı backend altyapısını kullanır.
-* Web tarafında cookie authentication kullanılır.
-* Mobil tarafta JWT access token ve refresh token yapısı vardır.
-* Öğrenci, eğitmen ve admin rolleri ayrı panellerle yönetilir.
-* AI önerileri hem web hem mobil tarafta görüntülenebilir.
-* Sertifika doğrulama ve QR tabanlı kontrol desteği vardır.
-* Yönetici işlemleri loglanabilir.
-* AI çıktıları güvenlik filtresinden geçirilir.
-* MiniCoursViaLLM, dış servise bağımlı olmadan özel öneri üretebilir.
+* [x] Web tabanlı kurs yönetimi
+* [x] Mobil uygulama desteği
+* [x] JWT tabanlı mobil kimlik doğrulama
+* [x] MiniCoursViaLLM yapay zekâ modülü
+* [x] Gemini API entegrasyonu
+* [x] Local Gemma desteği
+* [ ] Canlı ders modülü
+* [ ] Gelişmiş analitik panel
+* [ ] Gerçek kullanıcı değerlendirme sistemi
+* [ ] AI çıktı kalitesi için insan değerlendirme arayüzü
+* [ ] Docker desteği
 
 ---
 
-## Lisans
+## 👨‍💻 Geliştirici
+
+<div align="center">
+
+**Mehmet Emin Fındıkçı**
+Bilgisayar Mühendisliği
+Kayseri Üniversitesi
+
+<br/>
+
+[![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?style=for-the-badge\&logo=github)](https://github.com/kullanici-adi)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-0A66C2?style=for-the-badge\&logo=linkedin)](https://linkedin.com/in/kullanici-adi)
+
+</div>
+
+---
+
+## 📄 Lisans
 
 Bu proje eğitim ve bitirme projesi kapsamında geliştirilmiştir. Lisans bilgisi daha sonra eklenecektir.
+
+---
+
+<div align="center">
+
+### ⭐ CoursVia
+
+Eğitim yönetimi, mobil erişim ve yapay zekâ destekli öneri sistemlerini tek platformda birleştiren CoursVia projesi.
+
+</div>
