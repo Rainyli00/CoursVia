@@ -335,21 +335,6 @@ python evaluate.py
 
 ---
 
-## 🔐 Güvenlik Notu
-
-API anahtarları, JWT secret değerleri, e-posta şifreleri, veritabanı bağlantı bilgileri ve kişisel erişim tokenları doğrudan GitHub reposuna yüklenmemelidir.
-
-Önerilen kullanım:
-
-```text
-appsettings.Development.json
-.env
-dotnet user-secrets
-environment variables
-```
-
----
-
 ## 🧪 Örnek AI Girdisi
 
 ```text
