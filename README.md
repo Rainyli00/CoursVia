@@ -158,37 +158,6 @@ Mobil uygulama ise backend API ile haberleşerek öğrenci, eğitmen ve yönetic
 
 ---
 
-## 🖼️ Ekran Görüntüleri
-
-> Aşağıdaki klasöre ekran görüntüleri ekleyerek README görünümünü daha profesyonel hale getirebilirsin.
-
-```text
-docs/screenshots/
-├── web-home.png
-├── student-dashboard.png
-├── instructor-dashboard.png
-├── admin-dashboard.png
-├── mobile-login.png
-├── mobile-student.png
-└── ai-recommendation.png
-```
-
-### Web Arayüzü
-
-<p align="center">
-  <img src="docs/screenshots/web-home.png" width="700" alt="CoursVia Web Ana Sayfa"/>
-</p>
-
-### Mobil Uygulama
-
-<p align="center">
-  <img src="docs/screenshots/mobile-login.png" width="220" alt="CoursVia Mobil Giriş"/>
-  <img src="docs/screenshots/mobile-student.png" width="220" alt="CoursVia Mobil Öğrenci Paneli"/>
-  <img src="docs/screenshots/ai-recommendation.png" width="220" alt="CoursVia AI Öneri Ekranı"/>
-</p>
-
----
-
 ## 🧰 Kullanılan Teknolojiler
 
 ### Backend
