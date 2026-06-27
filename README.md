@@ -365,6 +365,6 @@ Bu proje eğitim ve bitirme projesi kapsamında geliştirilmiştir.
 
 ### ⭐ CoursVia
 
-Eğitim yönetimi, mobil erişim ve yapay zekâ destekli öneri sistemlerini tek platformda birleştiren CoursVia projesi.
+Eğitim yönetimi, mobil erişim ve yapay zekâ destekli öneri sistemlerini tek bir yerde birleştiren platform.
 
 </div>
