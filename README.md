@@ -357,7 +357,7 @@ python evaluate.py
 
 ## 📄 Lisans
 
-Bu proje eğitim ve bitirme projesi kapsamında geliştirilmiştir. Lisans bilgisi daha sonra eklenecektir.
+Bu proje eğitim ve bitirme projesi kapsamında geliştirilmiştir.
 
 ---
 
