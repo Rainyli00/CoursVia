@@ -370,39 +370,6 @@ environment variables
 
 ---
 
-## 🧭 Yol Haritası
-
-* [x] Web tabanlı kurs yönetimi
-* [x] Mobil uygulama desteği
-* [x] JWT tabanlı mobil kimlik doğrulama
-* [x] MiniCoursViaLLM yapay zekâ modülü
-* [x] Gemini API entegrasyonu
-* [x] Local Gemma desteği
-* [ ] Canlı ders modülü
-* [ ] Gelişmiş analitik panel
-* [ ] Gerçek kullanıcı değerlendirme sistemi
-* [ ] AI çıktı kalitesi için insan değerlendirme arayüzü
-* [ ] Docker desteği
-
----
-
-## 👨‍💻 Geliştirici
-
-<div align="center">
-
-**Mehmet Emin Fındıkçı**
-Bilgisayar Mühendisliği
-Kayseri Üniversitesi
-
-<br/>
-
-[![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?style=for-the-badge\&logo=github)](https://github.com/kullanici-adi)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-0A66C2?style=for-the-badge\&logo=linkedin)](https://linkedin.com/in/kullanici-adi)
-
-</div>
-
----
-
 ## 📄 Lisans
 
 Bu proje eğitim ve bitirme projesi kapsamında geliştirilmiştir. Lisans bilgisi daha sonra eklenecektir.
